@@ -1,0 +1,2 @@
+A basic floating window manager written on top of the XCB library.
+TODO: add tiling
