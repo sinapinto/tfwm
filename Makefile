@@ -1,18 +1,35 @@
-CC = gcc
-CFLAGS = -std=c99 -Os -Wall -pedantic -I.
-LDFLAGS = -lxcb -lxcb-keysyms
-SRC = bwm.c
-OBJ = ${SRC:.c=.o}
+SRC 	= bwm.c
+TARGET 	= $(SRC:.c=)
+OBJ 	= $(SRC:.c=.o)
+CFLAGS 	+= -std=c99 -Os -Wall -pedantic -I.
+LDFLAGS += -lxcb
+CC 		:= gcc
+PREFIX 	:= /usr
 
-all: bwm
+all: $(TARGET)
 
 $(OBJ): config.h events.h
 
-.c.o:
-	$(CC) -c $< $(CFLAGS)
+%.o: %.c
+	@echo CC $<
+	@$(CC) -c $(CFLAGS) -o $@ $<
 
-bwm: $(OBJ)
-	$(CC) $(LDFLAGS) $(CFLAGS) -o $@ $@.c
+$(TARGET): $(OBJ)
+	@echo CC -o $@
+	@$(CC) $(LDFLAGS) $(CFLAGS) -o $@ $@.c
 
 clean:
-	rm -f bwm $(OBJ)
+	@echo cleaning
+	@rm -f *.o $(TARGET)
+
+install: all
+	@echo installing binary to ${DESTDIR}${PREFIX}/bin
+	@mkdir -p ${PREFIX}/bin
+	@cp -f $(TARGET) ${PREFIX}/bin
+	@chmod 755 ${PREFIX}/bin/$(TARGET)
+
+uninstall:
+	@echo removing binary from  ${PREFIX}/bin
+	@rm -f ${PREFIX}/bin/$(TARGET)
+
+.PHONY: all clean install uninstall
