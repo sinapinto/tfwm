@@ -3,7 +3,7 @@ TARGET 	= $(SRC:.c=)
 OBJ 	= $(SRC:.c=.o)
 CFLAGS 	+= -std=c99 -Os -Wall -pedantic -I.
 LDFLAGS += -lxcb
-CC 		:= gcc
+CC		:= gcc
 PREFIX 	:= /usr
 
 all: $(TARGET)
@@ -23,7 +23,7 @@ clean:
 	@rm -f *.o $(TARGET)
 
 install: all
-	@echo installing binary to ${DESTDIR}${PREFIX}/bin
+	@echo installing binary to ${PREFIX}/bin
 	@mkdir -p ${PREFIX}/bin
 	@cp -f $(TARGET) ${PREFIX}/bin
 	@chmod 755 ${PREFIX}/bin/$(TARGET)
