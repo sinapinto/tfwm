@@ -3,8 +3,8 @@ TARGET 	= $(SRC:.c=)
 OBJ 	= $(SRC:.c=.o)
 CFLAGS 	+= -std=c99 -Os -Wall -pedantic -I.
 LDFLAGS += -lxcb
-CC		:= gcc
-PREFIX 	:= /usr
+CC		?= gcc
+PREFIX 	?= /usr
 
 all: $(TARGET)
 
