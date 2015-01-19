@@ -466,7 +466,7 @@ int main ()
     }
     xcb_flush(conn);
 
-    fprintf(stdout, "\033[033mWelcome to BFWM!\033[0m\n");
+    fprintf(stdout, "\033[033mWelcome to BWM!\033[0m\n");
 
     event_loop();
 
