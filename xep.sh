@@ -3,7 +3,7 @@
 case "$1" in 
     s) 
         [ `pgrep Xephyr` ] && exit 1
-        Xephyr -ac -screen 800x500 :1 &
+        Xephyr -ac -screen 1200x700 :1 &
         sleep 0.5
         DISPLAY=:1
         urxvt -display :1 -e sh -c "~/.xinitrc aa" & disown
