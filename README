@@ -1,2 +1,3 @@
-A basic floating window manager written on top of the XCB library.
-TODO: add tiling
+WIP
+floating window manager
+depends on XCB
