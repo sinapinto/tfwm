@@ -6,7 +6,7 @@ case "$1" in
         Xephyr -ac -screen 1200x700 :1 &
         sleep 0.5
         DISPLAY=:1
-        urxvt -display :1 -e sh -c "~/.xinitrc aa" & disown
+        urxvt -display :1 -e sh -c "~/.xinitrc aa" &
         ;;
     *) 
         [ `pgrep Xephyr` ] && pkill Xephyr || echo "Xephyr not running"
