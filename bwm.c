@@ -37,7 +37,7 @@ struct client{
     xcb_drawable_t id;  /* get_geom */
     int16_t x, y; uint16_t width, height;
     int16_t oldx, oldy; uint16_t oldw, oldh; /* maximize toggle */
-    bool ismax;
+    bool is_maximized;
     client *next;
     client *prev;
     xcb_window_t win;
@@ -47,8 +47,6 @@ xcb_connection_t *conn;   /* connection to X server */
 xcb_screen_t *screen;     /* current screen */
 static client *head;
 static client *current;
-static int screen_height;
-static int screen_width;
 
 static void cleanup();
 static void sighandle(int signal);
@@ -63,7 +61,7 @@ static void setup_win(xcb_window_t w);
 static void add_window_to_list(xcb_window_t w);
 static void remove_window_from_list(xcb_window_t w);
 static void killwin();
-static void nextwin();
+static void nextwin(const Arg *arg);
 static void unfocus_client(struct client *c);
 static void focus_client(struct client *c);
 static void event_loop(void);
@@ -104,7 +102,6 @@ static int get_geom(xcb_drawable_t win, int16_t *x, int16_t *y,
 
 /*static void warp_pointer(struct client *c)*/
 /*{*/
-
     /*if (NULL == c) return;*/
     /*xcb_warp_pointer(conn, XCB_NONE, c->win, 0, 0, 0, 0, c->width, c->height);*/
 /*}*/
@@ -199,25 +196,39 @@ static void toggle_maximize(const Arg *arg)
     uint32_t mask = XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y
                   | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT
                   | XCB_CONFIG_WINDOW_STACK_MODE;
-    if (!current->ismax)
+    if (!current->is_maximized)
     {
-        current->oldx = current->x; current->oldy = current->y;
-        current->oldw = current->width; current->oldh = current->height;
+        uint16_t scrwidth = screen->width_in_pixels-(2*BORDER_WIDTH);
+        uint16_t scrheight = screen->height_in_pixels-(2*BORDER_WIDTH);
+        current->oldx = current->x;
+        current->oldy = current->y;
+        current->oldw = current->width;
+        current->oldh = current->height;
         val[0] = 0; val[1] = 0;
-        val[2] = screen_width; val[3] = screen_height;
+        val[2] = scrwidth; val[3] = scrwidth;
+        PDEBUG("MAX: x: %d y: %d width: %d height: %d\n", current->x, current->y,
+                current->width, current->height);
         xcb_configure_window(conn, c->win, mask, val);
-        current->x = 0; current->y = 0;
-        current->width = screen_width; current->height = screen_height;
-        current->ismax = true;
+        current->x = 0;
+        current->y = 0;
+        current->width = scrwidth;
+        current->height = scrheight;
+        current->is_maximized = true;
     }
     else
     {
-        val[0] = current->oldx; val[1] = current->oldy;
-        val[2] = current->oldw; val[3] = current->oldh;
+        val[0] = current->oldx;
+        val[1] = current->oldy;
+        val[2] = current->oldw;
+        val[3] = current->oldh;
+        PDEBUG("MIN: x: %d y: %d width: %d height: %d\n", current->oldx, current->oldy,
+                current->oldw, current->oldh);
         xcb_configure_window(conn, c->win, mask, val);
-        current->x = current->oldx; current->y = current->oldy;
-        current->width = current->oldw; current->height = current->oldh;
-        current->ismax = false;
+        current->x = current->oldx;
+        current->y = current->oldy;
+        current->width = current->oldw;
+        current->height = current->oldh;
+        current->is_maximized = false;
         focus_client(current);
     }
     xcb_flush(conn);
@@ -256,6 +267,7 @@ static void add_window_to_list(xcb_window_t w)
         c->next = NULL;
         c->prev = NULL;
         c->win = w;
+        c->is_maximized = false;
         get_geom(c->id, &c->x, &c->y, &c->width, &c->height);
         head = c;
     }
@@ -267,6 +279,7 @@ static void add_window_to_list(xcb_window_t w)
         c->prev = NULL;
         c->next = t;
         c->win = w;
+        c->is_maximized = false;
         t->prev = c;
         get_geom(c->id, &c->x, &c->y, &c->width, &c->height);
         head = c;
@@ -343,20 +356,18 @@ static void nextwin(const Arg *arg)
             }
             else
             {
-                PDEBUG("\033[031mnextwin\033[0m\n");
                 c = current->next;
             }
         }
         else // focus previous
         {
-            if (current == head) // this is the only client, don't do anything
-                return;
             if (current->prev == NULL) // at head.. prev win is tail
             {
                 for(c=head; c->next != NULL; c=c->next);
             }
             else
                 c = current->prev;
+            /*PDEBUG("\033[031mnextwin %d\033[0m\n", c->win);*/
         }
         unfocus_client(current);
         current = c;
@@ -409,14 +420,17 @@ static void event_loop(void)
         {
         case XCB_CREATE_NOTIFY:
         {
-            xcb_create_notify_event_t *e;
-            e = (xcb_create_notify_event_t *)ev;
-            setup_win(e->window);
+            /*xcb_create_notify_event_t *e;*/
+            /*e = (xcb_create_notify_event_t *)ev;*/
+            /*setup_win(e->window);*/
         }
         break;
 
         case XCB_MAP_NOTIFY:
         {
+            xcb_map_notify_event_t *e;
+            e = (xcb_map_notify_event_t *)ev;
+            setup_win(e->window);
             focus_client(current);
         }
         break;
@@ -480,9 +494,6 @@ int main ()
     screen = xcb_setup_roots_iterator(xcb_get_setup(conn)).data;
     xcb_drawable_t root = screen->root;
 
-    /* set up globals */
-    screen_width = screen->width_in_pixels-(2*BORDER_WIDTH);
-    screen_height = screen->height_in_pixels-(2*BORDER_WIDTH);
     head = NULL;
     current = NULL;
 
