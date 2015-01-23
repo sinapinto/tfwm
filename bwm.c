@@ -1,22 +1,15 @@
-/* TODO: fix focus*/
-/* TODO: maximize toggle */
-/* TODO: multiple desktops? */
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <err.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <xcb/xcb.h>
 
 #define DEBUG
-
 /*#ifdef DEBUG
 #include "events.h"
 #endif*/
-
-#define LENGTH(X)    (sizeof(X)/sizeof(*X))
-
 #ifdef DEBUG
 #define PDEBUG(...) \
     fprintf(stderr, "asdf: "); fprintf(stderr, __VA_ARGS__);
@@ -24,8 +17,10 @@
 #define PDEBUG(...)
 #endif
 
+#define LENGTH(X)    (sizeof(X)/sizeof(*X))
+
 typedef union {
-    const char ** com;
+    const char **com;
     const int8_t i;
 } Arg;
 
@@ -39,9 +34,10 @@ typedef struct key {
 
 typedef struct client client;
 struct client{
-    xcb_drawable_t id;
-    int16_t x, y;
-    uint16_t width, height;
+    xcb_drawable_t id;  /* get_geom */
+    int16_t x, y; uint16_t width, height;
+    int16_t oldx, oldy; uint16_t oldw, oldh; /* maximize toggle */
+    bool ismax;
     client *next;
     client *prev;
     xcb_window_t win;
@@ -51,224 +47,193 @@ xcb_connection_t *conn;   /* connection to X server */
 xcb_screen_t *screen;     /* current screen */
 static client *head;
 static client *current;
-static client *focuswin;
 static int screen_height;
 static int screen_width;
 
 static void cleanup();
 static void sighandle(int signal);
-static void killwin();
-static void nextwin();
-static void resize(const Arg *arg);
-static void move(const Arg *arg);
-static void maximize();
-static void add_window_to_list(xcb_window_t w);
-static void remove_window_from_list(xcb_window_t w);
 static int get_geom(xcb_drawable_t win, int16_t *x, int16_t *y,
                     uint16_t *width, uint16_t *height);
-static void warp_pointer(struct client *c);
-static void focus_client(struct client *c);
+/*static void warp_pointer(struct client *c);*/
+static void spawn(const Arg *arg);
+static void resize(const Arg *arg);
+static void move(const Arg *arg);
+static void toggle_maximize(const Arg *arg);
 static void setup_win(xcb_window_t w);
+static void add_window_to_list(xcb_window_t w);
+static void remove_window_from_list(xcb_window_t w);
+static void killwin();
+static void nextwin();
+static void unfocus_client(struct client *c);
+static void focus_client(struct client *c);
 static void event_loop(void);
 
 #include "config.h"
-
 static void cleanup()
 {
     xcb_set_input_focus(conn, XCB_NONE, XCB_INPUT_FOCUS_POINTER_ROOT,
                         XCB_CURRENT_TIME);
     xcb_flush(conn);
 
-    fprintf(stdout, "\033[032mCleaning up and exiting... Bye!\033[0m\n");
     xcb_disconnect(conn);
-
     exit(0);
 }
 
 static void sighandle(int signal)
 {
     if (signal == SIGINT || signal == SIGTERM)
-    {
-        fprintf(stdout, "\033[032mReceived a terminating signal.\033[0m\n");
         cleanup();
-    }
 }
 
-static void killwin()
+static int get_geom(xcb_drawable_t win, int16_t *x, int16_t *y,
+                    uint16_t *width, uint16_t *height)
 {
-    client *c;
-    for (c=head; c != NULL; c=c->next)
-    {
-        if (c == current)
-        {
-            /* don't kill root */
-            if (!c->win || c->win == screen->root)
-                return;
+    xcb_get_geometry_reply_t *geom;
+    geom = xcb_get_geometry_reply(conn, xcb_get_geometry(conn, win), NULL);
+    if (NULL == geom)
+        return 1;
 
-            PDEBUG("\033[031mkillwin\033[0m\n");
-            xcb_kill_client(conn, c->win);
-            xcb_flush(conn); 
-            return;
-        }
-    }
+    *x = geom->x;
+    *y = geom->y;
+    *width = geom->width;
+    *height = geom->height;
+    
+    free(geom);
+    return 0;
 }
 
-static void nextwin(const Arg *arg)
+/*static void warp_pointer(struct client *c)*/
+/*{*/
+
+    /*if (NULL == c) return;*/
+    /*xcb_warp_pointer(conn, XCB_NONE, c->win, 0, 0, 0, 0, c->width, c->height);*/
+/*}*/
+
+static void spawn(const Arg *arg)
 {
-    client *c;
-    if(current != NULL && head != NULL)
+    if (fork() == 0)
     {
-        if (arg->i == 0) // focus next
-        {
-            if (current->next == NULL) // at tail.. next win is head
-            {
-                if (current == head) // only client, don't do anything
-                    return;
-                PDEBUG("\033[031mnextwin [going to head]\033[0m\n");
-                c = head;
-            }
-            else
-            {
-                PDEBUG("\033[031mnextwin\033[0m\n");
-                c = current->next;
-            }
-            current = c;
-            focus_client(c);
-        }
-        else // focus previous
-        {
-            if (current == head) // this is the only client, don't do anything
-                return;
-            if (current->prev == NULL) // at head.. prev win is tail
-            {
-                for(c=head; c->next != NULL; c=c->next);
-            }
-            else
-            {
-                c = current->prev;
-            }
-            current = c;
-            focus_client(c);
-        }
+        if (conn)
+            close(screen->root);
+        setsid();
+        execvp((char*)arg->com[0], (char**)arg->com);
+        fprintf(stderr, "bwm: execvp %s\n", ((char **)arg->com)[0]);
+        exit(0);
     }
 }
 
 static void resize(const Arg *arg)
 {
-    /* don't resize root */
     if (!current->win || current->win == screen->root)
         return;
     uint8_t step = steps[1];
 
     switch (arg->i)
     {
-        case 0: {
-            current->height = current->height+step > 5 ? current->height + step 
+        case 0:
+            current->height = current->height+step > 0 ? current->height + step 
                                                        : current->height;
-        }
-        break;
-        case 1: {
-            current->height = current->height-step > 5 ? current->height - step 
+            break;
+        case 1:
+            current->height = current->height-step > 0 ? current->height - step 
                                                        : current->height;
-        }
-        break;
-        case 2: {
-            current->width = current->width-step > 5 ? current->width - step 
+            break;
+        case 2:
+            current->width = current->width-step > 0 ? current->width - step 
                                                      : current->width;
-        }
-        break;
-        case 3: {
-            current->width = current->width+step > 5 ? current->width + step 
+            break;
+        case 3:
+            current->width = current->width+step > 0 ? current->width + step 
                                                      : current->width;
-        }
-        break;
-        default:
-            return;
+            break;
     }
 
     uint32_t values[2];
     values[0] = current->width;
     values[1] = current->height;
-
     /*PDEBUG("X: %d -> %d, Y:%d -> %d\n", r->width, r->width + x,
                                         r->height, r->height + y);*/
-
     xcb_configure_window(conn, current->win, XCB_CONFIG_WINDOW_WIDTH
                                    | XCB_CONFIG_WINDOW_HEIGHT, values);
     xcb_flush(conn); 
-    warp_pointer(current);
 }
 
 static void move(const Arg *arg)
 {
-    /* don't move root */
     if (!current->win || current->win == screen->root)
         return;
     uint8_t step = steps[0];
 
     switch (arg->i)
     {
-        case 0: {
-            current->y += step;
-        }
-        break;
-        case 1: {
-            current->y -= step;
-        }
-        break;
-        case 2: {
-            current->x -= step;
-        }
-        break;
-        case 3: {
-            current->x += step;
-        }
-        break;
-        default:
-            return;
+        case 0:
+            current->y += step; break;
+        case 1:
+            current->y -= step; break;
+        case 2:
+            current->x -= step; break;
+        case 3:
+            current->x += step; break;
     }
     uint32_t values[2];
     values[0] = current->x; 
     values[1] = current->y;
-
     /*PDEBUG("X: %d -> %d, Y:%d -> %d\n", r->x, r->x + x,
                                         r->y, r->y + y);*/
-
     xcb_configure_window(conn, current->win, XCB_CONFIG_WINDOW_X
                                    | XCB_CONFIG_WINDOW_Y, values);
     xcb_flush(conn); 
-    warp_pointer(current);
 }
 
-static void maximize()
+/* TODO: debug */ 
+static void toggle_maximize(const Arg *arg)
 {
-    client *c;
+    client *c; 
+    if (current == NULL) return;
     for (c=head; c != NULL; c=c->next)
-    {
-        if (c == current)
-        {
-            uint32_t val[5];
-            uint32_t mask = XCB_CONFIG_WINDOW_X
-                          | XCB_CONFIG_WINDOW_Y
-                          | XCB_CONFIG_WINDOW_WIDTH
-                          | XCB_CONFIG_WINDOW_HEIGHT
-                          | XCB_CONFIG_WINDOW_STACK_MODE;
-            val[0] = 0;
-            val[1] = 0;
-            val[2] = screen_width;
-            val[3] = screen_height;
-            val[4] = XCB_STACK_MODE_ABOVE;
+        if (c == current ) break;
+    if (c != current) return;
 
-            xcb_configure_window(conn, c->win, mask, val);
-            current->x = 0;
-            current->y = 0;
-            current->width = screen_width;
-            current->height = screen_height;
-            break;
-        }
+    uint32_t val[5];
+    val[4] = XCB_STACK_MODE_ABOVE;
+    uint32_t mask = XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y
+                  | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT
+                  | XCB_CONFIG_WINDOW_STACK_MODE;
+    if (!current->ismax)
+    {
+        current->oldx = current->x; current->oldy = current->y;
+        current->oldw = current->width; current->oldh = current->height;
+        val[0] = 0; val[1] = 0;
+        val[2] = screen_width; val[3] = screen_height;
+        xcb_configure_window(conn, c->win, mask, val);
+        current->x = 0; current->y = 0;
+        current->width = screen_width; current->height = screen_height;
+        current->ismax = true;
+    }
+    else
+    {
+        val[0] = current->oldx; val[1] = current->oldy;
+        val[2] = current->oldw; val[3] = current->oldh;
+        xcb_configure_window(conn, c->win, mask, val);
+        current->x = current->oldx; current->y = current->oldy;
+        current->width = current->oldw; current->height = current->oldh;
+        current->ismax = false;
+        focus_client(current);
     }
     xcb_flush(conn);
-    warp_pointer(current);
+}
+
+////////////////////////// WINDOW FOCUS /////////////////////////////
+static void setup_win(xcb_window_t w)
+{
+    uint32_t values[2];
+    values[0] = XCB_EVENT_MASK_ENTER_WINDOW;
+    values[1] = XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY;
+    xcb_change_window_attributes(conn, w, XCB_CW_EVENT_MASK, values);
+    values[0] = BORDER_WIDTH;
+    xcb_configure_window(conn, w, XCB_CONFIG_WINDOW_BORDER_WIDTH, values);
+    xcb_flush(conn); 
+    add_window_to_list(w);
 }
 
 static void add_window_to_list(xcb_window_t w)
@@ -276,7 +241,7 @@ static void add_window_to_list(xcb_window_t w)
     client *c,*t;
     if ((c = malloc(sizeof(client))) == NULL)
     {
-        PDEBUG("add_window_to_list: Malloc error\n");
+        fprintf(stderr, "bwm: out of memory!\n");
         exit(1);
     }
     c->id = w;
@@ -306,27 +271,9 @@ static void add_window_to_list(xcb_window_t w)
         get_geom(c->id, &c->x, &c->y, &c->width, &c->height);
         head = c;
     }
+    if (current) unfocus_client(current);
     current = c;
-    focus_client(c);
 }
-
-static int get_geom(xcb_drawable_t win, int16_t *x, int16_t *y,
-                    uint16_t *width, uint16_t *height)
-{
-    xcb_get_geometry_reply_t *geom;
-    geom = xcb_get_geometry_reply(conn, xcb_get_geometry(conn, win), NULL);
-    if (NULL == geom)
-        return 1;
-
-    *x = geom->x;
-    *y = geom->y;
-    *width = geom->width;
-    *height = geom->height;
-    
-    free(geom);
-    return 0;
-}
-
 
 static void remove_window_from_list(xcb_window_t w)
 {
@@ -340,7 +287,6 @@ static void remove_window_from_list(xcb_window_t w)
                 free(head);
                 head = NULL;
                 current = NULL;
-                focuswin = NULL;
                 return;
             }
             if(c->prev == NULL) {               // head
@@ -365,20 +311,72 @@ static void remove_window_from_list(xcb_window_t w)
     xcb_flush(conn); 
 }
 
-/* warp pointer to lower right */
-static void warp_pointer(struct client *c)
+static void killwin()
 {
-    xcb_get_geometry_reply_t *geom;
-    geom = xcb_get_geometry_reply(conn, xcb_get_geometry(conn, c->win), NULL);
-    if (NULL == geom) return;
-    xcb_warp_pointer(conn, XCB_NONE, c->win, 0, 0, 0, 0, 
-                    geom->width, geom->height);
-    free(geom);
+    client *c;
+    for (c=head; c != NULL; c=c->next)
+    {
+        if (c == current)
+        {
+            if (!c->win || c->win == screen->root)
+                return;
+            xcb_kill_client(conn, c->win);
+            xcb_flush(conn); 
+            return;
+        }
+    }
+}
+
+static void nextwin(const Arg *arg)
+{
+    client *c;
+    if(current != NULL && head != NULL)
+    {
+        if (arg->i == 0) // focus next
+        {
+            if (current->next == NULL) // at tail.. next win is head
+            {
+                if (current == head) // only client, don't do anything
+                    return;
+                PDEBUG("\033[031mnextwin [going to head]\033[0m\n");
+                c = head;
+            }
+            else
+            {
+                PDEBUG("\033[031mnextwin\033[0m\n");
+                c = current->next;
+            }
+        }
+        else // focus previous
+        {
+            if (current == head) // this is the only client, don't do anything
+                return;
+            if (current->prev == NULL) // at head.. prev win is tail
+            {
+                for(c=head; c->next != NULL; c=c->next);
+            }
+            else
+                c = current->prev;
+        }
+        unfocus_client(current);
+        current = c;
+        focus_client(current);
+    }
+}
+
+
+static void unfocus_client(struct client *c)
+{
+    uint32_t values[1];
+    if (c == NULL || current == NULL) return;
+    values[0] = NORMCOLOR;
+    xcb_change_window_attributes(conn, current->win, XCB_CW_BORDER_PIXEL, values);
+    xcb_flush(conn);
 }
 
 static void focus_client(struct client *c)
 {
-    uint32_t values[2];
+    uint32_t values[1];
     if (NULL == current) // we just removed the head, so nothing to focus
     {
         xcb_set_input_focus(conn, XCB_NONE, XCB_INPUT_FOCUS_POINTER_ROOT,
@@ -386,42 +384,16 @@ static void focus_client(struct client *c)
         xcb_flush(conn);
         return;
     }
-
     values[0] = SELCOLOR;
     xcb_change_window_attributes(conn, c->win, XCB_CW_BORDER_PIXEL, values);
     values[0] = XCB_STACK_MODE_ABOVE;
     xcb_configure_window(conn, c->win, XCB_CONFIG_WINDOW_STACK_MODE, values);
     xcb_flush(conn);
 
-    /* uncofus the previously focused window */
-    if (NULL != focuswin)
-    {
-        values[0] = NORMCOLOR;
-        xcb_change_window_attributes(conn, focuswin->win, XCB_CW_BORDER_PIXEL,
-                                    values);
-        xcb_flush(conn);
-    }
-
     PDEBUG("setting input focus: %d\n", c->win);
     xcb_set_input_focus(conn, XCB_INPUT_FOCUS_POINTER_ROOT, c->win,
                         XCB_CURRENT_TIME);
-
     xcb_flush(conn);
-
-    focuswin = c;
-}
-
-static void setup_win(xcb_window_t w)
-{
-    uint32_t values[2];
-    values[0] = XCB_EVENT_MASK_ENTER_WINDOW;
-    values[1] = XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY;
-    xcb_change_window_attributes(conn, w, XCB_CW_EVENT_MASK, values);
-    values[0] = BORDER_WIDTH;
-    xcb_configure_window(conn, w, XCB_CONFIG_WINDOW_BORDER_WIDTH, values);
-    xcb_flush(conn); 
-    add_window_to_list(w);
-    warp_pointer(current);
 }
 
 static void event_loop(void)
@@ -433,7 +405,6 @@ static void event_loop(void)
     {
         /* CREATE_NOTIFY -> CONFIGURE_NOTIFY -> MAP_NOTIFY */ 
         /*PDEBUG("Event: %s\n", evnames[ev->response_type]);*/
-
         switch ( ev->response_type & ~0x80 ) 
         {
         case XCB_CREATE_NOTIFY:
@@ -441,6 +412,12 @@ static void event_loop(void)
             xcb_create_notify_event_t *e;
             e = (xcb_create_notify_event_t *)ev;
             setup_win(e->window);
+        }
+        break;
+
+        case XCB_MAP_NOTIFY:
+        {
+            focus_client(current);
         }
         break;
 
@@ -485,7 +462,6 @@ static void event_loop(void)
     }
 }
 
-
 int main ()
 {
     atexit(cleanup);
@@ -523,8 +499,6 @@ int main ()
                      XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
     }
     xcb_flush(conn);
-
-    fprintf(stdout, "\033[033mWelcome to BWM!\033[0m\n");
 
     event_loop();
 
