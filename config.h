@@ -15,9 +15,9 @@ uint8_t steps[2] = { 40, 40 };
 
 static const char *term[] = { "urxvt", NULL };
 
-/* find keysyms using `xev` */
+/* find keycodes using `xev` */
 static key keys[] = {
-   /* mod               keysym          function            arg */
+   /* mod               keycode         function            arg */
     { MOD ,             36, /*Return*/  spawn,              {.com=term} },
     { MOD,              44, /*j*/       move,               {.i=0}   },
     { MOD,              45, /*k*/       move,               {.i=1}   },
@@ -32,10 +32,10 @@ static key keys[] = {
     { MOD | SHIFT,      23, /*Tab*/     nextwin,            {.i=1}   },
     { MOD | SHIFT,      24, /*q*/       killwin,            {.i=0}   },
     { MOD | SHIFT,      26, /*e*/       cleanup,            {.i=0}   },
-       DESKTOPCHANGE(     10,                             0)
-       DESKTOPCHANGE(     11,                             1)
-       DESKTOPCHANGE(     12,                             2)
-       DESKTOPCHANGE(     13,                             3)
-       DESKTOPCHANGE(     14,                             4)
-       DESKTOPCHANGE(     15,                             5)
+     DESKTOPCHANGE(     10, /*1*/                            0)
+     DESKTOPCHANGE(     11, /*2*/                            1)
+     DESKTOPCHANGE(     12, /*3*/                            2)
+     DESKTOPCHANGE(     13, /*4*/                            3)
+     DESKTOPCHANGE(     14, /*5*/                            4)
+     DESKTOPCHANGE(     15, /*6*/                            5)
 };
