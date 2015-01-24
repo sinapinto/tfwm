@@ -1,3 +1,26 @@
+/*
+ * The MIT License (MIT)
+ * 
+ * Copyright (c) 2015 Sina Pinto
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -6,10 +29,10 @@
 #include <stdbool.h>
 #include <xcb/xcb.h>
 
-/*#define DEBUG*/
-/*#ifdef DEBUG
+#define DEBUG
+#ifdef DEBUG
 #include "events.h"
-#endif*/
+#endif
 #ifdef DEBUG
 #define PDEBUG(...) \
     fprintf(stderr, "asdf: "); fprintf(stderr, __VA_ARGS__);
@@ -36,7 +59,7 @@ typedef struct client client;
 struct client{
     xcb_drawable_t id;  /* get_geom */
     int16_t x, y; uint16_t width, height;
-    int16_t oldx, oldy; uint16_t oldw, oldh; /* maximize toggle */
+    int16_t oldx, oldy; uint16_t oldw, oldh; /* toggle_maximize */
     bool is_maximized;
     client *next;
     client *prev;
@@ -48,18 +71,17 @@ typedef struct workspace {
     client *current;
 } workspace;
 
-xcb_connection_t *conn;   /* connection to X server */
-xcb_screen_t *screen;     /* current screen */
-static client *head;
-static client *current;
+xcb_connection_t *conn;         /* connection to X server */
+xcb_screen_t *screen;           /* current screen */
+static client *head;            /* head of window list */
+static client *current;         /* current window in list */
 static int current_workspace;
-static workspace workspaces[6];
+static workspace workspaces[6]; /* number of workspaces */
 
 static void cleanup();
 static void sighandle(int signal);
 static int get_geom(xcb_drawable_t win, int16_t *x, int16_t *y,
                     uint16_t *width, uint16_t *height);
-/*static void warp_pointer(struct client *c);*/
 static void spawn(const Arg *arg);
 static void resize(const Arg *arg);
 static void move(const Arg *arg);
@@ -112,12 +134,6 @@ static int get_geom(xcb_drawable_t win, int16_t *x, int16_t *y,
     return 0;
 }
 
-/*static void warp_pointer(struct client *c)*/
-/*{*/
-    /*if (NULL == c) return;*/
-    /*xcb_warp_pointer(conn, XCB_NONE, c->win, 0, 0, 0, 0, c->width, c->height);*/
-/*}*/
-
 static void spawn(const Arg *arg)
 {
     if (fork() == 0)
@@ -160,8 +176,6 @@ static void resize(const Arg *arg)
     uint32_t values[2];
     values[0] = current->width;
     values[1] = current->height;
-    /*PDEBUG("X: %d -> %d, Y:%d -> %d\n", r->width, r->width + x,
-                                        r->height, r->height + y);*/
     xcb_configure_window(conn, current->win, XCB_CONFIG_WINDOW_WIDTH
                                    | XCB_CONFIG_WINDOW_HEIGHT, values);
     xcb_flush(conn); 
@@ -187,8 +201,6 @@ static void move(const Arg *arg)
     uint32_t values[2];
     values[0] = current->x; 
     values[1] = current->y;
-    /*PDEBUG("X: %d -> %d, Y:%d -> %d\n", r->x, r->x + x,
-                                        r->y, r->y + y);*/
     xcb_configure_window(conn, current->win, XCB_CONFIG_WINDOW_X
                                    | XCB_CONFIG_WINDOW_Y, values);
     xcb_flush(conn); 
@@ -217,8 +229,8 @@ static void toggle_maximize(const Arg *arg)
         current->oldh = current->height;
         val[0] = 0; val[1] = 0;
         val[2] = scrwidth; val[3] = scrheight;
-        PDEBUG("MAX: x: %d y: %d width: %d height: %d\n", current->x, current->y,
-                current->width, current->height);
+        PDEBUG("MAX: x: %d y: %d width: %d height: %d\n",
+                current->x, current->y, current->width, current->height);
         xcb_configure_window(conn, c->win, mask, val);
         current->x = 0;
         current->y = 0;
@@ -232,8 +244,8 @@ static void toggle_maximize(const Arg *arg)
         val[1] = current->oldy;
         val[2] = current->oldw;
         val[3] = current->oldh;
-        PDEBUG("MIN: x: %d y: %d width: %d height: %d\n", current->oldx, current->oldy,
-                current->oldw, current->oldh);
+        PDEBUG("MIN: x: %d y: %d width: %d height: %d\n",
+                current->oldx, current->oldy, current->oldw, current->oldh);
         xcb_configure_window(conn, c->win, mask, val);
         current->x = current->oldx;
         current->y = current->oldy;
@@ -446,7 +458,7 @@ static void nextwin(const Arg *arg)
             }
             else
                 c = current->prev;
-            /*PDEBUG("\033[031mnextwin %d\033[0m\n", c->win);*/
+            PDEBUG("\033[031mnextwin %d\033[0m\n", c->win);
         }
         unfocus_client(current);
         current = c;
@@ -454,13 +466,13 @@ static void nextwin(const Arg *arg)
     }
 }
 
-
 static void unfocus_client(struct client *c)
 {
     uint32_t values[1];
     if (c == NULL || current == NULL) return;
     values[0] = NORMCOLOR;
-    xcb_change_window_attributes(conn, current->win, XCB_CW_BORDER_PIXEL, values);
+    xcb_change_window_attributes(conn, current->win,
+                                XCB_CW_BORDER_PIXEL, values);
     xcb_flush(conn);
 }
 
@@ -494,7 +506,7 @@ static void event_loop(void)
     while ( (ev = xcb_wait_for_event(conn)) )
     {
         /* CREATE_NOTIFY -> CONFIGURE_NOTIFY -> MAP_NOTIFY */ 
-        /*PDEBUG("Event: %s\n", evnames[ev->response_type]);*/
+        PDEBUG("Event: %s\n", evnames[ev->response_type]);
         switch ( ev->response_type & ~0x80 ) 
         {
         case XCB_CREATE_NOTIFY:
