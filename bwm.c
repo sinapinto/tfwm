@@ -6,7 +6,7 @@
 #include <stdbool.h>
 #include <xcb/xcb.h>
 
-#define DEBUG
+/*#define DEBUG*/
 /*#ifdef DEBUG
 #include "events.h"
 #endif*/
@@ -43,10 +43,17 @@ struct client{
     xcb_window_t win;
 };
 
+typedef struct workspace {
+    client *head;
+    client *current;
+} workspace;
+
 xcb_connection_t *conn;   /* connection to X server */
 xcb_screen_t *screen;     /* current screen */
 static client *head;
 static client *current;
+static int current_workspace;
+static workspace workspaces[6];
 
 static void cleanup();
 static void sighandle(int signal);
@@ -58,6 +65,10 @@ static void resize(const Arg *arg);
 static void move(const Arg *arg);
 static void toggle_maximize(const Arg *arg);
 static void setup_win(xcb_window_t w);
+static void change_workspace(const Arg *arg);
+static void save_workspace(int i);
+static void select_workspace(int i);
+static void client_to_workspace(const Arg *arg);
 static void add_window_to_list(xcb_window_t w);
 static void remove_window_from_list(xcb_window_t w);
 static void killwin();
@@ -67,6 +78,7 @@ static void focus_client(struct client *c);
 static void event_loop(void);
 
 #include "config.h"
+
 static void cleanup()
 {
     xcb_set_input_focus(conn, XCB_NONE, XCB_INPUT_FOCUS_POINTER_ROOT,
@@ -182,7 +194,6 @@ static void move(const Arg *arg)
     xcb_flush(conn); 
 }
 
-/* TODO: debug */ 
 static void toggle_maximize(const Arg *arg)
 {
     client *c; 
@@ -205,7 +216,7 @@ static void toggle_maximize(const Arg *arg)
         current->oldw = current->width;
         current->oldh = current->height;
         val[0] = 0; val[1] = 0;
-        val[2] = scrwidth; val[3] = scrwidth;
+        val[2] = scrwidth; val[3] = scrheight;
         PDEBUG("MAX: x: %d y: %d width: %d height: %d\n", current->x, current->y,
                 current->width, current->height);
         xcb_configure_window(conn, c->win, mask, val);
@@ -232,6 +243,68 @@ static void toggle_maximize(const Arg *arg)
         focus_client(current);
     }
     xcb_flush(conn);
+}
+
+/* TODO: fix reordering */ 
+static void change_workspace(const Arg *arg)
+{
+    client *c;
+    if(arg->i == current_workspace)
+        return;
+
+    /* Save current "properties" */
+    save_workspace(current_workspace);
+
+    /* Unmap all window */
+    if(head != NULL)
+        for(c=head; c != NULL; c=c->next)
+            xcb_unmap_window(conn, c->win);
+
+    /* Take "properties" from the new workspace */
+    select_workspace(arg->i);
+
+    /* Map all windows */
+    if(head != NULL)
+    {
+        for(c=head; c != NULL; c=c->next)
+            xcb_map_window(conn, c->win);
+    }
+
+    focus_client(current);
+}
+
+static void save_workspace(int i)
+{
+    workspaces[i].head = head;
+    workspaces[i].current = current;
+}
+
+static void select_workspace(int i)
+{
+    head = workspaces[i].head;
+    current = workspaces[i].current;
+    current_workspace = i;
+}
+
+static void client_to_workspace(const Arg *arg)
+{
+    client *tmp = current;
+    int tmp2 = current_workspace;
+
+    if(arg->i == current_workspace || current == NULL)
+        return;
+
+    // Add client to workspace
+    select_workspace(arg->i);
+    add_window_to_list(tmp->win);
+    save_workspace(arg->i);
+
+    // Remove client from current workspace
+    select_workspace(tmp2);
+    xcb_unmap_window(conn,tmp->win);
+    remove_window_from_list(tmp->win);
+    save_workspace(tmp2);
+    focus_client(current);
 }
 
 ////////////////////////// WINDOW FOCUS /////////////////////////////
@@ -292,26 +365,32 @@ static void remove_window_from_list(xcb_window_t w)
 {
     client *c;
 
-    for(c=head; c != NULL; c=c->next) {
-        if(c->win == w) {
+    for(c=head; c != NULL; c=c->next)
+    {
+        if(c->win == w)
+        {
             PDEBUG("remove_window_from_list %d\n", c->win);
-            if(c->prev == NULL && c->next == NULL) { // one client in list
+            if (c->prev == NULL && c->next == NULL)
+            { // one client in list
                 PDEBUG("[removing head]\n");
                 free(head);
                 head = NULL;
                 current = NULL;
                 return;
             }
-            if(c->prev == NULL) {               // head
+            if (c->prev == NULL)
+            {               // head
                 head = c->next;
                 c->next->prev = NULL;
                 current = c->next;
             }
-            else if(c->next == NULL) {          // tail
+            else if (c->next == NULL)
+            {          // tail
                 c->prev->next = NULL;
                 current = c->prev;
             }
-            else {
+            else
+            {
                 c->prev->next = c->next;
                 c->next->prev = c->prev;
                 current = c->prev;
@@ -502,6 +581,16 @@ int main ()
     uint32_t mask = XCB_CW_EVENT_MASK;
     values[0] =  XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY;
     xcb_change_window_attributes_checked(conn, root, mask, values);
+
+    /* initialize workspaces */
+    for (int i=0; i<LENGTH(workspaces); i++)
+    {
+        workspaces[i].head = head;
+        workspaces[i].current = current;
+    }
+    const Arg arg = {.i = 0};
+    current_workspace = 0;
+    change_workspace(&arg);
 
     /* grab keys */
     for (int i=0; i<LENGTH(keys); i++)
