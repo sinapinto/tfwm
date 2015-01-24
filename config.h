@@ -9,6 +9,10 @@ uint8_t steps[2] = { 40, 40 };
 #define SELCOLOR     0xafaf87  /* focused window border color */
 #define BORDER_WIDTH 3
 
+#define DESKTOPCHANGE(K,N) \
+{  MOD ,             K,              change_workspace, {.i=N}}, \
+{  MOD | SHIFT,      K,              client_to_workspace, {.i=N}},
+
 static const char *term[] = { "urxvt", NULL };
 
 /* find keysyms using `xev` */
@@ -28,4 +32,10 @@ static key keys[] = {
     { MOD | SHIFT,      23, /*Tab*/     nextwin,            {.i=1}   },
     { MOD | SHIFT,      24, /*q*/       killwin,            {.i=0}   },
     { MOD | SHIFT,      26, /*e*/       cleanup,            {.i=0}   },
+       DESKTOPCHANGE(     10,                             0)
+       DESKTOPCHANGE(     11,                             1)
+       DESKTOPCHANGE(     12,                             2)
+       DESKTOPCHANGE(     13,                             3)
+       DESKTOPCHANGE(     14,                             4)
+       DESKTOPCHANGE(     15,                             5)
 };
