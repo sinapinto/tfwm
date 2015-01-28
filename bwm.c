@@ -29,10 +29,12 @@
 #include <stdbool.h>
 #include <xcb/xcb.h>
 
-#define DEBUG
-#ifdef DEBUG
-#include "events.h"
-#endif
+/* Don't uncomment this! */
+/*#define DEBUG*/
+
+/*#ifdef DEBUG*/
+/*#include "events.h"*/
+/*#endif*/
 #ifdef DEBUG
 #define PDEBUG(...) \
     fprintf(stderr, "asdf: "); fprintf(stderr, __VA_ARGS__);
@@ -76,7 +78,6 @@ xcb_screen_t *screen;           /* current screen */
 static client *head;            /* head of window list */
 static client *current;         /* current window in list */
 static int current_workspace;
-static workspace workspaces[6]; /* number of workspaces */
 
 static void cleanup();
 static void sighandle(int signal);
@@ -97,6 +98,7 @@ static void killwin();
 static void nextwin(const Arg *arg);
 static void unfocus_client(struct client *c);
 static void focus_client(struct client *c);
+static void set_input_focus(xcb_window_t win);
 static void event_loop(void);
 
 #include "config.h"
@@ -229,7 +231,7 @@ static void toggle_maximize(const Arg *arg)
         current->oldh = current->height;
         val[0] = 0; val[1] = 0;
         val[2] = scrwidth; val[3] = scrheight;
-        PDEBUG("MAX: x: %d y: %d width: %d height: %d\n",
+        PDEBUG("maximize: x: %d y: %d width: %d height: %d\n",
                 current->x, current->y, current->width, current->height);
         xcb_configure_window(conn, c->win, mask, val);
         current->x = 0;
@@ -244,7 +246,7 @@ static void toggle_maximize(const Arg *arg)
         val[1] = current->oldy;
         val[2] = current->oldw;
         val[3] = current->oldh;
-        PDEBUG("MIN: x: %d y: %d width: %d height: %d\n",
+        PDEBUG("minimize: x: %d y: %d width: %d height: %d\n",
                 current->oldx, current->oldy, current->oldw, current->oldh);
         xcb_configure_window(conn, c->win, mask, val);
         current->x = current->oldx;
@@ -257,7 +259,7 @@ static void toggle_maximize(const Arg *arg)
     xcb_flush(conn);
 }
 
-/* TODO: fix reordering */ 
+/* TODO */ 
 static void change_workspace(const Arg *arg)
 {
     client *c;
@@ -269,8 +271,11 @@ static void change_workspace(const Arg *arg)
 
     /* Unmap all window */
     if(head != NULL)
-        for(c=head; c != NULL; c=c->next)
+        for(c=head; c; c=c->next)
+        {
+            PDEBUG("unmap\n");
             xcb_unmap_window(conn, c->win);
+        }
 
     /* Take "properties" from the new workspace */
     select_workspace(arg->i);
@@ -278,8 +283,11 @@ static void change_workspace(const Arg *arg)
     /* Map all windows */
     if(head != NULL)
     {
-        for(c=head; c != NULL; c=c->next)
+        for(c=head; c; c=c->next)
+        {
+            PDEBUG("map\n");
             xcb_map_window(conn, c->win);
+        }
     }
 
     focus_client(current);
@@ -381,10 +389,10 @@ static void remove_window_from_list(xcb_window_t w)
     {
         if(c->win == w)
         {
-            PDEBUG("remove_window_from_list %d\n", c->win);
+            /*PDEBUG("remove_window_from_list %d\n", c->win);*/
             if (c->prev == NULL && c->next == NULL)
             { // one client in list
-                PDEBUG("[removing head]\n");
+                /*PDEBUG("[removing head]\n");*/
                 free(head);
                 head = NULL;
                 current = NULL;
@@ -488,12 +496,17 @@ static void focus_client(struct client *c)
     }
     values[0] = SELCOLOR;
     xcb_change_window_attributes(conn, c->win, XCB_CW_BORDER_PIXEL, values);
-    values[0] = XCB_STACK_MODE_ABOVE;
-    xcb_configure_window(conn, c->win, XCB_CONFIG_WINDOW_STACK_MODE, values);
-    xcb_flush(conn);
 
-    PDEBUG("setting input focus: %d\n", c->win);
-    xcb_set_input_focus(conn, XCB_INPUT_FOCUS_POINTER_ROOT, c->win,
+    set_input_focus(c->win);
+}
+
+static void set_input_focus(xcb_window_t win)
+{
+    uint32_t values[1];
+    values[0] = XCB_STACK_MODE_ABOVE;
+    xcb_configure_window(conn, win, XCB_CONFIG_WINDOW_STACK_MODE, 
+                        values);
+    xcb_set_input_focus(conn, XCB_INPUT_FOCUS_POINTER_ROOT, win,
                         XCB_CURRENT_TIME);
     xcb_flush(conn);
 }
@@ -506,14 +519,16 @@ static void event_loop(void)
     while ( (ev = xcb_wait_for_event(conn)) )
     {
         /* CREATE_NOTIFY -> CONFIGURE_NOTIFY -> MAP_NOTIFY */ 
-        PDEBUG("Event: %s\n", evnames[ev->response_type]);
+        /*PDEBUG("Event: %s\n", evnames[ev->response_type]);*/
         switch ( ev->response_type & ~0x80 ) 
         {
-        case XCB_CREATE_NOTIFY:
+
+        case XCB_CONFIGURE_NOTIFY:
         {
-            /*xcb_create_notify_event_t *e;*/
-            /*e = (xcb_create_notify_event_t *)ev;*/
-            /*setup_win(e->window);*/
+            xcb_configure_notify_event_t *e;
+            e = (xcb_configure_notify_event_t *)ev;
+
+            set_input_focus(e->window);
         }
         break;
 
@@ -521,6 +536,7 @@ static void event_loop(void)
         {
             xcb_map_notify_event_t *e;
             e = (xcb_map_notify_event_t *)ev;
+
             setup_win(e->window);
             focus_client(current);
         }
@@ -531,8 +547,7 @@ static void event_loop(void)
             xcb_destroy_notify_event_t *e;
             e = (xcb_destroy_notify_event_t *)ev;
 
-            client *c;
-            for (c=head; c != NULL; c=c->next)
+            for (client *c=head; c != NULL; c=c->next)
             {
                 if(e->window == c->win)
                 {
