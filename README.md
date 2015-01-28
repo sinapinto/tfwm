@@ -19,14 +19,12 @@ On Debian-based distributions:
 On Arch-based distributions:
 `sudo pacman -S libxcb xcb-util`
 
-Then edit the Makefile and config.h to your needs (bwm is installed into /usr/bin by default).
+Edit Makefile and config.h to your needs (bwm is installed into /usr/bin by default).
 
     $ git clone git://github.com/sinapinto/bwm.git
     $ cd bwm
     $ make
     # make install
-
-Note: To change a keybind, you can find the keycode number using the `xev` command.
 
 Running bwm
 -----------
@@ -46,6 +44,8 @@ Configuration
 -------------
 Configuration of bwm is done by modifying `config.h` and recompiling the source code.
 
+Note: To change a keybind, you can find the keycode number using the `xev` command.
+
 TODO
 -----
 bwm has some minor bugs for now:
@@ -55,7 +55,7 @@ bwm has some minor bugs for now:
 * windows changing focus ordering when switching workspaces
 * "XIO: fatal IO error..."
 
-Any contributions are welcomed.  Feel free to open a pull request, or open an issue if you find more bugs.
+Any contributions are welcome.  Feel free to open a pull request, or open an issue if you find other bugs.
 
 Author
 ------
