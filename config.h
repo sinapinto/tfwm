@@ -15,6 +15,8 @@ uint8_t steps[2] = { 40, 40 };
 
 static const char *term[] = { "urxvt", NULL };
 
+static workspace workspaces[6]; /* number of workspaces */
+
 /* find keycodes using `xev` */
 static key keys[] = {
    /* mod               keycode         function            arg */
