@@ -5,9 +5,9 @@
 /* 0: move step, 1: resize step */
 uint8_t steps[2] = { 40, 40 };
 
-#define NORMCOLOR    0x002933  /* unfocused window border color */
-#define SELCOLOR     0xafaf87  /* focused window border color */
-#define BORDER_WIDTH 3
+#define NORMCOLOR    0xafaf87  /* unfocused window border color */
+#define SELCOLOR     0x52C74C  /* focused window border color */
+#define BORDER_WIDTH 2
 
 #define DESKTOPCHANGE(K,N) \
 {  MOD ,             K,              change_workspace, {.i=N}}, \
@@ -29,6 +29,8 @@ static key keys[] = {
     { MOD | SHIFT,      45, /*k*/       resize,             {.i=1}   },
     { MOD | SHIFT,      43, /*h*/       resize,             {.i=2}   },
     { MOD | SHIFT,      46, /*l*/       resize,             {.i=3}   },
+    { MOD | SHIFT,      58, /*m*/       resize,             {.i=4}   },
+    { MOD | SHIFT,      57, /*n*/       resize,             {.i=5}   },
     { MOD,              38, /*a*/       toggle_maximize,    {.i=0}   },
     { MOD,              23, /*Tab*/     nextwin,            {.i=0}   },
     { MOD | SHIFT,      23, /*Tab*/     nextwin,            {.i=1}   },
