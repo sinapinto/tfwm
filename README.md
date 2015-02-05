@@ -4,10 +4,11 @@ bwm is an extremely fast, lightweight, floating window manager for X.
 
 Features
 --------
-* 100% keyboard driven
-* Automatic window focusing
-* Multiple workspaces
+* Automatic window refocusing
+* Multiple workspaces (currently buggy)
+* Window resizing keeping aspect ratio
 * Window maximize toggling
+* 100% keyboard driven
 
 Installation
 ------------
@@ -48,7 +49,7 @@ Note: To change a keybind, you can find the keycode number using the `xev` comma
 
 TODO
 -----
-bwm has some minor bugs for now:
+bwm has some minor bugs for now, mostly to do with multiple workspaces:
 
 * windows sometimes become unable to focus until switching workspace.
 * windows sometimes incorrectly appear on multiple workspaces
