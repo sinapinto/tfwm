@@ -155,25 +155,28 @@ static void resize(const Arg *arg)
         return;
     uint8_t step = steps[1];
 
-    switch (arg->i)
+    if (arg->i == 0 || arg->i == 4)
     {
-        case 0:
-            current->height = current->height+step > 0 ? current->height + step 
-                                                       : current->height;
-            break;
-        case 1:
-            current->height = current->height-step > 0 ? current->height - step 
-                                                       : current->height;
-            break;
-        case 2:
-            current->width = current->width-step > 0 ? current->width - step 
-                                                     : current->width;
-            break;
-        case 3:
-            current->width = current->width+step > 0 ? current->width + step 
-                                                     : current->width;
-            break;
+        current->height = current->height+step > 0 ? current->height + step 
+                                                   : current->height;
     }
+    if (arg->i == 1 || arg->i == 5)
+    {
+        current->height = current->height-step > 0 ? current->height - step 
+                                                   : current->height;
+    }
+    if (arg->i == 2 || arg->i == 5)
+    {
+        current->width = current->width-step > 0 ? current->width - step 
+                                                 : current->width;
+    }
+    if (arg->i == 3 || arg->i == 4)
+    {
+        current->width = current->width+step > 0 ? current->width + step 
+                                                 : current->width;
+    }
+
+    if (current->is_maximized) current->is_maximized = false;
 
     uint32_t values[2];
     values[0] = current->width;
@@ -604,9 +607,10 @@ int main ()
     current = NULL;
 
     /* register for events */
-    uint32_t values[1];
+    uint32_t values[2];
     uint32_t mask = XCB_CW_EVENT_MASK;
     values[0] =  XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY;
+    values[1] = XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT;
     xcb_change_window_attributes_checked(conn, root, mask, values);
 
     /* initialize workspaces */
