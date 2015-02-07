@@ -5,9 +5,9 @@ bwm is an extremely fast, lightweight, floating window manager for X.
 Features
 --------
 * Automatic window refocusing
-* Multiple workspaces (currently buggy)
 * Window resizing keeping aspect ratio
 * Window maximize toggling
+* Multiple workspaces (currently buggy)
 * 100% keyboard driven
 
 Installation
@@ -15,10 +15,10 @@ Installation
 If you don't already have xcb on your system you will need to install it.
 
 On Debian-based distributions:
-`sudo apt-get install xcb libxcb-util0-dev`
+`sudo apt-get install xcb libxcb-util0-dev libxcb-keysyms1`
 
 On Arch-based distributions:
-`sudo pacman -S libxcb xcb-util`
+`sudo pacman -S libxcb xcb-util xcb-util-keysyms`
 
 Edit Makefile and config.h to your needs (bwm is installed into /usr/bin by default).
 
@@ -47,8 +47,8 @@ Configuration of bwm is done by modifying `config.h` and recompiling the source 
 
 Note: To change a keybind, you can find the keycode number using the `xev` command.
 
-TODO
------
+BUGS
+----
 bwm has some minor bugs for now, mostly to do with multiple workspaces:
 
 * windows sometimes become unable to focus until switching workspace.
@@ -56,7 +56,7 @@ bwm has some minor bugs for now, mostly to do with multiple workspaces:
 * windows changing focus ordering when switching workspaces
 * "XIO: fatal IO error..."
 
-Any contributions are welcome.  Feel free to open a pull request, or open an issue if you find other bugs.
+Any contributions are welcome.  Don't hesitate to open a pull request, issue, etc.
 
 Author
 ------
