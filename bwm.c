@@ -32,8 +32,8 @@
 
 #include <X11/keysym.h>
 
-/* Don't uncomment this! */
-#define DEBUG
+/* uncomment this to print debug statements */
+/*#define DEBUG*/
 
 #ifdef DEBUG
 #include "events.h"
@@ -84,12 +84,14 @@ typedef struct workspace {
     client *current;
 } workspace;
 
+/* globals */
 xcb_connection_t *conn;         /* connection to X server */
 xcb_screen_t *screen;           /* current screen */
-static client *head;            /* head of window list */
-static client *current;         /* current window in list */
+static client *head = NULL;     /* head of window list */
+static client *current = NULL;  /* current window in list */
 static int current_workspace;
 
+/* prototypes */
 static void cleanup();
 static void sighandle(int signal);
 static int get_geom(xcb_drawable_t win, int16_t *x, int16_t *y,
@@ -111,7 +113,7 @@ static void unfocus_client(struct client *c);
 static void focus_client(struct client *c);
 static void set_input_focus(xcb_window_t win);
 static void event_loop(void);
-static bool setup_keys(void);
+static bool grab_keys(void);
 static xcb_keysym_t xcb_get_keysym(xcb_keycode_t keycode);
 static xcb_keycode_t* xcb_get_keycodes(xcb_keysym_t keysym);
 static bool bwm_setup(void);
@@ -126,7 +128,7 @@ static void cleanup()
     xcb_flush(conn);
 
     xcb_disconnect(conn);
-    exit(0);
+    exit(EXIT_SUCCESS);
 }
 
 static void sighandle(int signal)
@@ -160,8 +162,7 @@ static void spawn(const Arg *arg)
             close(screen->root);
         setsid();
         execvp((char*)arg->com[0], (char**)arg->com);
-        fprintf(stderr, "bwm: execvp %s\n", ((char **)arg->com)[0]);
-        exit(0);
+        err(EXIT_FAILURE, "bwm: execvp %s", ((char **)arg->com)[0]);
     }
 }
 
@@ -343,18 +344,18 @@ static void setup_win(xcb_window_t w)
     xcb_change_window_attributes(conn, w, XCB_CW_EVENT_MASK, values);
     values[0] = BORDER_WIDTH;
     xcb_configure_window(conn, w, XCB_CONFIG_WINDOW_BORDER_WIDTH, values);
-    xcb_flush(conn); 
+    xcb_map_window(conn, w);
     add_window_to_list(w);
+    focus_client(current);
+    xcb_flush(conn); 
 }
 
 static void add_window_to_list(xcb_window_t w)
 {
     client *c,*t;
     if ((c = malloc(sizeof(client))) == NULL)
-    {
-        fprintf(stderr, "bwm: out of memory!\n");
-        exit(1);
-    }
+        err(EXIT_FAILURE, "bwm: out of memory");
+
     c->id = w;
     c->x = 0;
     c->y = 0;
@@ -526,7 +527,7 @@ static void event_loop(void)
     while ( (ev = xcb_wait_for_event(conn)) )
     {
         PDEBUG("Event: %s\n", evnames[ev->response_type]);
-        switch ( ev->response_type & ~0x80 ) 
+        switch ( CLEANMASK(ev->response_type) ) 
         {
 
         case XCB_CONFIGURE_NOTIFY:
@@ -538,13 +539,12 @@ static void event_loop(void)
         }
         break;
 
-        case XCB_MAP_NOTIFY:
+        case XCB_MAP_REQUEST:
         {
-            xcb_map_notify_event_t *e;
-            e = (xcb_map_notify_event_t *)ev;
+            xcb_map_request_event_t *e;
+            e = (xcb_map_request_event_t *)ev;
 
             setup_win(e->window);
-            focus_client(current);
         }
         break;
 
@@ -574,10 +574,12 @@ static void event_loop(void)
             xcb_keysym_t keysym   = xcb_get_keysym(e->detail);
             for (unsigned int i=0; i<LENGTH(keys); i++)
             {
-                if (keysym == keys[i].keysym && CLEANMASK(keys[i].mod) == CLEANMASK(e->state) && keys[i].function)
+                if (keysym == keys[i].keysym &&
+                    CLEANMASK(keys[i].mod) == CLEANMASK(e->state) &&
+                    keys[i].function)
                 {
-                        keys[i].function(&keys[i].arg);
-                        break;
+                     keys[i].function(&keys[i].arg);
+                     break;
                 }
             }
         }
@@ -588,7 +590,7 @@ static void event_loop(void)
 }
 
 ////////////////////////// SETUP /////////////////////////////
-static bool setup_keys(void)
+static bool grab_keys(void)
 {
     xcb_keycode_t *keycode;
     for (unsigned int i=0; i<LENGTH(keys); i++) {
@@ -602,7 +604,7 @@ static bool setup_keys(void)
 static xcb_keysym_t xcb_get_keysym(xcb_keycode_t keycode) {
     xcb_key_symbols_t *keysyms;
     if (!(keysyms = xcb_key_symbols_alloc(conn)))
-        errx(EXIT_FAILURE, "bwm: Couldn't get keysym. Exiting.\n");
+        err(EXIT_FAILURE, "bwm: couldn't get keysym.");
     xcb_keysym_t keysym = xcb_key_symbols_get_keysym(keysyms, keycode, 0);
     xcb_key_symbols_free(keysyms);
     return keysym;
@@ -611,7 +613,7 @@ static xcb_keysym_t xcb_get_keysym(xcb_keycode_t keycode) {
 static xcb_keycode_t* xcb_get_keycodes(xcb_keysym_t keysym) {
     xcb_key_symbols_t *keysyms;
     if (!(keysyms = xcb_key_symbols_alloc(conn)))
-        errx(EXIT_FAILURE, "bwm: Couldn't get keycode. Exiting.\n");
+        err(EXIT_FAILURE, "bwm: couldn't get keycode.");
     xcb_keycode_t *keycode = xcb_key_symbols_get_keycode(keysyms, keysym);
     xcb_key_symbols_free(keysyms);
     return keycode;
@@ -627,24 +629,16 @@ static bool bwm_setup(void)
     /* get the first screen */
     screen = xcb_setup_roots_iterator(xcb_get_setup(conn)).data;
     if (!screen)
-        err(EXIT_FAILURE, "bwm: Could not find screen. Exiting.\n");
+        err(EXIT_FAILURE, "bwm: could not find screen.");
     xcb_drawable_t root = screen->root;
 
-    head = NULL;
-    current = NULL;
-
     /* subscribe to events */
-    uint32_t values[1];
     uint32_t mask = XCB_CW_EVENT_MASK;
-    values[0] =  //XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT
-      //| XCB_EVENT_MASK_STRUCTURE_NOTIFY
-         XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY;
-
+    uint32_t values[1] = {XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT | XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY};
     xcb_void_cookie_t cookie = xcb_change_window_attributes_checked(conn, root, mask, values);
     xcb_generic_error_t *error = xcb_request_check(conn, cookie);
     if (error != NULL)
-        errx(EXIT_FAILURE, "bwm: Can't get SUBSTRUCTURE REDIRECT. " "Error code: %d\n"
-                "Another window manager running? Exiting.\n", error->error_code);
+        err(EXIT_FAILURE, "bwm: another window manager is running.");
 
     /* initialize workspaces */
     for (int i=0; i<LENGTH(workspaces); i++)
@@ -657,8 +651,8 @@ static bool bwm_setup(void)
     change_workspace(&arg);
 
     /* grab keys */ 
-    if (!setup_keys())
-        errx(EXIT_FAILURE, "bwm: Error etting up keycodes. Exiting.\n");
+    if (!grab_keys())
+        err(EXIT_FAILURE, "bwm: error etting up keycodes.");
     xcb_flush(conn);
     return true;
 }
@@ -667,11 +661,10 @@ int main ()
 {
     /* open the connection */
     if (xcb_connection_has_error(conn = xcb_connect(NULL, NULL)))
-        errx(EXIT_FAILURE, "xcb_connect error");
+        err(EXIT_FAILURE, "xcb_connect error");
 
     if (!bwm_setup())
-        errx(EXIT_FAILURE, "bwm: Setup error. Exiting.\n");
-    fprintf(stdout, "welcome to bwm. setup successful.\n");
+        err(EXIT_FAILURE, "bwm: setup error.");
 
     event_loop();
     cleanup();
