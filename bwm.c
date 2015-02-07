@@ -99,6 +99,7 @@ static int get_geom(xcb_drawable_t win, int16_t *x, int16_t *y,
 static void spawn(const Arg *arg);
 static void resize(const Arg *arg);
 static void move(const Arg *arg);
+static void xcb_configure_border_width(xcb_window_t win, uint8_t width);
 static void toggle_maximize(const Arg *arg);
 static void setup_win(xcb_window_t w);
 static void change_workspace(const Arg *arg);
@@ -116,7 +117,7 @@ static void event_loop(void);
 static bool grab_keys(void);
 static xcb_keysym_t xcb_get_keysym(xcb_keycode_t keycode);
 static xcb_keycode_t* xcb_get_keycodes(xcb_keysym_t keysym);
-static bool bwm_setup(void);
+static void bwm_setup(void);
 
 #include "config.h"
 
@@ -216,6 +217,14 @@ static void move(const Arg *arg)
     xcb_flush(conn); 
 }
 
+static void xcb_configure_border_width(xcb_window_t win, uint8_t width)
+{
+    if (!win) return;
+    uint32_t value[1] = {width};
+    xcb_configure_window(conn, win, XCB_CONFIG_WINDOW_BORDER_WIDTH, value);
+}
+
+/* rmove the border on fullscreen */
 static void toggle_maximize(const Arg *arg)
 {
     client *c; 
@@ -231,25 +240,29 @@ static void toggle_maximize(const Arg *arg)
                   | XCB_CONFIG_WINDOW_STACK_MODE;
     if (!current->is_maximized)
     {
-        uint16_t scrwidth = screen->width_in_pixels-(2*BORDER_WIDTH);
-        uint16_t scrheight = screen->height_in_pixels-(2*BORDER_WIDTH);
+        /* remove border */
+        xcb_configure_border_width(c->win, 0);
+
         current->oldx = current->x;
         current->oldy = current->y;
         current->oldw = current->width;
         current->oldh = current->height;
         val[0] = 0; val[1] = 0;
-        val[2] = scrwidth; val[3] = scrheight;
+        val[2] = screen->width_in_pixels; val[3] = screen->height_in_pixels;
         PDEBUG("maximize: x: %d y: %d width: %d height: %d\n",
                 current->x, current->y, current->width, current->height);
         xcb_configure_window(conn, c->win, mask, val);
         current->x = 0;
         current->y = 0;
-        current->width = scrwidth;
-        current->height = scrheight;
+        current->width = screen->width_in_pixels;
+        current->height = screen->height_in_pixels;
         current->is_maximized = true;
     }
     else
     {
+        /* readd the border */
+        xcb_configure_border_width(c->win, 1);
+
         val[0] = current->oldx;
         val[1] = current->oldy;
         val[2] = current->oldw;
@@ -342,8 +355,7 @@ static void setup_win(xcb_window_t w)
     values[0] = XCB_EVENT_MASK_ENTER_WINDOW;
     values[1] = XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY;
     xcb_change_window_attributes(conn, w, XCB_CW_EVENT_MASK, values);
-    values[0] = BORDER_WIDTH;
-    xcb_configure_window(conn, w, XCB_CONFIG_WINDOW_BORDER_WIDTH, values);
+    xcb_configure_border_width(w, BORDER_WIDTH);
     xcb_map_window(conn, w);
     add_window_to_list(w);
     focus_client(current);
@@ -593,10 +605,12 @@ static void event_loop(void)
 static bool grab_keys(void)
 {
     xcb_keycode_t *keycode;
-    for (unsigned int i=0; i<LENGTH(keys); i++) {
+    for (unsigned int i=0; i<LENGTH(keys); i++)
+    {
         keycode = xcb_get_keycodes(keys[i].keysym);
         for (unsigned int k=0; keycode[k] != XCB_NO_SYMBOL; k++)
-            xcb_grab_key(conn, 1, screen->root, keys[i].mod, keycode[k], XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
+            xcb_grab_key(conn, 1, screen->root, keys[i].mod, keycode[k],
+                         XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
     }
     return true;
 }
@@ -620,7 +634,7 @@ static xcb_keycode_t* xcb_get_keycodes(xcb_keysym_t keysym) {
 }
 
 
-static bool bwm_setup(void)
+static void bwm_setup(void)
 {
     /* install signal handlers */
     signal(SIGINT, sighandle);
@@ -654,7 +668,6 @@ static bool bwm_setup(void)
     if (!grab_keys())
         err(EXIT_FAILURE, "bwm: error etting up keycodes.");
     xcb_flush(conn);
-    return true;
 }
 
 int main ()
@@ -663,10 +676,9 @@ int main ()
     if (xcb_connection_has_error(conn = xcb_connect(NULL, NULL)))
         err(EXIT_FAILURE, "xcb_connect error");
 
-    if (!bwm_setup())
-        err(EXIT_FAILURE, "bwm: setup error.");
-
+    bwm_setup();
     event_loop();
+
     cleanup();
     exit(EXIT_SUCCESS);
 }
