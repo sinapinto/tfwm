@@ -23,14 +23,15 @@
 */
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <err.h>
 #include <signal.h>
-#include <stdbool.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_keysyms.h>
-
 #include <X11/keysym.h>
+
+/* TODO xcb atoms, icccm */
 
 /* uncomment this to print debug statements */
 /*#define DEBUG*/
@@ -40,20 +41,18 @@
 #endif
 #ifdef DEBUG
 #define PDEBUG(...) \
-    fprintf(stderr, "asdf: "); fprintf(stderr, __VA_ARGS__);
+    fprintf(stderr, "bwm: "); fprintf(stderr, __VA_ARGS__);
 #else
 #define PDEBUG(...)
 #endif
 
-#define True         true
-#define False        false
 #define Mod1Mask     XCB_MOD_MASK_1
 #define Mod4Mask     XCB_MOD_MASK_4
 #define ShiftMask    XCB_MOD_MASK_SHIFT
 #define ControlMask  XCB_MOD_MASK_CONTROL
 
 #define CLEANMASK(mask) ((mask & ~0x80))
-#define LENGTH(X)    (sizeof(X)/sizeof(*X))
+#define LENGTH(X)       (sizeof(X)/sizeof(*X))
 
 typedef union {
     const char **com;
@@ -82,13 +81,14 @@ struct client{
 typedef struct workspace {
     client *head;
     client *current;
+    client *prevfocus; /* the client that previously had focus */
 } workspace;
 
 /* globals */
 xcb_connection_t *conn;         /* connection to X server */
-xcb_screen_t *screen;           /* current screen */
-static client *head = NULL;     /* head of window list */
-static client *current = NULL;  /* current window in list */
+xcb_screen_t *screen;           /* first screen by default */
+static client *head;            /* head of window list */
+static client *current;         /* current window in list */
 static int current_workspace;
 
 /* prototypes */
@@ -121,13 +121,11 @@ static void bwm_setup(void);
 
 #include "config.h"
 
-
 static void cleanup()
 {
     xcb_set_input_focus(conn, XCB_NONE, XCB_INPUT_FOCUS_POINTER_ROOT,
                         XCB_CURRENT_TIME);
     xcb_flush(conn);
-
     xcb_disconnect(conn);
     exit(EXIT_SUCCESS);
 }
@@ -150,7 +148,6 @@ static int get_geom(xcb_drawable_t win, int16_t *x, int16_t *y,
     *y = geom->y;
     *width = geom->width;
     *height = geom->height;
-    
     free(geom);
     return 0;
 }
@@ -242,16 +239,18 @@ static void toggle_maximize(const Arg *arg)
     {
         /* remove border */
         xcb_configure_border_width(c->win, 0);
-
+        /* save our dimensions */
         current->oldx = current->x;
         current->oldy = current->y;
         current->oldw = current->width;
         current->oldh = current->height;
+        /* go fullscreen */
         val[0] = 0; val[1] = 0;
         val[2] = screen->width_in_pixels; val[3] = screen->height_in_pixels;
         PDEBUG("maximize: x: %d y: %d width: %d height: %d\n",
                 current->x, current->y, current->width, current->height);
         xcb_configure_window(conn, c->win, mask, val);
+        /* update our current dimensions */
         current->x = 0;
         current->y = 0;
         current->width = screen->width_in_pixels;
@@ -262,7 +261,7 @@ static void toggle_maximize(const Arg *arg)
     {
         /* readd the border */
         xcb_configure_border_width(c->win, 1);
-
+        /* switch back to the old dimensions */
         val[0] = current->oldx;
         val[1] = current->oldy;
         val[2] = current->oldw;
@@ -270,6 +269,7 @@ static void toggle_maximize(const Arg *arg)
         PDEBUG("minimize: x: %d y: %d width: %d height: %d\n",
                 current->oldx, current->oldy, current->oldw, current->oldh);
         xcb_configure_window(conn, c->win, mask, val);
+        /* save our dimensions for later */
         current->x = current->oldx;
         current->y = current->oldy;
         current->width = current->oldw;
@@ -534,7 +534,6 @@ static void set_input_focus(xcb_window_t win)
 static void event_loop(void)
 {
     xcb_generic_event_t *ev;
-
     /* block until we receive an event */
     while ( (ev = xcb_wait_for_event(conn)) )
     {
@@ -544,27 +543,19 @@ static void event_loop(void)
 
         case XCB_CONFIGURE_NOTIFY:
         {
-            xcb_configure_notify_event_t *e;
-            e = (xcb_configure_notify_event_t *)ev;
-
+            xcb_configure_notify_event_t *e = (xcb_configure_notify_event_t *)ev;
             set_input_focus(e->window);
-        }
-        break;
+        } break;
 
         case XCB_MAP_REQUEST:
         {
-            xcb_map_request_event_t *e;
-            e = (xcb_map_request_event_t *)ev;
-
+            xcb_map_request_event_t *e = (xcb_map_request_event_t *)ev;
             setup_win(e->window);
-        }
-        break;
+        } break;
 
         case XCB_DESTROY_NOTIFY:
         {
-            xcb_destroy_notify_event_t *e;
-            e = (xcb_destroy_notify_event_t *)ev;
-
+            xcb_destroy_notify_event_t *e = (xcb_destroy_notify_event_t *)ev;
             for (client *c=head; c != NULL; c=c->next)
             {
                 if(e->window == c->win)
@@ -574,15 +565,11 @@ static void event_loop(void)
                     break;
                 }
             }
-        }
-        break;
+        } break;
 
         case XCB_KEY_PRESS:
         {
-            xcb_key_press_event_t *e;
-            e = (xcb_key_press_event_t *)ev;
-            PDEBUG("Key %d pressed \n", e->detail);
-
+            xcb_key_press_event_t *e = (xcb_key_press_event_t *)ev;
             xcb_keysym_t keysym   = xcb_get_keysym(e->detail);
             for (unsigned int i=0; i<LENGTH(keys); i++)
             {
@@ -594,8 +581,7 @@ static void event_loop(void)
                      break;
                 }
             }
-        }
-        break;
+        } break;
         } /* switch */
         free(ev);
     }
@@ -654,23 +640,13 @@ static void bwm_setup(void)
     if (error != NULL)
         err(EXIT_FAILURE, "bwm: another window manager is running.");
 
-    /* initialize workspaces */
-    for (int i=0; i<LENGTH(workspaces); i++)
-    {
-        workspaces[i].head = head;
-        workspaces[i].current = current;
-    }
-    const Arg arg = {.i = 0};
-    current_workspace = 0;
-    change_workspace(&arg);
-
     /* grab keys */ 
     if (!grab_keys())
         err(EXIT_FAILURE, "bwm: error etting up keycodes.");
     xcb_flush(conn);
 }
 
-int main ()
+int main()
 {
     /* open the connection */
     if (xcb_connection_has_error(conn = xcb_connect(NULL, NULL)))
@@ -680,5 +656,5 @@ int main ()
     event_loop();
 
     cleanup();
-    exit(EXIT_SUCCESS);
+    return EXIT_SUCCESS;
 }
