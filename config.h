@@ -2,13 +2,14 @@
  * generally: mod 1 = Alt, mod 4 = Windows key*/
 #define MOD     XCB_MOD_MASK_1
 #define SHIFT   XCB_MOD_MASK_SHIFT
+#define CTRL    XCB_MOD_MASK_CONTROL
 
 /* 0: move step, 1: resize step
  * i.e. windows will move by 40px and resize by 40px */
 uint8_t steps[2] = { 40, 40 };
 
-#define UNFOCUS    0xafaf87  /* unfocused window border color */
-#define FOCUS     0x52C74C  /* focused window border color */
+#define UNFOCUS      0xafaf87  /* unfocused window border color */
+#define FOCUS        0x52C74C  /* focused window border color */
 #define BORDER_WIDTH 2
 
 #define DESKTOPCHANGE(K,N) \
@@ -17,11 +18,10 @@ uint8_t steps[2] = { 40, 40 };
 
 static const char *term[] = { "urxvt", NULL };  
 
-static workspace workspaces[5]; /* number of workspaces - if you change this make sure to delete the corresponding DESKTOPCHANGE keybing below */
+static workspace workspaces[5]; /* number of workspaces - if you change this make sure to delete the corresponding DESKTOPCHANGE keybind below */
 
-/* find keycodes using `xev` */
 static key keys[] = {
-   /* mod               keycode         function            arg */
+   /* mod               keycode         function            arg   */
     /* spawn a new terminal (specified in the term[] array above) */
     { MOD ,             XK_Return,      spawn,              {.com=term} },
     /* move the window down */
@@ -41,9 +41,9 @@ static key keys[] = {
     /* grow the window horizontally */
     { MOD | SHIFT,      XK_l,           resize,             {.i=3}   },
     /* grow the window maintaining the aspect ratio */
-    { MOD | SHIFT,      XK_m,           resize,             {.i=4}   },
+    { MOD | CTRL,       XK_j,           resize,             {.i=4}   },
     /* srhink the window maintaining the aspect ratio */
-    { MOD | SHIFT,      XK_n,           resize,             {.i=5}   },
+    { MOD | CTRL,       XK_k,           resize,             {.i=5}   },
     /* fullscreen the window (or unfullscreen it) */
     { MOD,              XK_a,           toggle_maximize,    {.i=0}   },
     /* focus the next window */
