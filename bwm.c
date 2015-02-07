@@ -1,26 +1,26 @@
 /*
- * The MIT License (MIT)
- * 
- * Copyright (c) 2015 Sina Pinto
- * 
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- * 
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- * 
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
+* The MIT License (MIT)
+* 
+* Copyright (c) 2015 Sina Pinto
+* 
+* Permission is hereby granted, free of charge, to any person obtaining a copy
+* of this software and associated documentation files (the "Software"), to deal
+* in the Software without restriction, including without limitation the rights
+* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+* copies of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
+* 
+* The above copyright notice and this permission notice shall be included in all
+* copies or substantial portions of the Software.
+* 
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+* OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+* SOFTWARE.
+*/
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -28,13 +28,16 @@
 #include <signal.h>
 #include <stdbool.h>
 #include <xcb/xcb.h>
+#include <xcb/xcb_keysyms.h>
+
+#include <X11/keysym.h>
 
 /* Don't uncomment this! */
-/*#define DEBUG*/
+#define DEBUG
 
-/*#ifdef DEBUG*/
-/*#include "events.h"*/
-/*#endif*/
+#ifdef DEBUG
+#include "events.h"
+#endif
 #ifdef DEBUG
 #define PDEBUG(...) \
     fprintf(stderr, "asdf: "); fprintf(stderr, __VA_ARGS__);
@@ -42,6 +45,14 @@
 #define PDEBUG(...)
 #endif
 
+#define True         true
+#define False        false
+#define Mod1Mask     XCB_MOD_MASK_1
+#define Mod4Mask     XCB_MOD_MASK_4
+#define ShiftMask    XCB_MOD_MASK_SHIFT
+#define ControlMask  XCB_MOD_MASK_CONTROL
+
+#define CLEANMASK(mask) ((mask & ~0x80))
 #define LENGTH(X)    (sizeof(X)/sizeof(*X))
 
 typedef union {
@@ -52,7 +63,7 @@ typedef union {
 /* keybinds set in config.h */
 typedef struct key {
     unsigned int mod;
-    unsigned int keysym;
+    xcb_keysym_t keysym;
     void (*function)(const Arg *);
     const Arg arg;
 } key;
@@ -100,8 +111,13 @@ static void unfocus_client(struct client *c);
 static void focus_client(struct client *c);
 static void set_input_focus(xcb_window_t win);
 static void event_loop(void);
+static bool setup_keys(void);
+static xcb_keysym_t xcb_get_keysym(xcb_keycode_t keycode);
+static xcb_keycode_t* xcb_get_keycodes(xcb_keysym_t keysym);
+static bool bwm_setup(void);
 
 #include "config.h"
+
 
 static void cleanup()
 {
@@ -156,25 +172,13 @@ static void resize(const Arg *arg)
     uint8_t step = steps[1];
 
     if (arg->i == 0 || arg->i == 4)
-    {
-        current->height = current->height+step > 0 ? current->height + step 
-                                                   : current->height;
-    }
+        current->height = current->height+step > 0 ? current->height + step : current->height;
     if (arg->i == 1 || arg->i == 5)
-    {
-        current->height = current->height-step > 0 ? current->height - step 
-                                                   : current->height;
-    }
+        current->height = current->height-step > 0 ? current->height - step : current->height;
     if (arg->i == 2 || arg->i == 5)
-    {
-        current->width = current->width-step > 0 ? current->width - step 
-                                                 : current->width;
-    }
+        current->width = current->width-step > 0 ? current->width - step : current->width;
     if (arg->i == 3 || arg->i == 4)
-    {
-        current->width = current->width+step > 0 ? current->width + step 
-                                                 : current->width;
-    }
+        current->width = current->width+step > 0 ? current->width + step : current->width;
 
     if (current->is_maximized) current->is_maximized = false;
 
@@ -481,7 +485,7 @@ static void unfocus_client(struct client *c)
 {
     uint32_t values[1];
     if (c == NULL || current == NULL) return;
-    values[0] = NORMCOLOR;
+    values[0] = UNFOCUS;
     xcb_change_window_attributes(conn, current->win,
                                 XCB_CW_BORDER_PIXEL, values);
     xcb_flush(conn);
@@ -497,7 +501,7 @@ static void focus_client(struct client *c)
         xcb_flush(conn);
         return;
     }
-    values[0] = SELCOLOR;
+    values[0] = FOCUS;
     xcb_change_window_attributes(conn, c->win, XCB_CW_BORDER_PIXEL, values);
 
     set_input_focus(c->win);
@@ -521,8 +525,7 @@ static void event_loop(void)
     /* block until we receive an event */
     while ( (ev = xcb_wait_for_event(conn)) )
     {
-        /* CREATE_NOTIFY -> CONFIGURE_NOTIFY -> MAP_NOTIFY */ 
-        /*PDEBUG("Event: %s\n", evnames[ev->response_type]);*/
+        PDEBUG("Event: %s\n", evnames[ev->response_type]);
         switch ( ev->response_type & ~0x80 ) 
         {
 
@@ -566,16 +569,15 @@ static void event_loop(void)
         {
             xcb_key_press_event_t *e;
             e = (xcb_key_press_event_t *)ev;
-            /*PDEBUG("Key %d pressed \n", e->detail);*/
+            PDEBUG("Key %d pressed \n", e->detail);
 
-            for (uint8_t i=0; i<LENGTH(keys); i++)
+            xcb_keysym_t keysym   = xcb_get_keysym(e->detail);
+            for (unsigned int i=0; i<LENGTH(keys); i++)
             {
-                if (keys[i].keysym == e->detail
-                    && (keys[i].mod & ~0x80) == (e->state & ~0x80)
-                    && keys[i].function)
+                if (keysym == keys[i].keysym && CLEANMASK(keys[i].mod) == CLEANMASK(e->state) && keys[i].function)
                 {
-                    keys[i].function(&keys[i].arg);
-                    break;
+                        keys[i].function(&keys[i].arg);
+                        break;
                 }
             }
         }
@@ -585,33 +587,64 @@ static void event_loop(void)
     }
 }
 
-int main ()
+////////////////////////// SETUP /////////////////////////////
+static bool setup_keys(void)
 {
-    atexit(cleanup);
+    xcb_keycode_t *keycode;
+    for (unsigned int i=0; i<LENGTH(keys); i++) {
+        keycode = xcb_get_keycodes(keys[i].keysym);
+        for (unsigned int k=0; keycode[k] != XCB_NO_SYMBOL; k++)
+            xcb_grab_key(conn, 1, screen->root, keys[i].mod, keycode[k], XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
+    }
+    return true;
+}
+
+static xcb_keysym_t xcb_get_keysym(xcb_keycode_t keycode) {
+    xcb_key_symbols_t *keysyms;
+    if (!(keysyms = xcb_key_symbols_alloc(conn)))
+        errx(EXIT_FAILURE, "bwm: Couldn't get keysym. Exiting.\n");
+    xcb_keysym_t keysym = xcb_key_symbols_get_keysym(keysyms, keycode, 0);
+    xcb_key_symbols_free(keysyms);
+    return keysym;
+}
+
+static xcb_keycode_t* xcb_get_keycodes(xcb_keysym_t keysym) {
+    xcb_key_symbols_t *keysyms;
+    if (!(keysyms = xcb_key_symbols_alloc(conn)))
+        errx(EXIT_FAILURE, "bwm: Couldn't get keycode. Exiting.\n");
+    xcb_keycode_t *keycode = xcb_key_symbols_get_keycode(keysyms, keysym);
+    xcb_key_symbols_free(keysyms);
+    return keycode;
+}
+
+
+static bool bwm_setup(void)
+{
+    /* install signal handlers */
     signal(SIGINT, sighandle);
     signal(SIGTERM, sighandle);
 
-    /* open the connection */
-    conn = xcb_connect(NULL, NULL);
-    if (xcb_connection_has_error(conn))
-    {
-        fprintf(stderr, "xcb_connect error");
-        exit(1);
-    }
-
     /* get the first screen */
     screen = xcb_setup_roots_iterator(xcb_get_setup(conn)).data;
+    if (!screen)
+        err(EXIT_FAILURE, "bwm: Could not find screen. Exiting.\n");
     xcb_drawable_t root = screen->root;
 
     head = NULL;
     current = NULL;
 
-    /* register for events */
-    uint32_t values[2];
+    /* subscribe to events */
+    uint32_t values[1];
     uint32_t mask = XCB_CW_EVENT_MASK;
-    values[0] =  XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY;
-    values[1] = XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT;
-    xcb_change_window_attributes_checked(conn, root, mask, values);
+    values[0] =  //XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT
+      //| XCB_EVENT_MASK_STRUCTURE_NOTIFY
+         XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY;
+
+    xcb_void_cookie_t cookie = xcb_change_window_attributes_checked(conn, root, mask, values);
+    xcb_generic_error_t *error = xcb_request_check(conn, cookie);
+    if (error != NULL)
+        errx(EXIT_FAILURE, "bwm: Can't get SUBSTRUCTURE REDIRECT. " "Error code: %d\n"
+                "Another window manager running? Exiting.\n", error->error_code);
 
     /* initialize workspaces */
     for (int i=0; i<LENGTH(workspaces); i++)
@@ -623,15 +656,24 @@ int main ()
     current_workspace = 0;
     change_workspace(&arg);
 
-    /* grab keys */
-    for (int i=0; i<LENGTH(keys); i++)
-    {
-        xcb_grab_key(conn, 1, screen->root, keys[i].mod, keys[i].keysym, 
-                     XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
-    }
+    /* grab keys */ 
+    if (!setup_keys())
+        errx(EXIT_FAILURE, "bwm: Error etting up keycodes. Exiting.\n");
     xcb_flush(conn);
+    return true;
+}
+
+int main ()
+{
+    /* open the connection */
+    if (xcb_connection_has_error(conn = xcb_connect(NULL, NULL)))
+        errx(EXIT_FAILURE, "xcb_connect error");
+
+    if (!bwm_setup())
+        errx(EXIT_FAILURE, "bwm: Setup error. Exiting.\n");
+    fprintf(stdout, "welcome to bwm. setup successful.\n");
 
     event_loop();
-
-    exit(0);
+    cleanup();
+    exit(EXIT_SUCCESS);
 }
