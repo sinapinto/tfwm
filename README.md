@@ -1,14 +1,15 @@
 bwm - bandit window manager
 ===========================
-bwm is an extremely fast, lightweight, floating window manager for X.
+bwm is a fast, lightweight, floating window manager for X.
 
-Features
---------
+Current Features
+----------------
 * Automatic window refocusing
-* Window resizing keeping aspect ratio
-* Window maximize toggling
-* Multiple workspaces (currently buggy)
+* Resizing keeping aspect ratio
+* Maximize toggling
+* Multiple workspaces
 * 100% keyboard driven
+... more to come
 
 Installation
 ------------
@@ -46,17 +47,6 @@ Configuration
 Configuration of bwm is done by modifying `config.h` and recompiling the source code.
 
 Note: To change a keybind, you can find the keycode number using the `xev` command.
-
-BUGS
-----
-bwm has some minor bugs for now, mostly to do with multiple workspaces:
-
-* windows sometimes become unable to focus until switching workspace.
-* windows sometimes incorrectly appear on multiple workspaces
-* windows changing focus ordering when switching workspaces
-* "XIO: fatal IO error..."
-
-Any contributions are welcome.  Don't hesitate to open a pull request, issue, etc.
 
 Author
 ------
