@@ -36,12 +36,12 @@
 /* uncomment this to print debug statements */
 /*#define DEBUG*/
 
-#ifdef DEBUG
+/*#ifdef DEBUG
 #include "events.h"
-#endif
+#endif*/
 #ifdef DEBUG
 #define PDEBUG(...) \
-    fprintf(stderr, "bwm: "); fprintf(stderr, __VA_ARGS__);
+    fprintf(stderr, __VA_ARGS__);
 #else
 #define PDEBUG(...)
 #endif
@@ -55,33 +55,31 @@
 #define LENGTH(X)       (sizeof(X)/sizeof(*X))
 
 typedef union {
-    const char **com;
-    const int8_t i;
+    const char **com;   /* command */
+    const int8_t i;     /* integer */
 } Arg;
 
-/* keybinds set in config.h */
 typedef struct key {
-    unsigned int mod;
-    xcb_keysym_t keysym;
-    void (*function)(const Arg *);
-    const Arg arg;
+    unsigned int mod;               /* modifier mask(s) */
+    xcb_keysym_t keysym;            /* X11 keysym */
+    void (*function)(const Arg *);  /* function call */
+    const Arg arg;                  /* integer/command */
 } key;
 
 typedef struct client client;
 struct client{
-    xcb_drawable_t id;  /* get_geom */
-    int16_t x, y; uint16_t width, height;
-    int16_t oldx, oldy; uint16_t oldw, oldh; /* toggle_maximize */
-    bool is_maximized;
-    client *next;
-    client *prev;
-    xcb_window_t win;
+    xcb_drawable_t id;                       /* for get_geom */
+    int16_t x, y; uint16_t width, height;    /* current dimensions */
+    int16_t oldx, oldy; uint16_t oldw, oldh; /* for toggle_maximize */
+    bool is_maximized;                       /* was fullscreened */
+    client *next;                            /* next client in list */
+    client *prev;                            /* previous client */
+    xcb_window_t win;                        /* the client's window */
 };
 
 typedef struct workspace {
-    client *head;
-    client *current;
-    client *prevfocus; /* the client that previously had focus */
+    client *head;        /* head of the client list */ 
+    client *current;     /* current client */
 } workspace;
 
 /* globals */
@@ -89,7 +87,7 @@ xcb_connection_t *conn;         /* connection to X server */
 xcb_screen_t *screen;           /* first screen by default */
 static client *head;            /* head of window list */
 static client *current;         /* current window in list */
-static int current_workspace;
+static uint8_t current_workspace;   /* active workspace number */
 
 /* prototypes */
 static void cleanup();
@@ -103,8 +101,8 @@ static void xcb_configure_border_width(xcb_window_t win, uint8_t width);
 static void toggle_maximize(const Arg *arg);
 static void setup_win(xcb_window_t w);
 static void change_workspace(const Arg *arg);
-static void save_workspace(int i);
-static void select_workspace(int i);
+static void save_workspace(const uint8_t i);
+static void select_workspace(const uint8_t i);
 static void client_to_workspace(const Arg *arg);
 static void add_window_to_list(xcb_window_t w);
 static void remove_window_from_list(xcb_window_t w);
@@ -197,14 +195,10 @@ static void move(const Arg *arg)
 
     switch (arg->i)
     {
-        case 0:
-            current->y += step; break;
-        case 1:
-            current->y -= step; break;
-        case 2:
-            current->x -= step; break;
-        case 3:
-            current->x += step; break;
+        case 0: current->y += step; break;
+        case 1: current->y -= step; break;
+        case 2: current->x -= step; break;
+        case 3: current->x += step; break;
     }
     uint32_t values[2];
     values[0] = current->x; 
@@ -216,8 +210,7 @@ static void move(const Arg *arg)
 
 static void xcb_configure_border_width(xcb_window_t win, uint8_t width)
 {
-    if (!win) return;
-    uint32_t value[1] = {width};
+    uint32_t value[1] = { width };
     xcb_configure_window(conn, win, XCB_CONFIG_WINDOW_BORDER_WIDTH, value);
 }
 
@@ -260,7 +253,7 @@ static void toggle_maximize(const Arg *arg)
     else
     {
         /* readd the border */
-        xcb_configure_border_width(c->win, 1);
+        xcb_configure_border_width(c->win, BORDER_WIDTH);
         /* switch back to the old dimensions */
         val[0] = current->oldx;
         val[1] = current->oldy;
@@ -280,47 +273,40 @@ static void toggle_maximize(const Arg *arg)
     xcb_flush(conn);
 }
 
-/* TODO */ 
 static void change_workspace(const Arg *arg)
 {
-    client *c;
-    if(arg->i == current_workspace)
+    if (arg->i == current_workspace)
         return;
 
-    /* Save current "properties" */
     save_workspace(current_workspace);
 
     /* Unmap all window */
-    if(head != NULL)
-        for(c=head; c; c=c->next)
-        {
-            PDEBUG("unmap\n");
+    client *c;
+    if (head != NULL)
+    {
+        for (c=head; c != NULL; c=c->next)
             xcb_unmap_window(conn, c->win);
-        }
+    }
 
     /* Take "properties" from the new workspace */
     select_workspace(arg->i);
 
     /* Map all windows */
-    if(head != NULL)
+    if (head != NULL)
     {
-        for(c=head; c; c=c->next)
-        {
-            PDEBUG("map\n");
+        for (c=head; c != NULL; c=c->next)
             xcb_map_window(conn, c->win);
-        }
     }
-
     focus_client(current);
 }
 
-static void save_workspace(int i)
+static void save_workspace(const uint8_t i)
 {
     workspaces[i].head = head;
     workspaces[i].current = current;
 }
 
-static void select_workspace(int i)
+static void select_workspace(const uint8_t i)
 {
     head = workspaces[i].head;
     current = workspaces[i].current;
@@ -329,11 +315,11 @@ static void select_workspace(int i)
 
 static void client_to_workspace(const Arg *arg)
 {
-    client *tmp = current;
-    int tmp2 = current_workspace;
-
-    if(arg->i == current_workspace || current == NULL)
+    if (arg->i == current_workspace || current == NULL)
         return;
+
+    client *tmp = current;
+    const uint8_t tmp2 = current_workspace;
 
     // Add client to workspace
     select_workspace(arg->i);
@@ -348,7 +334,6 @@ static void client_to_workspace(const Arg *arg)
     focus_client(current);
 }
 
-////////////////////////// WINDOW FOCUS /////////////////////////////
 static void setup_win(xcb_window_t w)
 {
     uint32_t values[2];
@@ -362,9 +347,10 @@ static void setup_win(xcb_window_t w)
     xcb_flush(conn); 
 }
 
+/* make the window into a client and set it to head and current */
 static void add_window_to_list(xcb_window_t w)
 {
-    client *c,*t;
+    client *c, *t;
     if ((c = malloc(sizeof(client))) == NULL)
         err(EXIT_FAILURE, "bwm: out of memory");
 
@@ -399,20 +385,20 @@ static void add_window_to_list(xcb_window_t w)
     }
     if (current) unfocus_client(current);
     current = c;
+    save_workspace(current_workspace);
 }
 
 static void remove_window_from_list(xcb_window_t w)
 {
     client *c;
-
-    for(c=head; c != NULL; c=c->next)
+    for (c=head; c != NULL; c=c->next)
     {
-        if(c->win == w)
+        if (c->win == w)
         {
-            /*PDEBUG("remove_window_from_list %d\n", c->win);*/
+            PDEBUG("remove_window_from_list %d\n", c->win);
             if (c->prev == NULL && c->next == NULL)
             { // one client in list
-                /*PDEBUG("[removing head]\n");*/
+                PDEBUG("[removing head]\n");
                 free(head);
                 head = NULL;
                 current = NULL;
@@ -435,8 +421,8 @@ static void remove_window_from_list(xcb_window_t w)
                 c->next->prev = c->prev;
                 current = c->prev;
             }
-
             free(c);
+            save_workspace(current_workspace);
             return;
         }
     }
@@ -481,9 +467,7 @@ static void nextwin(const Arg *arg)
         else // focus previous
         {
             if (current->prev == NULL) // at head.. prev win is tail
-            {
                 for(c=head; c->next != NULL; c=c->next);
-            }
             else
                 c = current->prev;
             PDEBUG("\033[031mnextwin %d\033[0m\n", c->win);
@@ -494,11 +478,11 @@ static void nextwin(const Arg *arg)
     }
 }
 
+/* this just changes the border color */
 static void unfocus_client(struct client *c)
 {
-    uint32_t values[1];
-    if (c == NULL || current == NULL) return;
-    values[0] = UNFOCUS;
+    if (c == NULL || current == NULL || BORDER_WIDTH == 0) return;
+    uint32_t values[1] = { UNFOCUS };
     xcb_change_window_attributes(conn, current->win,
                                 XCB_CW_BORDER_PIXEL, values);
     xcb_flush(conn);
@@ -514,8 +498,11 @@ static void focus_client(struct client *c)
         xcb_flush(conn);
         return;
     }
-    values[0] = FOCUS;
-    xcb_change_window_attributes(conn, c->win, XCB_CW_BORDER_PIXEL, values);
+    if (BORDER_WIDTH > 0)
+    {
+        values[0] = FOCUS;
+        xcb_change_window_attributes(conn, c->win, XCB_CW_BORDER_PIXEL, values);
+    }
 
     set_input_focus(c->win);
 }
@@ -537,7 +524,7 @@ static void event_loop(void)
     /* block until we receive an event */
     while ( (ev = xcb_wait_for_event(conn)) )
     {
-        PDEBUG("Event: %s\n", evnames[ev->response_type]);
+        /*PDEBUG("Event: %s\n", evnames[ev->response_type]);*/
         switch ( CLEANMASK(ev->response_type) ) 
         {
 
@@ -587,7 +574,6 @@ static void event_loop(void)
     }
 }
 
-////////////////////////// SETUP /////////////////////////////
 static bool grab_keys(void)
 {
     xcb_keycode_t *keycode;
@@ -634,7 +620,8 @@ static void bwm_setup(void)
 
     /* subscribe to events */
     uint32_t mask = XCB_CW_EVENT_MASK;
-    uint32_t values[1] = {XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT | XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY};
+    uint32_t values[1] = {XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT
+                       | XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY};
     xcb_void_cookie_t cookie = xcb_change_window_attributes_checked(conn, root, mask, values);
     xcb_generic_error_t *error = xcb_request_check(conn, cookie);
     if (error != NULL)
