@@ -1,12 +1,10 @@
-/* find using `xmodmap`
- * generally: mod 1 = Alt, mod 4 = Windows key*/
-#define MOD     XCB_MOD_MASK_1
+#define MOD     XCB_MOD_MASK_1 /* XCB_MOD_MASK_1 = Alt; XCB_MOD_MASK_4 = Windows key */
 #define SHIFT   XCB_MOD_MASK_SHIFT
 #define CTRL    XCB_MOD_MASK_CONTROL
 
 /* 0: move step, 1: resize step
- * i.e. windows will move by 40px and resize by 40px */
-uint8_t steps[2] = { 40, 40 };
+ * i.e. windows will move by increments of 40px and resize by 50px */
+uint8_t steps[2] = { 40, 50 };
 
 #define UNFOCUS      0xafaf87  /* unfocused window border color */
 #define FOCUS        0x52C74C  /* focused window border color */
@@ -16,14 +14,18 @@ uint8_t steps[2] = { 40, 40 };
 {  MOD ,             K,              change_workspace, {.i=N}}, \
 {  MOD | SHIFT,      K,              client_to_workspace, {.i=N}},
 
-static const char *term[] = { "urxvt", NULL };  
+/* commands */
+static const char *terminal[] = { "urxvt", NULL };
+static const char *browser[] = { "firefox", NULL };
 
-static workspace workspaces[5]; /* number of workspaces - if you change this make sure to delete the corresponding DESKTOPCHANGE keybind below */
+static workspace workspaces[5]; /* number of workspaces - if you change this make sure to add/remove enough DESKTOPCHANGE keybinds below */
 
 static key keys[] = {
    /* mod               keycode         function            arg   */
-    /* spawn a new terminal (specified in the term[] array above) */
-    { MOD ,             XK_Return,      spawn,              {.com=term} },
+    /* launch a new terminal emulator */
+    { MOD ,             XK_Return,      spawn,              {.com=terminal} },
+    /* launch a browser */
+    { MOD ,             XK_f,           spawn,              {.com=browser} },
     /* move the window down */
     { MOD,              XK_j,           move,               {.i=0}   },
     /* move the window up */
