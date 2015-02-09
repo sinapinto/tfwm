@@ -9,6 +9,7 @@ Current Features
 * Maximize toggling
 * Multiple workspaces
 * 100% keyboard driven
+
 ... more to come
 
 Installation
@@ -45,8 +46,6 @@ To end the current bwm session, press `Mod+Shift+E`. By default, `Mod` is the `A
 Configuration
 -------------
 Configuration of bwm is done by modifying `config.h` and recompiling the source code.
-
-Note: To change a keybind, you can find the keycode number using the `xev` command.
 
 Author
 ------
