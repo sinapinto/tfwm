@@ -31,19 +31,18 @@
 #include <xcb/xcb_keysyms.h>
 #include <X11/keysym.h>
 
-/* TODO xcb atoms, icccm */
+/* TODO xcb atoms, icccm, debug */
 
 /* uncomment this to print debug statements */
 /*#define DEBUG*/
 
-/*#ifdef DEBUG
-#include "events.h"
-#endif*/
 #ifdef DEBUG
-#define PDEBUG(...) \
-    fprintf(stderr, __VA_ARGS__);
+#include "events.h"
+#endif
+#ifdef DEBUG
+#   define PDEBUG(...) fprintf(stderr, __VA_ARGS__);
 #else
-#define PDEBUG(...)
+#   define PDEBUG(...)
 #endif
 
 #define Mod1Mask     XCB_MOD_MASK_1
@@ -63,7 +62,7 @@ typedef struct key {
     unsigned int mod;               /* modifier mask(s) */
     xcb_keysym_t keysym;            /* X11 keysym */
     void (*function)(const Arg *);  /* function call */
-    const Arg arg;                  /* integer/command */
+    const Arg arg;                  /* function argument */
 } key;
 
 typedef struct client client;
@@ -95,6 +94,7 @@ static void sighandle(int signal);
 static int get_geom(xcb_drawable_t win, int16_t *x, int16_t *y,
                     uint16_t *width, uint16_t *height);
 static void spawn(const Arg *arg);
+static client *window_to_client(xcb_window_t w);
 static void resize(const Arg *arg);
 static void move(const Arg *arg);
 static void xcb_configure_border_width(xcb_window_t win, uint8_t width);
@@ -162,6 +162,19 @@ static void spawn(const Arg *arg)
     }
 }
 
+static client *window_to_client(xcb_window_t w)
+{
+    if (!w) return NULL;
+
+    client *c;
+    for (c=head; c != NULL; c=c->next)
+    {
+        if (w == c->win)
+            return c;
+    }
+    return NULL;
+}
+
 static void resize(const Arg *arg)
 {
     if (!current->win || current->win == screen->root)
@@ -217,11 +230,7 @@ static void xcb_configure_border_width(xcb_window_t win, uint8_t width)
 /* rmove the border on fullscreen */
 static void toggle_maximize(const Arg *arg)
 {
-    client *c; 
     if (current == NULL) return;
-    for (c=head; c != NULL; c=c->next)
-        if (c == current ) break;
-    if (c != current) return;
 
     uint32_t val[5];
     val[4] = XCB_STACK_MODE_ABOVE;
@@ -231,7 +240,7 @@ static void toggle_maximize(const Arg *arg)
     if (!current->is_maximized)
     {
         /* remove border */
-        xcb_configure_border_width(c->win, 0);
+        xcb_configure_border_width(current->win, 0);
         /* save our dimensions */
         current->oldx = current->x;
         current->oldy = current->y;
@@ -242,7 +251,7 @@ static void toggle_maximize(const Arg *arg)
         val[2] = screen->width_in_pixels; val[3] = screen->height_in_pixels;
         PDEBUG("maximize: x: %d y: %d width: %d height: %d\n",
                 current->x, current->y, current->width, current->height);
-        xcb_configure_window(conn, c->win, mask, val);
+        xcb_configure_window(conn, current->win, mask, val);
         /* update our current dimensions */
         current->x = 0;
         current->y = 0;
@@ -253,7 +262,7 @@ static void toggle_maximize(const Arg *arg)
     else
     {
         /* readd the border */
-        xcb_configure_border_width(c->win, BORDER_WIDTH);
+        xcb_configure_border_width(current->win, BORDER_WIDTH);
         /* switch back to the old dimensions */
         val[0] = current->oldx;
         val[1] = current->oldy;
@@ -261,7 +270,7 @@ static void toggle_maximize(const Arg *arg)
         val[3] = current->oldh;
         PDEBUG("minimize: x: %d y: %d width: %d height: %d\n",
                 current->oldx, current->oldy, current->oldw, current->oldh);
-        xcb_configure_window(conn, c->win, mask, val);
+        xcb_configure_window(conn, current->win, mask, val);
         /* save our dimensions for later */
         current->x = current->oldx;
         current->y = current->oldy;
@@ -391,58 +400,45 @@ static void add_window_to_list(xcb_window_t w)
 static void remove_window_from_list(xcb_window_t w)
 {
     client *c;
-    for (c=head; c != NULL; c=c->next)
-    {
-        if (c->win == w)
-        {
-            PDEBUG("remove_window_from_list %d\n", c->win);
-            if (c->prev == NULL && c->next == NULL)
-            { // one client in list
-                PDEBUG("[removing head]\n");
-                free(head);
-                head = NULL;
-                current = NULL;
-                return;
-            }
-            if (c->prev == NULL)
-            {               // head
-                head = c->next;
-                c->next->prev = NULL;
-                current = c->next;
-            }
-            else if (c->next == NULL)
-            {          // tail
-                c->prev->next = NULL;
-                current = c->prev;
-            }
-            else
-            {
-                c->prev->next = c->next;
-                c->next->prev = c->prev;
-                current = c->prev;
-            }
-            free(c);
-            save_workspace(current_workspace);
-            return;
-        }
+    if ((c = window_to_client(w)) == NULL) return;
+
+    PDEBUG("remove_window_from_list %d\n", c->win);
+    if (c->prev == NULL && c->next == NULL)
+    { // one client in list
+        PDEBUG("[removing head]\n");
+        free(head);
+        head = NULL;
+        current = NULL;
+        return;
     }
+    if (c->prev == NULL)
+    {               // head
+        head = c->next;
+        c->next->prev = NULL;
+        current = c->next;
+    }
+    else if (c->next == NULL)
+    {          // tail
+        c->prev->next = NULL;
+        current = c->prev;
+    }
+    else
+    {
+        c->prev->next = c->next;
+        c->next->prev = c->prev;
+        current = c->prev;
+    }
+    free(c);
+    save_workspace(current_workspace);
+    return;
     xcb_flush(conn); 
 }
 
 static void killwin()
 {
-    client *c;
-    for (c=head; c != NULL; c=c->next)
-    {
-        if (c == current)
-        {
-            if (!c->win || c->win == screen->root)
-                return;
-            xcb_kill_client(conn, c->win);
-            xcb_flush(conn); 
-            return;
-        }
-    }
+    if (NULL == current) return;
+    xcb_kill_client(conn, current->win);
+    xcb_flush(conn); 
 }
 
 static void nextwin(const Arg *arg)
@@ -518,13 +514,14 @@ static void set_input_focus(xcb_window_t win)
     xcb_flush(conn);
 }
 
+
 static void event_loop(void)
 {
     xcb_generic_event_t *ev;
     /* block until we receive an event */
     while ( (ev = xcb_wait_for_event(conn)) )
     {
-        /*PDEBUG("Event: %s\n", evnames[ev->response_type]);*/
+        PDEBUG("Event: %s\n", evnames[ev->response_type]);
         switch ( CLEANMASK(ev->response_type) ) 
         {
 
@@ -543,14 +540,25 @@ static void event_loop(void)
         case XCB_DESTROY_NOTIFY:
         {
             xcb_destroy_notify_event_t *e = (xcb_destroy_notify_event_t *)ev;
-            for (client *c=head; c != NULL; c=c->next)
+
+            client *c;
+            if ((c = window_to_client(e->window)) != NULL)
             {
-                if(e->window == c->win)
-                {
-                    remove_window_from_list(e->window);
-                    focus_client(current);
-                    break;
-                }
+                remove_window_from_list(e->window);
+                focus_client(current);
+                break;
+            }
+        } break;
+
+        case XCB_ENTER_NOTIFY:
+        {
+            xcb_enter_notify_event_t *e = (xcb_enter_notify_event_t *)ev;
+
+            client *c;
+            if ((c = window_to_client(e->event)) != NULL)
+            {
+                focus_client(c);
+                break;
             }
         } break;
 
@@ -604,7 +612,6 @@ static xcb_keycode_t* xcb_get_keycodes(xcb_keysym_t keysym) {
     xcb_key_symbols_free(keysyms);
     return keycode;
 }
-
 
 static void bwm_setup(void)
 {
