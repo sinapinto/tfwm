@@ -546,19 +546,6 @@ static void event_loop(void)
             {
                 remove_window_from_list(e->window);
                 focus_client(current);
-                break;
-            }
-        } break;
-
-        case XCB_ENTER_NOTIFY:
-        {
-            xcb_enter_notify_event_t *e = (xcb_enter_notify_event_t *)ev;
-
-            client *c;
-            if ((c = window_to_client(e->event)) != NULL)
-            {
-                focus_client(c);
-                break;
             }
         } break;
 
