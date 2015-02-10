@@ -286,26 +286,22 @@ static void change_workspace(const Arg *arg)
 {
     if (arg->i == current_workspace)
         return;
-
-    save_workspace(current_workspace);
-
-    /* Unmap all window */
-    client *c;
-    if (head != NULL)
-    {
-        for (c=head; c != NULL; c=c->next)
-            xcb_unmap_window(conn, c->win);
-    }
-
-    /* Take "properties" from the new workspace */
+    int previous = current_workspace;
+    /* map the new windows before unmapping the current ones to avoid
+     * screen flickering */
     select_workspace(arg->i);
+    client *c;
+    if (workspaces[current_workspace].current)
+        xcb_map_window(conn, workspaces[current_workspace].current->win);
+    for (c=head; c != NULL; c=c->next)
+        xcb_map_window(conn, c->win);
 
-    /* Map all windows */
-    if (head != NULL)
-    {
-        for (c=head; c != NULL; c=c->next)
-            xcb_map_window(conn, c->win);
-    }
+    select_workspace(previous);
+    for (c=head; c != NULL; c=c->next)
+        if (c != workspaces[current_workspace].current) xcb_unmap_window(conn, c->win);
+    if (workspaces[current_workspace].current)
+        xcb_unmap_window(conn, workspaces[current_workspace].current->win);
+    select_workspace(arg->i);
     focus_client(current);
 }
 
