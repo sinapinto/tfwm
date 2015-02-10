@@ -2,7 +2,7 @@ SRC 	= bwm.c
 TARGET 	= $(SRC:.c=)
 OBJ 	= $(SRC:.c=.o)
 CFLAGS 	+= -std=c99 -Os -Wall -pedantic -I.
-LDFLAGS += `pkg-config --libs xcb xcb-keysyms`
+LDFLAGS += `pkg-config --libs xcb xcb-keysyms xcb-icccm`
 CC		?= gcc
 PREFIX 	?= /usr
 
