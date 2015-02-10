@@ -97,7 +97,6 @@ static int get_geom(xcb_drawable_t win, int16_t *x, int16_t *y,
 static void spawn(const Arg *arg);
 static client *window_to_client(xcb_window_t w);
 static void resize(const Arg *arg);
-static void aspect_resize(const int8_t i);
 static void move(const Arg *arg);
 static void xcb_configure_border_width(xcb_window_t win, uint8_t width);
 static void toggle_maximize(const Arg *arg);
@@ -191,78 +190,72 @@ static void resize(const Arg *arg)
 {
     if (!current->win || current->win == screen->root)
         return;
-    if (arg->i > 3)
-    {
-        aspect_resize(arg->i);
-        return;
-    }
 
     uint8_t step = steps[1];
-    if (arg->i == 0)
+    if (arg->i > 3) /* resize maintaining aspect ratio */
     {
-        current->height = current->height+step > 0
-                        ? current->height + step
-                        : current->height;
+        if (arg->i == 4) /* grow */
+        {
+            current->width += step;
+            current->height += step;
+        }
+        else /* shrink (i == 5) */
+        {
+            current->height = current->height-step > 0
+                            ? current->height - step
+                            : current->height;
+            current->width  = current->width-step > 0
+                            ? current->width - step
+                            : current->width;
+        }
     }
-    if (arg->i == 1)
+    else /* non aspect ratio resize */
     {
-        current->width = current->width+step > 0
-                       ? current->width + step
-                       : current->width;
+        if (arg->i == 0)
+        {
+            current->height = current->height+step > 0
+                            ? current->height + step
+                            : current->height;
+        }
+        if (arg->i == 1)
+        {
+            current->width = current->width+step > 0
+                           ? current->width + step
+                           : current->width;
+        }
+        if (arg->i == 2)
+        {
+            current->height = current->height-step > 0
+                            ? current->height - step
+                            : current->height;
+        }
+        if (arg->i == 3)
+        {
+            current->width = current->width-step > 0
+                           ? current->width - step
+                           : current->width;
+        }
     }
-    if (arg->i == 2)
+    /* if the window is centered, configure its x and y */
+    if (current->is_centered)
     {
-        current->height = current->height-step > 0
-                        ? current->height - step
-                        : current->height;
-    }
-    if (arg->i == 3)
-    {
-        current->width = current->width-step > 0
-                       ? current->width - step
-                       : current->width;
+        current->x = screen->width_in_pixels - (current->width + BORDER_WIDTH*2);
+        current->x /= 2;
+        current->y = screen->height_in_pixels - (current->height + BORDER_WIDTH*2);
+        current->y /= 2;
     }
 
-    uint32_t values[2] = { current->width, values[1] = current->height };
-    xcb_configure_window(conn, current->win, XCB_CONFIG_WINDOW_WIDTH
-                                   | XCB_CONFIG_WINDOW_HEIGHT, values);
+    uint32_t values[4] = { current->x,     current->y,
+                           current->width, current->height };
+    xcb_configure_window(conn, current->win, XCB_CONFIG_WINDOW_X
+            | XCB_CONFIG_WINDOW_Y
+            | XCB_CONFIG_WINDOW_WIDTH
+            | XCB_CONFIG_WINDOW_HEIGHT, values);
 
     /* unmaximize (redraw border) */
     if (current->is_maximized) current->is_maximized = false;
     xcb_configure_border_width(current->win, BORDER_WIDTH);
 
-    if (current->is_centered) center_win(current);
-    xcb_flush(conn); 
-}
-
-/* i = 4: grow; i = 5: shrink */
-static void aspect_resize(const int8_t i)
-{
-    if (!current || i<4 || i>5) return;
-    uint8_t step = steps[1];
-    if (i == 4) /* grow */
-    {
-        current->width += step;
-        current->height += step;
-    }
-    else /* shrink */
-    {
-        current->height = current->height-step > 0
-                        ? current->height - step
-                        : current->height;
-        current->width  = current->width-step > 0
-                        ? current->width - step
-                        : current->width;
-    }
-    uint32_t values[2] = { current->width, current->height };
-    xcb_configure_window(conn, current->win, XCB_CONFIG_WINDOW_WIDTH
-                                   | XCB_CONFIG_WINDOW_HEIGHT, values);
-
-    /* unmaximize (redraw border) */
-    if (current->is_maximized) current->is_maximized = false;
-    xcb_configure_border_width(current->win, BORDER_WIDTH);
-
-    if (current->is_centered) center_win(current);
     xcb_flush(conn); 
 }
 
