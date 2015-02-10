@@ -71,6 +71,7 @@ struct client{
     int16_t x, y; uint16_t width, height;    /* current dimensions */
     int16_t oldx, oldy; uint16_t oldw, oldh; /* for toggle_maximize */
     bool is_maximized;                       /* was fullscreened */
+    bool is_centered;                        /* center mode is active */
     client *next;                            /* next client in list */
     client *prev;                            /* previous client */
     xcb_window_t win;                        /* the client's window */
@@ -96,9 +97,12 @@ static int get_geom(xcb_drawable_t win, int16_t *x, int16_t *y,
 static void spawn(const Arg *arg);
 static client *window_to_client(xcb_window_t w);
 static void resize(const Arg *arg);
+static void aspect_resize(const int8_t i);
 static void move(const Arg *arg);
 static void xcb_configure_border_width(xcb_window_t win, uint8_t width);
 static void toggle_maximize(const Arg *arg);
+static void center_win(client *c);
+static void toggle_centered_mode(const Arg *arg);
 static void setup_win(xcb_window_t w);
 static void change_workspace(const Arg *arg);
 static void save_workspace(const uint8_t i);
@@ -175,28 +179,90 @@ static client *window_to_client(xcb_window_t w)
     return NULL;
 }
 
+/* resize the window depending on arg->i
+ * i = 0 -> increase x
+ * i = 1 -> increase y
+ * i = 2 -> decrease x
+ * i = 3 -> decrease y
+ * i = 4 -> increase x and y
+ * i = 5 -> decrease x and y
+ */
 static void resize(const Arg *arg)
 {
     if (!current->win || current->win == screen->root)
         return;
+    if (arg->i > 3)
+    {
+        aspect_resize(arg->i);
+        return;
+    }
+
     uint8_t step = steps[1];
+    if (arg->i == 0)
+    {
+        current->height = current->height+step > 0
+                        ? current->height + step
+                        : current->height;
+    }
+    if (arg->i == 1)
+    {
+        current->width = current->width+step > 0
+                       ? current->width + step
+                       : current->width;
+    }
+    if (arg->i == 2)
+    {
+        current->height = current->height-step > 0
+                        ? current->height - step
+                        : current->height;
+    }
+    if (arg->i == 3)
+    {
+        current->width = current->width-step > 0
+                       ? current->width - step
+                       : current->width;
+    }
 
-    if (arg->i == 0 || arg->i == 4)
-        current->height = current->height+step > 0 ? current->height + step : current->height;
-    if (arg->i == 1 || arg->i == 5)
-        current->height = current->height-step > 0 ? current->height - step : current->height;
-    if (arg->i == 2 || arg->i == 5)
-        current->width = current->width-step > 0 ? current->width - step : current->width;
-    if (arg->i == 3 || arg->i == 4)
-        current->width = current->width+step > 0 ? current->width + step : current->width;
-
-    if (current->is_maximized) current->is_maximized = false;
-
-    uint32_t values[2];
-    values[0] = current->width;
-    values[1] = current->height;
+    uint32_t values[2] = { current->width, values[1] = current->height };
     xcb_configure_window(conn, current->win, XCB_CONFIG_WINDOW_WIDTH
                                    | XCB_CONFIG_WINDOW_HEIGHT, values);
+
+    /* unmaximize (redraw border) */
+    if (current->is_maximized) current->is_maximized = false;
+    xcb_configure_border_width(current->win, BORDER_WIDTH);
+
+    if (current->is_centered) center_win(current);
+    xcb_flush(conn); 
+}
+
+/* i = 4: grow; i = 5: shrink */
+static void aspect_resize(const int8_t i)
+{
+    if (!current || i<4 || i>5) return;
+    uint8_t step = steps[1];
+    if (i == 4) /* grow */
+    {
+        current->width += step;
+        current->height += step;
+    }
+    else /* shrink */
+    {
+        current->height = current->height-step > 0
+                        ? current->height - step
+                        : current->height;
+        current->width  = current->width-step > 0
+                        ? current->width - step
+                        : current->width;
+    }
+    uint32_t values[2] = { current->width, current->height };
+    xcb_configure_window(conn, current->win, XCB_CONFIG_WINDOW_WIDTH
+                                   | XCB_CONFIG_WINDOW_HEIGHT, values);
+
+    /* unmaximize (redraw border) */
+    if (current->is_maximized) current->is_maximized = false;
+    xcb_configure_border_width(current->win, BORDER_WIDTH);
+
+    if (current->is_centered) center_win(current);
     xcb_flush(conn); 
 }
 
@@ -209,15 +275,17 @@ static void move(const Arg *arg)
     switch (arg->i)
     {
         case 0: current->y += step; break;
-        case 1: current->y -= step; break;
-        case 2: current->x -= step; break;
-        case 3: current->x += step; break;
+        case 1: current->x += step; break;
+        case 2: current->y -= step; break;
+        case 3: current->x -= step; break;
     }
     uint32_t values[2];
     values[0] = current->x; 
     values[1] = current->y;
     xcb_configure_window(conn, current->win, XCB_CONFIG_WINDOW_X
                                    | XCB_CONFIG_WINDOW_Y, values);
+    if (current->is_centered)
+        current->is_centered = false;
     xcb_flush(conn); 
 }
 
@@ -282,25 +350,45 @@ static void toggle_maximize(const Arg *arg)
     xcb_flush(conn);
 }
 
+static void toggle_centered_mode(const Arg *arg)
+{
+    if (current)
+        current->is_centered = current->is_centered ? false : true;
+    center_win(current);
+}
+
+/* center the window */
+static void center_win(client *c)
+{
+    if (!c) return;
+    c->x = screen->width_in_pixels - (c->width + BORDER_WIDTH*2);
+    c->x /= 2;
+    c->y = screen->height_in_pixels - (c->height + BORDER_WIDTH*2);
+    c->y /= 2;
+
+    uint32_t values[4] = { c->x, c->y };
+    xcb_configure_window(conn, c->win, XCB_CONFIG_WINDOW_X
+            | XCB_CONFIG_WINDOW_Y, values);
+    xcb_flush(conn); 
+}
+
 static void change_workspace(const Arg *arg)
 {
     if (arg->i == current_workspace)
         return;
-    int previous = current_workspace;
+    uint8_t previous = current_workspace;
+    save_workspace(current_workspace);
     /* map the new windows before unmapping the current ones to avoid
      * screen flickering */
     select_workspace(arg->i);
     client *c;
-    if (workspaces[current_workspace].current)
-        xcb_map_window(conn, workspaces[current_workspace].current->win);
     for (c=head; c != NULL; c=c->next)
         xcb_map_window(conn, c->win);
 
+    /* unmap current workspace clients */
     select_workspace(previous);
     for (c=head; c != NULL; c=c->next)
-        if (c != workspaces[current_workspace].current) xcb_unmap_window(conn, c->win);
-    if (workspaces[current_workspace].current)
-        xcb_unmap_window(conn, workspaces[current_workspace].current->win);
+        xcb_unmap_window(conn, c->win);
     select_workspace(arg->i);
     focus_client(current);
 }
@@ -364,6 +452,8 @@ static void add_window_to_list(xcb_window_t w)
     c->y = 0;
     c->width = 0;
     c->height = 0;
+    c->is_maximized = false;
+    c->is_centered = false;
 
     if (head == NULL)
     {
@@ -448,7 +538,7 @@ static void nextwin(const Arg *arg)
             {
                 if (current == head) // only client, don't do anything
                     return;
-                PDEBUG("\033[031mnextwin [going to head]\033[0m\n");
+                PDEBUG("nextwin: going to head\n");
                 c = head;
             }
             else
@@ -462,7 +552,7 @@ static void nextwin(const Arg *arg)
                 for(c=head; c->next != NULL; c=c->next);
             else
                 c = current->prev;
-            PDEBUG("\033[031mnextwin %d\033[0m\n", c->win);
+            PDEBUG("nextwin: %d\n", c->win);
         }
         unfocus_client(current);
         current = c;
@@ -493,9 +583,9 @@ static void focus_client(struct client *c)
     if (BORDER_WIDTH > 0)
     {
         values[0] = FOCUS;
-        xcb_change_window_attributes(conn, c->win, XCB_CW_BORDER_PIXEL, values);
+        xcb_change_window_attributes(conn, c->win,
+                                    XCB_CW_BORDER_PIXEL, values);
     }
-
     set_input_focus(c->win);
 }
 
@@ -523,7 +613,8 @@ static void event_loop(void)
 
         case XCB_CONFIGURE_NOTIFY:
         {
-            xcb_configure_notify_event_t *e = (xcb_configure_notify_event_t *)ev;
+            xcb_configure_notify_event_t *e =
+                (xcb_configure_notify_event_t *)ev;
             set_input_focus(e->window);
         } break;
 
@@ -612,7 +703,8 @@ static void bwm_setup(void)
     uint32_t mask = XCB_CW_EVENT_MASK;
     uint32_t values[1] = {XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT
                        | XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY};
-    xcb_void_cookie_t cookie = xcb_change_window_attributes_checked(conn, root, mask, values);
+    xcb_void_cookie_t cookie =
+        xcb_change_window_attributes_checked(conn, root, mask, values);
     xcb_generic_error_t *error = xcb_request_check(conn, cookie);
     if (error != NULL)
         err(EXIT_FAILURE, "bwm: another window manager is running.");

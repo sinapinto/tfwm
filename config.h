@@ -7,7 +7,7 @@
 uint8_t steps[2] = { 40, 50 };
 
 #define UNFOCUS      0xafaf87  /* unfocused window border color */
-#define FOCUS        0x52C74C  /* focused window border color */
+#define FOCUS        0xafaf87  /* focused window border color */
 #define BORDER_WIDTH 2
 
 #define DESKTOPCHANGE(K,N) \
@@ -28,25 +28,27 @@ static key keys[] = {
     { MOD ,             XK_f,           spawn,              {.com=browser} },
     /* move the window down */
     { MOD,              XK_j,           move,               {.i=0}   },
-    /* move the window up */
-    { MOD,              XK_k,           move,               {.i=1}   },
-    /* move the window left */
-    { MOD,              XK_h,           move,               {.i=2}   },
     /* move the window right */
-    { MOD,              XK_l,           move,               {.i=3}   },
+    { MOD,              XK_l,           move,               {.i=1}   },
+    /* move the window up */
+    { MOD,              XK_k,           move,               {.i=2}   },
+    /* move the window left */
+    { MOD,              XK_h,           move,               {.i=3}   },
     /* grow the window vertically */
     { MOD | SHIFT,      XK_j,           resize,             {.i=0}   },
-    /* shrink the window vertically */
-    { MOD | SHIFT,      XK_k,           resize,             {.i=1}   },
-    /* shrink the window horizontally */
-    { MOD | SHIFT,      XK_h,           resize,             {.i=2}   },
     /* grow the window horizontally */
-    { MOD | SHIFT,      XK_l,           resize,             {.i=3}   },
-    /* grow the window maintaining the aspect ratio */
+    { MOD | SHIFT,      XK_l,           resize,             {.i=1}   },
+    /* shrink the window vertically */
+    { MOD | SHIFT,      XK_k,           resize,             {.i=2}   },
+    /* shrink the window horizontally */
+    { MOD | SHIFT,      XK_h,           resize,             {.i=3}   },
+    /* grow the window maintaining aspect ratio */
     { MOD | CTRL,       XK_j,           resize,             {.i=4}   },
-    /* srhink the window maintaining the aspect ratio */
+    /* srhink the window maintaining aspect ratio */
     { MOD | CTRL,       XK_k,           resize,             {.i=5}   },
-    /* fullscreen the window (or unfullscreen it) */
+    /* window remains centered while resizing (toggle) */
+    { MOD,              XK_c,           toggle_centered_mode, {.i=0}   },
+    /* fullscreen the window (toggle) */
     { MOD,              XK_a,           toggle_maximize,    {.i=0}   },
     /* focus the next window */
     { MOD,              XK_Tab,         nextwin,            {.i=0}   },
