@@ -24,11 +24,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <string.h>
 #include <unistd.h>
 #include <err.h>
 #include <signal.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_keysyms.h>
+#include <xcb/xcb_atom.h>
+#include <xcb/xcb_icccm.h>
 #include <X11/keysym.h>
 
 /* TODO xcb atoms, icccm, debug */
@@ -37,10 +40,8 @@
 /*#define DEBUG*/
 
 #ifdef DEBUG
-#include "events.h"
-#endif
-#ifdef DEBUG
 #   define PDEBUG(...) fprintf(stderr, __VA_ARGS__);
+#   include "events.h"
 #else
 #   define PDEBUG(...)
 #endif
@@ -52,6 +53,12 @@
 
 #define CLEANMASK(mask) ((mask & ~0x80))
 #define LENGTH(X)       (sizeof(X)/sizeof(*X))
+
+static char *WM_ATOM_NAME[]   = { "WM_PROTOCOLS", "WM_DELETE_WINDOW" };
+static char *NET_ATOM_NAME[]  = { "_NET_SUPPORTED", "_NET_WM_STATE_FULLSCREEN", "_NET_WM_STATE", "_NET_ACTIVE_WINDOW" };
+
+enum { WM_PROTOCOLS, WM_DELETE_WINDOW, WM_COUNT };
+enum { NET_SUPPORTED, NET_FULLSCREEN, NET_WM_STATE, NET_ACTIVE, NET_COUNT };
 
 typedef union {
     const char **com;   /* command */
@@ -89,7 +96,12 @@ static client *head;            /* head of window list */
 static client *current;         /* current window in list */
 static uint8_t current_workspace;   /* active workspace number */
 
+static xcb_atom_t wmatoms[WM_COUNT];
+static xcb_atom_t netatoms[NET_COUNT];
+
 /* prototypes */
+static void xcb_get_atoms(char **names, xcb_atom_t *atoms, unsigned int count);
+void deletewindow(xcb_window_t w);
 static void cleanup();
 static void sighandle(int signal);
 static int get_geom(xcb_drawable_t win, int16_t *x, int16_t *y,
@@ -121,6 +133,20 @@ static xcb_keycode_t* xcb_get_keycodes(xcb_keysym_t keysym);
 static void bwm_setup(void);
 
 #include "config.h"
+
+static void xcb_get_atoms(char **names, xcb_atom_t *atoms, unsigned int count) {
+    xcb_intern_atom_cookie_t cookies[count];
+    xcb_intern_atom_reply_t  *reply;
+    for (unsigned int i = 0; i < count; i++)
+        cookies[i] = xcb_intern_atom(conn, 0, strlen(names[i]), names[i]);
+    for (unsigned int i = 0; i < count; i++) {
+        reply = xcb_intern_atom_reply(conn, cookies[i], NULL); /* TODO: Handle error */
+        if (reply) {
+            PDEBUG("%s : %d\n", names[i], reply->atom);
+            atoms[i] = reply->atom; free(reply);
+        } else puts("WARN: failed to register %s atom.\nThings might not work right.");
+    }
+}
 
 static void cleanup()
 {
@@ -259,6 +285,7 @@ static void resize(const Arg *arg)
     xcb_flush(conn); 
 }
 
+/* a maximized client that is moved will remain "maximized" */
 static void move(const Arg *arg)
 {
     if (!current->win || current->win == screen->root)
@@ -516,8 +543,29 @@ static void remove_window_from_list(xcb_window_t w)
 static void killwin()
 {
     if (NULL == current) return;
+    xcb_icccm_get_wm_protocols_reply_t reply; unsigned int n = 0; bool got = false;
+    if (xcb_icccm_get_wm_protocols_reply(conn,
+        xcb_icccm_get_wm_protocols(conn, current->win, wmatoms[WM_PROTOCOLS]),
+        &reply, NULL)) { /* TODO: Handle error? */
+        for(; n != reply.atoms_len; ++n) if ((got = reply.atoms[n] == wmatoms[WM_DELETE_WINDOW])) break;
+        xcb_icccm_get_wm_protocols_reply_wipe(&reply);
+    }
+    if (got) deletewindow(current->win);
+    else xcb_kill_client(conn, current->win);
+
     xcb_kill_client(conn, current->win);
     xcb_flush(conn); 
+}
+void deletewindow(xcb_window_t w) {
+    xcb_client_message_event_t ev;
+    ev.response_type = XCB_CLIENT_MESSAGE;
+    ev.window = w;
+    ev.format = 32;
+    ev.sequence = 0;
+    ev.type = wmatoms[WM_PROTOCOLS];
+    ev.data.data32[0] = wmatoms[WM_DELETE_WINDOW];
+    ev.data.data32[1] = XCB_CURRENT_TIME;
+    xcb_send_event(conn, 0, w, XCB_EVENT_MASK_NO_EVENT, (char*)&ev);
 }
 
 static void nextwin(const Arg *arg)
@@ -701,6 +749,10 @@ static void bwm_setup(void)
     xcb_generic_error_t *error = xcb_request_check(conn, cookie);
     if (error != NULL)
         err(EXIT_FAILURE, "bwm: another window manager is running.");
+
+    /* set up atoms for dialog/notification windows */
+    xcb_get_atoms(WM_ATOM_NAME, wmatoms, WM_COUNT);
+    xcb_get_atoms(NET_ATOM_NAME, netatoms, NET_COUNT);
 
     /* grab keys */ 
     if (!grab_keys())
