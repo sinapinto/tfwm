@@ -30,8 +30,6 @@
 #include <signal.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_keysyms.h>
-#include <xcb/xcb_atom.h>
-#include <xcb/xcb_icccm.h>
 #include <X11/keysym.h>
 
 /* TODO xcb atoms, icccm, debug */
@@ -53,12 +51,6 @@
 
 #define CLEANMASK(mask) ((mask & ~0x80))
 #define LENGTH(X)       (sizeof(X)/sizeof(*X))
-
-static char *WM_ATOM_NAME[]   = { "WM_PROTOCOLS", "WM_DELETE_WINDOW" };
-static char *NET_ATOM_NAME[]  = { "_NET_SUPPORTED", "_NET_WM_STATE_FULLSCREEN", "_NET_WM_STATE", "_NET_ACTIVE_WINDOW" };
-
-enum { WM_PROTOCOLS, WM_DELETE_WINDOW, WM_COUNT };
-enum { NET_SUPPORTED, NET_FULLSCREEN, NET_WM_STATE, NET_ACTIVE, NET_COUNT };
 
 typedef union {
     const char **com;   /* command */
@@ -96,11 +88,7 @@ static client *head;            /* head of window list */
 static client *current;         /* current window in list */
 static uint8_t current_workspace;   /* active workspace number */
 
-static xcb_atom_t wmatoms[WM_COUNT];
-static xcb_atom_t netatoms[NET_COUNT];
-
 /* prototypes */
-static void xcb_get_atoms(char **names, xcb_atom_t *atoms, unsigned int count);
 void deletewindow(xcb_window_t w);
 static void cleanup();
 static void sighandle(int signal);
@@ -110,7 +98,6 @@ static void spawn(const Arg *arg);
 static client *window_to_client(xcb_window_t w);
 static void resize(const Arg *arg);
 static void move(const Arg *arg);
-static void xcb_configure_border_width(xcb_window_t win, uint8_t width);
 static void toggle_maximize(const Arg *arg);
 static void center_win(client *c);
 static void toggle_centered_mode(const Arg *arg);
@@ -122,31 +109,18 @@ static void client_to_workspace(const Arg *arg);
 static void add_window_to_list(xcb_window_t w);
 static void remove_window_from_list(xcb_window_t w);
 static void killwin();
-static void nextwin(const Arg *arg);
-static void unfocus_client(struct client *c);
+static void cycle_win(const Arg *arg);
 static void focus_client(struct client *c);
 static void set_input_focus(xcb_window_t win);
 static void event_loop(void);
 static bool grab_keys(void);
 static xcb_keysym_t xcb_get_keysym(xcb_keycode_t keycode);
 static xcb_keycode_t* xcb_get_keycodes(xcb_keysym_t keysym);
+static void change_border_width(xcb_window_t win, uint8_t width);
+static void change_border_color(xcb_window_t win, long color);
 static void bwm_setup(void);
 
 #include "config.h"
-
-static void xcb_get_atoms(char **names, xcb_atom_t *atoms, unsigned int count) {
-    xcb_intern_atom_cookie_t cookies[count];
-    xcb_intern_atom_reply_t  *reply;
-    for (unsigned int i = 0; i < count; i++)
-        cookies[i] = xcb_intern_atom(conn, 0, strlen(names[i]), names[i]);
-    for (unsigned int i = 0; i < count; i++) {
-        reply = xcb_intern_atom_reply(conn, cookies[i], NULL); /* TODO: Handle error */
-        if (reply) {
-            PDEBUG("%s : %d\n", names[i], reply->atom);
-            atoms[i] = reply->atom; free(reply);
-        } else puts("WARN: failed to register %s atom.\nThings might not work right.");
-    }
-}
 
 static void cleanup()
 {
@@ -163,14 +137,13 @@ static void sighandle(int signal)
         cleanup();
 }
 
+/* store the window dimensions in x,y,width,height */
 static int get_geom(xcb_drawable_t win, int16_t *x, int16_t *y,
                     uint16_t *width, uint16_t *height)
 {
     xcb_get_geometry_reply_t *geom;
     geom = xcb_get_geometry_reply(conn, xcb_get_geometry(conn, win), NULL);
-    if (NULL == geom)
-        return 1;
-
+    if (!geom) err(EXIT_FAILURE, "geometry reply failed");
     *x = geom->x;
     *y = geom->y;
     *width = geom->width;
@@ -179,6 +152,7 @@ static int get_geom(xcb_drawable_t win, int16_t *x, int16_t *y,
     return 0;
 }
 
+/* fork the process and execute command */
 static void spawn(const Arg *arg)
 {
     if (fork() == 0)
@@ -187,10 +161,11 @@ static void spawn(const Arg *arg)
             close(screen->root);
         setsid();
         execvp((char*)arg->com[0], (char**)arg->com);
-        err(EXIT_FAILURE, "bwm: execvp %s", ((char **)arg->com)[0]);
+        err(EXIT_FAILURE, "execvp %s", ((char **)arg->com)[0]);
     }
 }
 
+/* iterate througth the client list and find the client with window w */
 static client *window_to_client(xcb_window_t w)
 {
     if (!w) return NULL;
@@ -280,12 +255,20 @@ static void resize(const Arg *arg)
 
     /* unmaximize (redraw border) */
     if (current->is_maximized) current->is_maximized = false;
-    xcb_configure_border_width(current->win, BORDER_WIDTH);
+    change_border_width(current->win, BORDER_WIDTH);
+
+    focus_client(current);
 
     xcb_flush(conn); 
 }
 
-/* a maximized client that is moved will remain "maximized" */
+/* move the window depending on arg->i
+ * i=0 -> move down
+ * i=1 -> move right
+ * i=2 -> move up
+ * i=3 -> move left
+ * note: a maximized client that is moved will keep its maximized attribute 
+ * so that it can still be unmaximized */
 static void move(const Arg *arg)
 {
     if (!current->win || current->win == screen->root)
@@ -298,24 +281,22 @@ static void move(const Arg *arg)
         case 1: current->x += step; break;
         case 2: current->y -= step; break;
         case 3: current->x -= step; break;
+        default: PDEBUG("unkown argument for move\n"); break;
     }
     uint32_t values[2];
     values[0] = current->x; 
     values[1] = current->y;
     xcb_configure_window(conn, current->win, XCB_CONFIG_WINDOW_X
                                    | XCB_CONFIG_WINDOW_Y, values);
+    /* if it was centered it no longer is */
     if (current->is_centered)
         current->is_centered = false;
     xcb_flush(conn); 
 }
 
-static void xcb_configure_border_width(xcb_window_t win, uint8_t width)
-{
-    uint32_t value[1] = { width };
-    xcb_configure_window(conn, win, XCB_CONFIG_WINDOW_BORDER_WIDTH, value);
-}
 
-/* rmove the border on fullscreen */
+/* fullscreen the window or unfullscreen it
+ * remove the border when fullscreen */
 static void toggle_maximize(const Arg *arg)
 {
     if (current == NULL) return;
@@ -328,7 +309,7 @@ static void toggle_maximize(const Arg *arg)
     if (!current->is_maximized)
     {
         /* remove border */
-        xcb_configure_border_width(current->win, 0);
+        change_border_width(current->win, 0);
         /* save our dimensions */
         current->oldx = current->x;
         current->oldy = current->y;
@@ -350,7 +331,7 @@ static void toggle_maximize(const Arg *arg)
     else
     {
         /* readd the border */
-        xcb_configure_border_width(current->win, BORDER_WIDTH);
+        change_border_width(current->win, BORDER_WIDTH);
         /* switch back to the old dimensions */
         val[0] = current->oldx;
         val[1] = current->oldy;
@@ -372,12 +353,12 @@ static void toggle_maximize(const Arg *arg)
 
 static void toggle_centered_mode(const Arg *arg)
 {
-    if (current)
-        current->is_centered = current->is_centered ? false : true;
+    if (!current) return;
+    current->is_centered = current->is_centered ? false : true;
     center_win(current);
 }
 
-/* center the window */
+/* move the client's window to the middle of the screen */
 static void center_win(client *c)
 {
     if (!c) return;
@@ -426,6 +407,7 @@ static void select_workspace(const uint8_t i)
     current_workspace = i;
 }
 
+/* move a client to another workspace */
 static void client_to_workspace(const Arg *arg)
 {
     if (arg->i == current_workspace || current == NULL)
@@ -447,13 +429,15 @@ static void client_to_workspace(const Arg *arg)
     focus_client(current);
 }
 
+/* XCB_MAP_REQUEST handler
+ * set up window's mask and border and add it to the list, and map+focus it */
 static void setup_win(xcb_window_t w)
 {
     uint32_t values[2];
     values[0] = XCB_EVENT_MASK_ENTER_WINDOW;
     values[1] = XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY;
     xcb_change_window_attributes(conn, w, XCB_CW_EVENT_MASK, values);
-    xcb_configure_border_width(w, BORDER_WIDTH);
+    change_border_width(w, BORDER_WIDTH);
     xcb_map_window(conn, w);
     add_window_to_list(w);
     focus_client(current);
@@ -465,7 +449,7 @@ static void add_window_to_list(xcb_window_t w)
 {
     client *c, *t;
     if ((c = malloc(sizeof(client))) == NULL)
-        err(EXIT_FAILURE, "bwm: out of memory");
+        err(EXIT_FAILURE, "couldn't allocate memory");
 
     c->id = w;
     c->x = 0;
@@ -498,11 +482,12 @@ static void add_window_to_list(xcb_window_t w)
         get_geom(c->id, &c->x, &c->y, &c->width, &c->height);
         head = c;
     }
-    if (current) unfocus_client(current);
+    if (current) change_border_color(current->win, UNFOCUS);
     current = c;
     save_workspace(current_workspace);
 }
 
+/* find the window in the client list and remove the client */
 static void remove_window_from_list(xcb_window_t w)
 {
     client *c;
@@ -537,78 +522,50 @@ static void remove_window_from_list(xcb_window_t w)
     free(c);
     save_workspace(current_workspace);
     return;
-    xcb_flush(conn); 
 }
 
 static void killwin()
 {
     if (NULL == current) return;
-    xcb_icccm_get_wm_protocols_reply_t reply; unsigned int n = 0; bool got = false;
-    if (xcb_icccm_get_wm_protocols_reply(conn,
-        xcb_icccm_get_wm_protocols(conn, current->win, wmatoms[WM_PROTOCOLS]),
-        &reply, NULL)) { /* TODO: Handle error? */
-        for(; n != reply.atoms_len; ++n) if ((got = reply.atoms[n] == wmatoms[WM_DELETE_WINDOW])) break;
-        xcb_icccm_get_wm_protocols_reply_wipe(&reply);
-    }
-    if (got) deletewindow(current->win);
-    else xcb_kill_client(conn, current->win);
-
     xcb_kill_client(conn, current->win);
     xcb_flush(conn); 
 }
-void deletewindow(xcb_window_t w) {
-    xcb_client_message_event_t ev;
-    ev.response_type = XCB_CLIENT_MESSAGE;
-    ev.window = w;
-    ev.format = 32;
-    ev.sequence = 0;
-    ev.type = wmatoms[WM_PROTOCOLS];
-    ev.data.data32[0] = wmatoms[WM_DELETE_WINDOW];
-    ev.data.data32[1] = XCB_CURRENT_TIME;
-    xcb_send_event(conn, 0, w, XCB_EVENT_MASK_NO_EVENT, (char*)&ev);
-}
 
-static void nextwin(const Arg *arg)
+/* focus the prev/next window in the list */
+static void cycle_win(const Arg *arg)
 {
     client *c;
     if(current != NULL && head != NULL)
     {
-        if (arg->i == 0) // focus next
-        {
-            if (current->next == NULL) // at tail.. next win is head
-            {
-                if (current == head) // only client, don't do anything
-                    return;
-                PDEBUG("nextwin: going to head\n");
-                c = head;
-            }
-            else
-            {
-                c = current->next;
-            }
-        }
-        else // focus previous
+        if (arg->i == 1) // focus prev
         {
             if (current->prev == NULL) // at head.. prev win is tail
                 for(c=head; c->next != NULL; c=c->next);
             else
                 c = current->prev;
-            PDEBUG("nextwin: %d\n", c->win);
         }
-        unfocus_client(current);
+        else // focus next
+        {
+            if (current->next == NULL) // at tail.. next win is head
+            {
+                if (current == head) return;  // this is the only client
+                c = head;
+            }
+            else
+                c = current->next;
+        }
+        change_border_color(current->win, UNFOCUS);
         current = c;
-        focus_client(current);
+        if (arg->i == 2) // focus next window without changing stacking order
+        {
+            xcb_set_input_focus(conn, XCB_INPUT_FOCUS_POINTER_ROOT,
+                                c->win, XCB_CURRENT_TIME);
+            change_border_color(c->win, FOCUS);
+            xcb_flush(conn);
+        }
+        else
+            focus_client(current);
     }
-}
-
-/* this just changes the border color */
-static void unfocus_client(struct client *c)
-{
-    if (c == NULL || current == NULL || BORDER_WIDTH == 0) return;
-    uint32_t values[1] = { UNFOCUS };
-    xcb_change_window_attributes(conn, current->win,
-                                XCB_CW_BORDER_PIXEL, values);
-    xcb_flush(conn);
 }
 
 static void focus_client(struct client *c)
@@ -630,6 +587,7 @@ static void focus_client(struct client *c)
     set_input_focus(c->win);
 }
 
+/* set input focus and stack it on top */
 static void set_input_focus(xcb_window_t win)
 {
     uint32_t values[1];
@@ -641,11 +599,9 @@ static void set_input_focus(xcb_window_t win)
     xcb_flush(conn);
 }
 
-
 static void event_loop(void)
 {
     xcb_generic_event_t *ev;
-    /* block until we receive an event */
     while ( (ev = xcb_wait_for_event(conn)) )
     {
         PDEBUG("Event: %s\n", evnames[ev->response_type]);
@@ -692,7 +648,7 @@ static void event_loop(void)
                 }
             }
         } break;
-        } /* switch */
+        }
         free(ev);
     }
 }
@@ -710,34 +666,49 @@ static bool grab_keys(void)
     return true;
 }
 
-static xcb_keysym_t xcb_get_keysym(xcb_keycode_t keycode) {
+/* some small wrappers for xcb */
+static xcb_keysym_t xcb_get_keysym(xcb_keycode_t keycode)
+{
     xcb_key_symbols_t *keysyms;
     if (!(keysyms = xcb_key_symbols_alloc(conn)))
-        err(EXIT_FAILURE, "bwm: couldn't get keysym.");
+        err(EXIT_FAILURE, "couldn't get keysym.");
     xcb_keysym_t keysym = xcb_key_symbols_get_keysym(keysyms, keycode, 0);
     xcb_key_symbols_free(keysyms);
     return keysym;
 }
 
-static xcb_keycode_t* xcb_get_keycodes(xcb_keysym_t keysym) {
+static xcb_keycode_t* xcb_get_keycodes(xcb_keysym_t keysym)
+{
     xcb_key_symbols_t *keysyms;
     if (!(keysyms = xcb_key_symbols_alloc(conn)))
-        err(EXIT_FAILURE, "bwm: couldn't get keycode.");
+        err(EXIT_FAILURE, "couldn't get keycode.");
     xcb_keycode_t *keycode = xcb_key_symbols_get_keycode(keysyms, keysym);
     xcb_key_symbols_free(keysyms);
     return keycode;
 }
 
+static void change_border_width(xcb_window_t win, uint8_t width)
+{
+    uint32_t value[1] = { width };
+    xcb_configure_window(conn, win, XCB_CONFIG_WINDOW_BORDER_WIDTH, value);
+}
+
+static void change_border_color(xcb_window_t win, long color)
+{
+    if (!win || BORDER_WIDTH == 0) return;
+    uint32_t value[1] = { color };
+    xcb_change_window_attributes(conn, win, XCB_CW_BORDER_PIXEL, value);
+}
+
 static void bwm_setup(void)
 {
-    /* install signal handlers */
     signal(SIGINT, sighandle);
     signal(SIGTERM, sighandle);
 
     /* get the first screen */
     screen = xcb_setup_roots_iterator(xcb_get_setup(conn)).data;
     if (!screen)
-        err(EXIT_FAILURE, "bwm: could not find screen.");
+        err(EXIT_FAILURE, "could not find screen.");
     xcb_drawable_t root = screen->root;
 
     /* subscribe to events */
@@ -748,27 +719,19 @@ static void bwm_setup(void)
         xcb_change_window_attributes_checked(conn, root, mask, values);
     xcb_generic_error_t *error = xcb_request_check(conn, cookie);
     if (error != NULL)
-        err(EXIT_FAILURE, "bwm: another window manager is running.");
+        err(EXIT_FAILURE, "another window manager is running.");
 
-    /* set up atoms for dialog/notification windows */
-    xcb_get_atoms(WM_ATOM_NAME, wmatoms, WM_COUNT);
-    xcb_get_atoms(NET_ATOM_NAME, netatoms, NET_COUNT);
-
-    /* grab keys */ 
     if (!grab_keys())
-        err(EXIT_FAILURE, "bwm: error etting up keycodes.");
+        err(EXIT_FAILURE, "error etting up keycodes.");
     xcb_flush(conn);
 }
 
 int main()
 {
-    /* open the connection */
     if (xcb_connection_has_error(conn = xcb_connect(NULL, NULL)))
         err(EXIT_FAILURE, "xcb_connect error");
-
     bwm_setup();
     event_loop();
-
     cleanup();
     return EXIT_SUCCESS;
 }

@@ -4,13 +4,13 @@ bwm is a fast, lightweight, floating window manager for X.
 
 Current Features
 ----------------
+* Centered mode
 * Automatic window refocusing
 * Resizing keeping aspect ratio
+* Focus without stacking
 * Maximize toggling
 * Multiple workspaces
 * 100% keyboard driven
-
-... more to come
 
 Installation
 ------------

@@ -3,10 +3,10 @@
 #define CTRL    XCB_MOD_MASK_CONTROL
 
 /* 0: move step, 1: resize step
- * i.e. windows will move by increments of 30px and resize by 40px */
-uint8_t steps[2] = { 30, 40 };
+ * i.e. windows will move by increments of 25px and resize by 30px */
+uint8_t steps[2] = { 25, 30 };
 
-#define UNFOCUS      0xafaf87  /* unfocused window border color */
+#define UNFOCUS      0x3B3B31  /* unfocused window border color */
 #define FOCUS        0xafaf87  /* focused window border color */
 #define BORDER_WIDTH 2
 
@@ -47,13 +47,15 @@ static key keys[] = {
     /* srhink the window maintaining aspect ratio */
     { MOD | CTRL,       XK_k,           resize,             {.i=5}   },
     /* window remains centered while resizing (toggle) */
-    { MOD,              XK_c,           toggle_centered_mode, {.i=0}   },
+    { MOD,              XK_s,           toggle_centered_mode, {.i=0}   },
     /* fullscreen the window (toggle) */
     { MOD,              XK_a,           toggle_maximize,    {.i=0}   },
     /* focus the next window */
-    { MOD,              XK_Tab,         nextwin,            {.i=0}   },
+    { MOD,              XK_Tab,         cycle_win,            {.i=0}   },
     /* focus the previous window */
-    { MOD | SHIFT,      XK_Tab,         nextwin,            {.i=1}   },
+    { MOD | SHIFT,      XK_Tab,         cycle_win,            {.i=1}   },
+    /* focus the next window without changing stacking order */
+    { MOD | CTRL,       XK_Tab,         cycle_win,            {.i=2}   },
     /* kill the focused window */
     { MOD | SHIFT,      XK_q,           killwin,            {.i=0}   },
     /* exit bwm */
