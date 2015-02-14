@@ -28,17 +28,17 @@
 #include <unistd.h>
 #include <err.h>
 #include <signal.h>
+#include <sys/wait.h> // waitpid()
 #include <xcb/xcb.h>
 #include <xcb/xcb_keysyms.h>
+#include <xcb/xcb_icccm.h>
 #include <X11/keysym.h>
 
-/* TODO xcb atoms, icccm, debug */
-
-/* uncomment this to print debug statements */
 /*#define DEBUG*/
 
 #ifdef DEBUG
-#   define PDEBUG(...) fprintf(stderr, __VA_ARGS__);
+#   define PDEBUG(...) \
+        do { fprintf(stderr, "bwm: ");fprintf(stderr, __VA_ARGS__); } while(0)
 #   include "events.h"
 #else
 #   define PDEBUG(...)
@@ -87,11 +87,19 @@ xcb_screen_t *screen;           /* first screen by default */
 static client *head;            /* head of window list */
 static client *current;         /* current window in list */
 static uint8_t current_workspace;   /* active workspace number */
+static bool running;
+
+static char *WM_ATOM_NAMES[] = { "WM_PROTOCOLS", "WM_DELETE_WINDOW", "WM_STATE", "_NET_SUPPORTED", "_NET_CURRENT_DESKTOP", "_NET_NUMBER_OF_DESKTOPS", "_NET_WM_STATE_FULLSCREEN", "_NET_WM_STATE", "_NET_ACTIVE_WINDOW" };
+
+enum { WM_PROTOCOLS, WM_DELETE_WINDOW, WM_STATE, NET_SUPPORTED, NET_CURRENT_DESKTOP, NET_NUMBER_OF_DESKTOPS, NET_FULLSCREEN, NET_WM_STATE, NET_ACTIVE, ATOM_COUNT };
+
+static xcb_atom_t wmatoms[ATOM_COUNT];
 
 /* prototypes */
-void deletewindow(xcb_window_t w);
+static void bwm_exit();
 static void cleanup();
 static void sighandle(int signal);
+static void sigchld();
 static int get_geom(xcb_drawable_t win, int16_t *x, int16_t *y,
                     uint16_t *width, uint16_t *height);
 static void spawn(const Arg *arg);
@@ -107,8 +115,9 @@ static void save_workspace(const uint8_t i);
 static void select_workspace(const uint8_t i);
 static void client_to_workspace(const Arg *arg);
 static void add_window_to_list(xcb_window_t w);
-static void remove_window_from_list(xcb_window_t w);
-static void killwin();
+static void remove_window(xcb_window_t w);
+static void kill_current();
+static void deletewindow(xcb_window_t w);
 static void cycle_win(const Arg *arg);
 static void focus_client(struct client *c);
 static void set_input_focus(xcb_window_t win);
@@ -118,23 +127,47 @@ static xcb_keysym_t xcb_get_keysym(xcb_keycode_t keycode);
 static xcb_keycode_t* xcb_get_keycodes(xcb_keysym_t keysym);
 static void change_border_width(xcb_window_t win, uint8_t width);
 static void change_border_color(xcb_window_t win, long color);
+static xcb_atom_t getatom(const char *atom_name);
 static void bwm_setup(void);
 
 #include "config.h"
 
+static workspace workspaces[NUM_WORKSPACES];
+
+static void bwm_exit() {
+    cleanup();
+    exit(EXIT_SUCCESS);
+}
+
 static void cleanup()
 {
+    xcb_query_tree_reply_t  *query;
+    xcb_window_t *c;
+    if ((query = xcb_query_tree_reply(conn,xcb_query_tree(conn,screen->root),0)))
+    {
+        c = xcb_query_tree_children(query);
+        for (int i=0; i != query->children_len; ++i)
+            deletewindow(c[i]);
+        free(query);
+    }
+
     xcb_set_input_focus(conn, XCB_NONE, XCB_INPUT_FOCUS_POINTER_ROOT,
                         XCB_CURRENT_TIME);
     xcb_flush(conn);
     xcb_disconnect(conn);
-    exit(EXIT_SUCCESS);
 }
 
 static void sighandle(int signal)
 {
     if (signal == SIGINT || signal == SIGTERM)
-        cleanup();
+        running = false;
+}
+
+static void sigchld() {
+    if (signal(SIGCHLD, sigchld) == SIG_ERR)
+        err(EXIT_FAILURE, "cannot install SIGCHLD handler");
+
+    while(0 < waitpid(-1, NULL, WNOHANG));
 }
 
 /* store the window dimensions in x,y,width,height */
@@ -301,6 +334,11 @@ static void toggle_maximize(const Arg *arg)
 {
     if (current == NULL) return;
 
+    long data[] = { current->is_maximized ? wmatoms[NET_FULLSCREEN] : XCB_NONE };
+
+    xcb_change_property(conn, XCB_PROP_MODE_REPLACE, current->win,
+                        wmatoms[NET_WM_STATE], XCB_ATOM_ATOM, 32, 1, data);
+
     uint32_t val[5];
     val[4] = XCB_STACK_MODE_ABOVE;
     uint32_t mask = XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y
@@ -362,6 +400,9 @@ static void toggle_centered_mode(const Arg *arg)
 static void center_win(client *c)
 {
     if (!c) return;
+
+    PDEBUG("centering window");
+
     c->x = screen->width_in_pixels - (c->width + BORDER_WIDTH*2);
     c->x /= 2;
     c->y = screen->height_in_pixels - (c->height + BORDER_WIDTH*2);
@@ -375,12 +416,16 @@ static void center_win(client *c)
 
 static void change_workspace(const Arg *arg)
 {
-    if (arg->i == current_workspace)
+    if (arg->i == current_workspace || arg->i >= NUM_WORKSPACES)
         return;
+
+    xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root,
+                        wmatoms[NET_CURRENT_DESKTOP], XCB_ATOM_CARDINAL, 32, 1,
+                        &arg->i);
+
     uint8_t previous = current_workspace;
     save_workspace(current_workspace);
-    /* map the new windows before unmapping the current ones to avoid
-     * screen flickering */
+    /* map new windows before unmapping the current ones to avoid flickering */
     select_workspace(arg->i);
     client *c;
     for (c=head; c != NULL; c=c->next)
@@ -410,7 +455,7 @@ static void select_workspace(const uint8_t i)
 /* move a client to another workspace */
 static void client_to_workspace(const Arg *arg)
 {
-    if (arg->i == current_workspace || current == NULL)
+    if (arg->i == current_workspace || current == NULL || arg->i >= NUM_WORKSPACES)
         return;
 
     client *tmp = current;
@@ -424,7 +469,7 @@ static void client_to_workspace(const Arg *arg)
     // Remove client from current workspace
     select_workspace(tmp2);
     xcb_unmap_window(conn,tmp->win);
-    remove_window_from_list(tmp->win);
+    remove_window(tmp->win);
     save_workspace(tmp2);
     focus_client(current);
 }
@@ -433,6 +478,7 @@ static void client_to_workspace(const Arg *arg)
  * set up window's mask and border and add it to the list, and map+focus it */
 static void setup_win(xcb_window_t w)
 {
+    PDEBUG("map request\n");
     uint32_t values[2];
     values[0] = XCB_EVENT_MASK_ENTER_WINDOW;
     values[1] = XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY;
@@ -484,16 +530,21 @@ static void add_window_to_list(xcb_window_t w)
     }
     if (current) change_border_color(current->win, UNFOCUS);
     current = c;
+
+    long data[] = { XCB_ICCCM_WM_STATE_NORMAL, XCB_NONE };
+    xcb_change_property(conn, XCB_PROP_MODE_REPLACE, current->win, 
+                        wmatoms[WM_STATE], wmatoms[WM_STATE], 32, 2, data);
+
     save_workspace(current_workspace);
 }
 
 /* find the window in the client list and remove the client */
-static void remove_window_from_list(xcb_window_t w)
+static void remove_window(xcb_window_t w)
 {
     client *c;
     if ((c = window_to_client(w)) == NULL) return;
 
-    PDEBUG("remove_window_from_list %d\n", c->win);
+    PDEBUG("remove_window %d\n", c->win);
     if (c->prev == NULL && c->next == NULL)
     { // one client in list
         PDEBUG("[removing head]\n");
@@ -524,11 +575,49 @@ static void remove_window_from_list(xcb_window_t w)
     return;
 }
 
-static void killwin()
+static void kill_current()
 {
-    if (NULL == current) return;
-    xcb_kill_client(conn, current->win);
+    if (NULL == current)
+        return;
+
+    PDEBUG("kill current client\n");
+
+    xcb_get_property_cookie_t c;
+    c = xcb_icccm_get_wm_protocols(conn, current->win, wmatoms[WM_PROTOCOLS]);
+
+    xcb_icccm_get_wm_protocols_reply_t reply;
+    bool use_delete= false;
+
+    if (xcb_icccm_get_wm_protocols_reply(conn, c, &reply, NULL) == 1)
+    {
+        for (int i=0; i != reply.atoms_len; i++)
+        {
+            if ((use_delete = reply.atoms[i] == wmatoms[WM_DELETE_WINDOW]))
+            {
+                deletewindow(current->win);
+                break;
+            }
+        }
+        xcb_icccm_get_wm_protocols_reply_wipe(&reply);
+    }
+
+    if (!use_delete)
+        xcb_kill_client(conn, current->win);
+
     xcb_flush(conn); 
+}
+
+static void deletewindow(xcb_window_t w)
+{
+    xcb_client_message_event_t ev;
+    ev.response_type = XCB_CLIENT_MESSAGE;
+    ev.window = current->win;
+    ev.format = 32;
+    ev.sequence = 0;
+    ev.type = wmatoms[WM_PROTOCOLS];
+    ev.data.data32[0] = wmatoms[WM_DELETE_WINDOW];
+    ev.data.data32[1] = XCB_CURRENT_TIME;
+    xcb_send_event(conn, 0, current->win, XCB_EVENT_MASK_NO_EVENT, (char*)&ev);
 }
 
 /* focus the prev/next window in the list */
@@ -568,6 +657,7 @@ static void cycle_win(const Arg *arg)
     }
 }
 
+/* focus input on window and change window's border color */
 static void focus_client(struct client *c)
 {
     uint32_t values[1];
@@ -581,13 +671,20 @@ static void focus_client(struct client *c)
     if (BORDER_WIDTH > 0)
     {
         values[0] = FOCUS;
-        xcb_change_window_attributes(conn, c->win,
-                                    XCB_CW_BORDER_PIXEL, values);
+        xcb_change_window_attributes(conn, c->win, XCB_CW_BORDER_PIXEL, values);
     }
+
+    long data[] = { XCB_ICCCM_WM_STATE_NORMAL, XCB_NONE };
+    xcb_change_property(conn, XCB_PROP_MODE_REPLACE, c->win, 
+                        wmatoms[WM_STATE], wmatoms[WM_STATE], 32, 2, data);
+
     set_input_focus(c->win);
+
+    xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root,
+                        wmatoms[NET_ACTIVE] , XCB_ATOM_WINDOW, 32, 1,&c->win);
 }
 
-/* set input focus and stack it on top */
+/* set input focus and stack it on top; does not affect border color */
 static void set_input_focus(xcb_window_t win)
 {
     uint32_t values[1];
@@ -596,20 +693,28 @@ static void set_input_focus(xcb_window_t win)
                         values);
     xcb_set_input_focus(conn, XCB_INPUT_FOCUS_POINTER_ROOT, win,
                         XCB_CURRENT_TIME);
+
     xcb_flush(conn);
 }
 
 static void event_loop(void)
 {
     xcb_generic_event_t *ev;
-    while ( (ev = xcb_wait_for_event(conn)) )
+    running = true;
+    while (running)
     {
-        PDEBUG("Event: %s\n", evnames[ev->response_type]);
+        xcb_flush(conn);
+
+
+        ev = xcb_wait_for_event(conn);
+
+        /*PDEBUG("Event: %s\n", evnames[ev->response_type]);*/
         switch ( CLEANMASK(ev->response_type) ) 
         {
 
         case XCB_CONFIGURE_NOTIFY:
         {
+            /* focus whatever window is sending a configure event */
             xcb_configure_notify_event_t *e =
                 (xcb_configure_notify_event_t *)ev;
             set_input_focus(e->window);
@@ -628,7 +733,7 @@ static void event_loop(void)
             client *c;
             if ((c = window_to_client(e->window)) != NULL)
             {
-                remove_window_from_list(e->window);
+                remove_window(e->window);
                 focus_client(current);
             }
         } break;
@@ -636,7 +741,7 @@ static void event_loop(void)
         case XCB_KEY_PRESS:
         {
             xcb_key_press_event_t *e = (xcb_key_press_event_t *)ev;
-            xcb_keysym_t keysym   = xcb_get_keysym(e->detail);
+            xcb_keysym_t keysym = xcb_get_keysym(e->detail);
             for (unsigned int i=0; i<LENGTH(keys); i++)
             {
                 if (keysym == keys[i].keysym &&
@@ -648,9 +753,18 @@ static void event_loop(void)
                 }
             }
         } break;
-        }
+        
+        case XCB_KEY_RELEASE: break;
+        default:
+            PDEBUG("Unknown event: %s\n", evnames[ev->response_type]);
+            break;
+
+        } /* switch */
         free(ev);
-    }
+
+        if (xcb_connection_has_error(conn) != 0)
+            running = false;
+    } /* while */
 }
 
 static bool grab_keys(void)
@@ -700,8 +814,22 @@ static void change_border_color(xcb_window_t win, long color)
     xcb_change_window_attributes(conn, win, XCB_CW_BORDER_PIXEL, value);
 }
 
+static xcb_atom_t getatom(const char *atom_name)
+{
+    xcb_intern_atom_cookie_t atom_cookie;
+    xcb_intern_atom_reply_t *rep;
+    atom_cookie = xcb_intern_atom(conn, 0, strlen(atom_name), atom_name);
+    rep = xcb_intern_atom_reply(conn, atom_cookie, NULL);
+    if (NULL == rep) return 0;
+    xcb_atom_t atom = rep->atom;
+    free(rep);
+    return atom;
+}
+
+/* set up sinal handlers, display, mask, atoms, and keys */
 static void bwm_setup(void)
 {
+    sigchld();
     signal(SIGINT, sighandle);
     signal(SIGTERM, sighandle);
 
@@ -721,8 +849,23 @@ static void bwm_setup(void)
     if (error != NULL)
         err(EXIT_FAILURE, "another window manager is running.");
 
+    /* atoms */
+    for (unsigned int i=0; i<ATOM_COUNT; i++)
+        wmatoms[i] = getatom(WM_ATOM_NAMES[i]);
+
+    static const uint8_t _WORKSPACES = NUM_WORKSPACES;
+
+    xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root,
+                        wmatoms[NET_CURRENT_DESKTOP], XCB_ATOM_CARDINAL,
+                        32, 1,&current_workspace);
+    xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root,
+                        wmatoms[NET_NUMBER_OF_DESKTOPS], XCB_ATOM_CARDINAL,
+                        32, 1,&_WORKSPACES);
+
+    /* keys */
     if (!grab_keys())
         err(EXIT_FAILURE, "error etting up keycodes.");
+
     xcb_flush(conn);
 }
 
@@ -730,8 +873,11 @@ int main()
 {
     if (xcb_connection_has_error(conn = xcb_connect(NULL, NULL)))
         err(EXIT_FAILURE, "xcb_connect error");
+
     bwm_setup();
+
     event_loop();
+
     cleanup();
-    return EXIT_SUCCESS;
+    return EXIT_FAILURE;
 }

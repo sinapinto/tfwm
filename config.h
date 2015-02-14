@@ -18,14 +18,14 @@ uint8_t steps[2] = { 25, 30 };
 static const char *terminal[] = { "urxvt", NULL };
 static const char *browser[] = { "firefox", NULL };
 
-static workspace workspaces[5]; /* number of workspaces - if you change this make sure to add/remove enough DESKTOPCHANGE keybinds below */
+#define NUM_WORKSPACES 5 /* number of workspaces */
 
 static key keys[] = {
    /* mod               keycode         function            arg   */
     /* launch a new terminal emulator */
-    { MOD ,             XK_Return,      spawn,              {.com=terminal} },
+    { MOD,             XK_Return,       spawn,              {.com=terminal} },
     /* launch a browser */
-    { MOD ,             XK_f,           spawn,              {.com=browser} },
+    { MOD,             XK_f,            spawn,              {.com=browser} },
     /* move the window down */
     { MOD,              XK_j,           move,               {.i=0}   },
     /* move the window right */
@@ -51,19 +51,24 @@ static key keys[] = {
     /* fullscreen the window (toggle) */
     { MOD,              XK_a,           toggle_maximize,    {.i=0}   },
     /* focus the next window */
-    { MOD,              XK_Tab,         cycle_win,            {.i=0}   },
+    { MOD,              XK_Tab,         cycle_win,          {.i=0}   },
     /* focus the previous window */
-    { MOD | SHIFT,      XK_Tab,         cycle_win,            {.i=1}   },
+    { MOD | SHIFT,      XK_Tab,         cycle_win,          {.i=1}   },
     /* focus the next window without changing stacking order */
-    { MOD | CTRL,       XK_Tab,         cycle_win,            {.i=2}   },
+    { MOD | CTRL,       XK_Tab,         cycle_win,          {.i=2}   },
     /* kill the focused window */
-    { MOD | SHIFT,      XK_q,           killwin,            {.i=0}   },
+    { MOD,              XK_q,           kill_current,       {.i=0}   },
     /* exit bwm */
-    { MOD | SHIFT,      XK_e,           cleanup,            {.i=0}   },
-    /* switch to various workspaces */
+    { MOD | SHIFT,      XK_e,           bwm_exit,            {.i=0}   },
+    /* change workspace */
      DESKTOPCHANGE(     XK_1,                          0)
      DESKTOPCHANGE(     XK_2,                          1)
      DESKTOPCHANGE(     XK_3,                          2)
      DESKTOPCHANGE(     XK_4,                          3)
      DESKTOPCHANGE(     XK_5,                          4)
+     DESKTOPCHANGE(     XK_5,                          5)
+     DESKTOPCHANGE(     XK_5,                          6)
+     DESKTOPCHANGE(     XK_5,                          7)
+     DESKTOPCHANGE(     XK_5,                          8)
+     DESKTOPCHANGE(     XK_5,                          9)
 };
