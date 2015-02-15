@@ -61,7 +61,7 @@ done | dzen2 -p
 
 Demo
 ----
-![gif](https://u.teknik.io/62xp0W.gif)
+![Demo](http://u.teknik.io/62xp0W.gif)
 
 Author
 ------
