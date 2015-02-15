@@ -44,7 +44,7 @@ Configuration is done throught the `config.h` file. should be straightforward.
 bwm does not come with a panel.  However, if you want to use your own, bwm
 supports the EWMH hints needed to easily find the workspace. Here's a simple example using [dzen2](http://github.com/robm/dzen).
 
-```
+```sh
 #!/bin/sh
 while :; do
     line=
@@ -61,7 +61,7 @@ done | dzen2 -p
 
 Demo
 ----
-[gif](https://u.teknik.io/62xp0W.gif)
+![Demo](http://u.teknik.io/62xp0W.gif)
 
 Author
 ------

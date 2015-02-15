@@ -471,7 +471,8 @@ static void client_to_workspace(const Arg *arg)
     client *tmp = current;
     const uint8_t tmp2 = current_workspace;
 
-    xcb_change_property(conn, XCB_PROP_MODE_REPLACE, current->win, wmatoms[NET_WM_DESKTOP], XCB_ATOM_CARDINAL, 32, 1,&arg->i);
+    xcb_change_property(conn, XCB_PROP_MODE_REPLACE, current->win,
+                    wmatoms[NET_WM_DESKTOP], XCB_ATOM_CARDINAL, 32, 1, &arg->i);
 
     // Add client to workspace
     select_workspace(arg->i);
@@ -865,7 +866,9 @@ static void bwm_setup()
 	uint32_t mask = XCB_CW_EVENT_MASK;
 	uint32_t values[] = { XCB_EVENT_MASK_POINTER_MOTION };
 	xcb_window_t recorder = xcb_generate_id(conn);
-	xcb_create_window(conn, XCB_COPY_FROM_PARENT, recorder, root, 0, 0, screen->width_in_pixels, screen->height_in_pixels, 0, XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT, mask, values);
+	xcb_create_window(conn, XCB_COPY_FROM_PARENT, recorder, root, 0, 0,
+            screen->width_in_pixels, screen->height_in_pixels, 0,
+            XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT, mask, values);
 
 	xcb_atom_t net_atoms[] = {ewmh->_NET_SUPPORTED,
 	                          ewmh->_NET_NUMBER_OF_DESKTOPS,
@@ -876,10 +879,6 @@ static void bwm_setup()
 	                          ewmh->_NET_WM_STATE,
 	                          ewmh->_NET_WM_STATE_FULLSCREEN,
 	                          ewmh->_NET_WM_WINDOW_TYPE,
-	                          ewmh->_NET_WM_WINDOW_TYPE_DOCK,
-	                          ewmh->_NET_WM_WINDOW_TYPE_DESKTOP,
-	                          ewmh->_NET_WM_WINDOW_TYPE_NOTIFICATION,
-	                          ewmh->_NET_WM_WINDOW_TYPE_TOOLBAR,
                               ewmh->_NET_WM_PID,
                               ewmh->_NET_WM_NAME};
 
