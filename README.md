@@ -39,13 +39,29 @@ By default, bwm does not set an X cursor, so the "cross" cursor is usually displ
 
     xsetroot -cursor_name left_ptr
 
-Exiting bwm
------------
-To end the current bwm session, press `Mod+Shift+E`. By default, `Mod` is the `Alt` key.
+Configuration is done throught the `config.h` file. should be straightforward.
 
-Configuration
--------------
-Configuration of bwm is done by modifying `config.h` and recompiling the source code.
+bwm does not come with a panel.  However, if you want to use your own, bwm
+supports the EWMH hints needed to easily find the workspace. Here's a simple example using [dzen2](http://github.com/robm/dzen).
+
+```
+#!/bin/sh
+while :; do
+    line=
+    current=`xprop -root _NET_CURRENT_DESKTOP | awk '{print $3}'`
+    total=`xprop -root _NET_NUMBER_OF_DESKTOPS | awk '{print $3}'`
+    for i in `seq 1 $current`; do line="${line} $i "; done
+    line="${line}^bg(#333333) $((current + 1)) ^bg()"
+    for i in `seq $((current + 2)) $total`; do line="${line} $i "; done
+    echo "$line"
+    sleep 1
+done | dzen2 -p
+
+```
+
+Demo
+----
+[gif](https://u.teknik.io/62xp0W.gif)
 
 Author
 ------
