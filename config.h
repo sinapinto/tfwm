@@ -66,9 +66,8 @@ static key keys[] = {
      DESKTOPCHANGE(     XK_3,                          2)
      DESKTOPCHANGE(     XK_4,                          3)
      DESKTOPCHANGE(     XK_5,                          4)
-     DESKTOPCHANGE(     XK_5,                          5)
-     DESKTOPCHANGE(     XK_5,                          6)
-     DESKTOPCHANGE(     XK_5,                          7)
-     DESKTOPCHANGE(     XK_5,                          8)
-     DESKTOPCHANGE(     XK_5,                          9)
+     DESKTOPCHANGE(     XK_6,                          5)
+     DESKTOPCHANGE(     XK_7,                          6)
+     DESKTOPCHANGE(     XK_8,                          7)
+     DESKTOPCHANGE(     XK_9,                          8)
 };
