@@ -61,7 +61,7 @@ done | dzen2 -p
 
 Demo
 ----
-![Demo](http://i.imgur.com/QHNVDrW.gif)
+![Demo](http://i.imgur.com/HJ6TcHM.gif)
 
 Author
 ------
