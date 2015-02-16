@@ -35,7 +35,8 @@
 #include <xcb/xcb_ewmh.h>
 #include <X11/keysym.h>
 
-/*#define DEBUG*/
+/* uncomment to print debug statements */
+#define DEBUG
 
 #ifdef DEBUG
 #   define PDEBUG(...) \
@@ -230,6 +231,8 @@ static client *window_to_client(xcb_window_t w)
  */
 static void resize(const Arg *arg)
 {
+    if (current == NULL)
+        return;
     if (!current->win || current->win == screen->root)
         return;
 
@@ -312,8 +315,11 @@ static void resize(const Arg *arg)
  * so that it can still be unmaximized */
 static void move(const Arg *arg)
 {
+    if (current == NULL)
+        return;
     if (!current->win || current->win == screen->root)
         return;
+
     uint8_t step = steps[0];
 
     switch (arg->i)
@@ -391,7 +397,7 @@ static void toggle_maximize(const Arg *arg)
         focus_client(current);
     }
 
-    long data[] = { current->is_maximized ? wmatoms[NET_FULLSCREEN] : XCB_NONE };
+    long data[] = { current->is_maximized ? wmatoms[NET_FULLSCREEN] : XCB_ICCCM_WM_STATE_NORMAL };
 
     xcb_change_property(conn, XCB_PROP_MODE_REPLACE, current->win,
                         wmatoms[NET_WM_STATE], XCB_ATOM_ATOM, 32, 1, data);
@@ -500,7 +506,13 @@ static void setup_win(xcb_window_t w)
     xcb_map_window(conn, w);
     add_window_to_list(w);
 
-    xcb_change_property(conn, XCB_PROP_MODE_REPLACE, w, wmatoms[NET_WM_DESKTOP], XCB_ATOM_CARDINAL, 32, 1,&current_workspace);
+    /* set its workspace hint */
+    xcb_change_property(conn, XCB_PROP_MODE_REPLACE, w, wmatoms[NET_WM_DESKTOP],
+                        XCB_ATOM_CARDINAL, 32, 1,&current_workspace);
+    /* set normal state */
+    long data[] = { XCB_ICCCM_WM_STATE_NORMAL, XCB_NONE };
+    xcb_change_property(conn, XCB_PROP_MODE_REPLACE, w, wmatoms[WM_STATE],
+                        wmatoms[WM_STATE], 32, 2, data);
 
     focus_client(current);
     xcb_flush(conn); 
@@ -523,7 +535,7 @@ static void add_window_to_list(xcb_window_t w)
 
     if (head == NULL)
     {
-        PDEBUG("add_window_to_list [new head] %d\n", w);
+        /*PDEBUG("add_window_to_list [new head] %d\n", w);*/
         c->next = NULL;
         c->prev = NULL;
         c->win = w;
@@ -533,7 +545,7 @@ static void add_window_to_list(xcb_window_t w)
     }
     else
     {
-        PDEBUG("add_window_to_list %d\n", w);
+        /*PDEBUG("add_window_to_list %d\n", w);*/
         for (t=head; t->prev != NULL; t=t->prev)
             ;
         c->prev = NULL;
@@ -596,35 +608,44 @@ static void kill_current()
     if (NULL == current)
         return;
 
-    PDEBUG("kill current client\n");
-
+    /* try sending WM_DELETE_WINDOW message */
     xcb_get_property_cookie_t c;
-    c = xcb_icccm_get_wm_protocols(conn, current->win, wmatoms[WM_PROTOCOLS]);
-
     xcb_icccm_get_wm_protocols_reply_t reply;
     bool use_delete= false;
 
+    c = xcb_icccm_get_wm_protocols(conn, current->win, wmatoms[WM_PROTOCOLS]);
 
     if (xcb_icccm_get_wm_protocols_reply(conn, c, &reply, NULL) == 1)
     {
-        for (int i=0; i != reply.atoms_len; i++)
+        for (unsigned int i=0; i<reply.atoms_len; i++)
         {
-            if ((use_delete = reply.atoms[i] == wmatoms[WM_DELETE_WINDOW]))
+            if ((reply.atoms[i] == wmatoms[WM_DELETE_WINDOW]))
             {
-                xcb_client_message_event_t ev = {.response_type = XCB_CLIENT_MESSAGE,
-                    .format = 32,                  .sequence = 0,
-                    .window = current->win,        .type = wmatoms[WM_PROTOCOLS],
-                    .data.data32 = { wmatoms[WM_DELETE_WINDOW], XCB_CURRENT_TIME }
-                };
-                xcb_send_event(conn, 0, current->win, XCB_EVENT_MASK_NO_EVENT, (char*)&ev);
+                use_delete = true;
                 break;
             }
         }
-        xcb_icccm_get_wm_protocols_reply_wipe(&reply);
     }
 
-    if (!use_delete)
+    /* free'ing the reply  makes it crash for some reason :( */
+    /*xcb_icccm_get_wm_protocols_reply_wipe(&reply);*/
+
+    if (use_delete)
+    {
+        xcb_client_message_event_t ev = {
+            .response_type = XCB_CLIENT_MESSAGE,
+            .format = 32,
+            .sequence = 0,
+            .window = current->win,
+            .type = wmatoms[WM_PROTOCOLS],
+            .data.data32 = { wmatoms[WM_DELETE_WINDOW], XCB_CURRENT_TIME }
+        };
+        xcb_send_event(conn, false, current->win, XCB_EVENT_MASK_NO_EVENT, (char*)&ev);
+    }
+    else
+    {
         xcb_kill_client(conn, current->win);
+    }
 
     xcb_flush(conn); 
 }
@@ -632,8 +653,8 @@ static void kill_current()
 /* focus the prev/next window in the list */
 static void cycle_win(const Arg *arg)
 {
+    if(current == NULL || head == NULL) return;
     client *c;
-    if(current != NULL && head != NULL)
     {
         if (arg->i == 1) // focus prev
         {
@@ -670,14 +691,15 @@ static void cycle_win(const Arg *arg)
 /* focus input on window and change window's border color */
 static void focus_client(struct client *c)
 {
-    uint32_t values[1];
-    if (NULL == current) // we just removed the head, so nothing to focus
+    if (NULL == current || NULL == c) // we just removed the head, so nothing to focus
     {
         xcb_set_input_focus(conn, XCB_NONE, XCB_INPUT_FOCUS_POINTER_ROOT,
                             XCB_CURRENT_TIME);
         xcb_flush(conn);
         return;
     }
+
+    uint32_t values[1];
     if (BORDER_WIDTH > 0)
     {
         values[0] = FOCUS;
@@ -740,7 +762,7 @@ static void event_loop(void)
             client *c;
             if ((c = window_to_client(e->window)) != NULL)
             {
-                remove_window(e->window);
+                remove_window(c->win);
                 focus_client(current);
             }
         } break;
@@ -755,15 +777,20 @@ static void event_loop(void)
                     CLEANMASK(keys[i].mod) == CLEANMASK(e->state) &&
                     keys[i].function)
                 {
-                     keys[i].function(&keys[i].arg);
-                     break;
+                    PDEBUG("function call, i is %d\n", i);
+                    keys[i].function(&keys[i].arg);
+                    break;
                 }
             }
         } break;
         
         case XCB_KEY_RELEASE: break;
+
         default:
-            PDEBUG("Unknown event: %s\n", evnames[ev->response_type]);
+            if (ev->response_type <= MAX_EVENTS)
+                PDEBUG("Event: %s\n", evnames[ev->response_type]);
+            else
+                PDEBUG("Event: #%d. Not known.\n", ev->response_type);
             break;
 
         } /* switch */
@@ -837,7 +864,7 @@ static void ewmh_init(void)
 {
     ewmh = malloc(sizeof(xcb_ewmh_connection_t));
     if (xcb_ewmh_init_atoms_replies(ewmh, xcb_ewmh_init_atoms(conn, ewmh), NULL) == 0)
-            err(EXIT_FAILURE, "can't initialize ewmh.");
+            err(EXIT_FAILURE, "couldn't initialize ewmh.");
 }
 
 /* set up sinal handlers, display, mask, atoms, and keys */
@@ -895,7 +922,6 @@ static void bwm_setup()
 
     static const uint8_t _WORKSPACES = NUM_WORKSPACES;
     current_workspace = 0;
-
     xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root,
                         wmatoms[NET_CURRENT_DESKTOP], XCB_ATOM_CARDINAL,
                         32, 1,&current_workspace);
@@ -903,12 +929,13 @@ static void bwm_setup()
                         wmatoms[NET_NUMBER_OF_DESKTOPS], XCB_ATOM_CARDINAL,
                         32, 1,&_WORKSPACES);
     xcb_ewmh_set_number_of_desktops(ewmh, def_screen, _WORKSPACES);
-
 	xcb_ewmh_set_current_desktop(ewmh, def_screen, 0);
+
+    focus_client(NULL); 
 
     /* keys */
     if (!grab_keys())
-        err(EXIT_FAILURE, "error etting up keycodes.");
+        err(EXIT_FAILURE, "error setting up keycodes.");
 
     xcb_flush(conn);
 }
