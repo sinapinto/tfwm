@@ -1,3 +1,5 @@
+#define MAX_EVENTS 34
+
 static char *evnames[] = {
     "0",
     "1",
