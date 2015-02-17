@@ -10,6 +10,8 @@ uint8_t steps[2] = { 25, 30 };
 #define FOCUS        0xafaf87  /* focused window border color */
 #define BORDER_WIDTH 2
 
+#define CENTER_BY_DEFAULT 1    /* windows start centered (0 to turn off) */
+
 #define DESKTOPCHANGE(K,N) \
 {  MOD ,             K,              change_workspace, {.i=N}}, \
 {  MOD | SHIFT,      K,              client_to_workspace, {.i=N}},
@@ -58,6 +60,8 @@ static key keys[] = {
     { MOD | CTRL,       XK_Tab,         cycle_win,          {.i=2}   },
     /* kill the focused window */
     { MOD,              XK_q,           kill_current,       {.i=0}   },
+    /* restart bwm */
+    { MOD | SHIFT,      XK_r,           bwm_restart,        {.i=0}   },
     /* exit bwm */
     { MOD | SHIFT,      XK_e,           bwm_exit,            {.i=0}   },
     /* change workspace */

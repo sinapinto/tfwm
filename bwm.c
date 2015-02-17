@@ -28,7 +28,7 @@
 #include <unistd.h>
 #include <err.h>
 #include <signal.h>
-#include <sys/wait.h> // waitpid()
+#include <sys/wait.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_keysyms.h>
 #include <xcb/xcb_icccm.h>
@@ -36,7 +36,7 @@
 #include <X11/keysym.h>
 
 /* uncomment to print debug statements */
-#define DEBUG
+/*#define DEBUG*/
 
 #ifdef DEBUG
 #   define PDEBUG(...) \
@@ -106,6 +106,7 @@ static xcb_atom_t wmatoms[ATOM_COUNT];
 
 /* prototypes */
 static void bwm_exit();
+static void bwm_restart();
 static void cleanup();
 static void sighandle(int signal);
 static void sigchld();
@@ -147,11 +148,20 @@ static void bwm_exit() {
     exit(EXIT_SUCCESS);
 }
 
+static void bwm_restart() {
+    xcb_set_input_focus(conn, XCB_NONE,XCB_INPUT_FOCUS_POINTER_ROOT ,XCB_CURRENT_TIME);
+    xcb_ewmh_connection_wipe(ewmh);
+    if (ewmh) free(ewmh);
+    xcb_disconnect(conn);
+
+    execvp(BWM_PATH, NULL);
+}
+
 static void cleanup()
 {
     xcb_set_input_focus(conn, XCB_NONE, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
 	xcb_ewmh_connection_wipe(ewmh);
-	free(ewmh);
+	if (ewmh) free(ewmh);
 
     xcb_query_tree_reply_t  *query;
     xcb_window_t *c;
@@ -328,7 +338,7 @@ static void move(const Arg *arg)
         case 1: current->x += step; break;
         case 2: current->y -= step; break;
         case 3: current->x -= step; break;
-        default: PDEBUG("unkown argument for move\n"); break;
+        default: PDEBUG("unknown argument for move\n"); break;
     }
     uint32_t values[2];
     values[0] = current->x; 
@@ -407,6 +417,7 @@ static void toggle_maximize(const Arg *arg)
 static void toggle_centered_mode(const Arg *arg)
 {
     if (!current) return;
+    (void) arg;
     current->is_centered = current->is_centered ? false : true;
     center_win(current);
 }
@@ -503,7 +514,8 @@ static void setup_win(xcb_window_t w)
     values[1] = XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY;
     xcb_change_window_attributes(conn, w, XCB_CW_EVENT_MASK, values);
     change_border_width(w, BORDER_WIDTH);
-    xcb_map_window(conn, w);
+    if (CENTER_BY_DEFAULT == 0)
+        xcb_map_window(conn, w);
     add_window_to_list(w);
 
     /* set its workspace hint */
@@ -525,6 +537,7 @@ static void add_window_to_list(xcb_window_t w)
     if ((c = malloc(sizeof(client))) == NULL)
         err(EXIT_FAILURE, "couldn't allocate memory");
 
+    PDEBUG("add window to list\n");
     c->id = w;
     c->x = 0;
     c->y = 0;
@@ -535,7 +548,6 @@ static void add_window_to_list(xcb_window_t w)
 
     if (head == NULL)
     {
-        /*PDEBUG("add_window_to_list [new head] %d\n", w);*/
         c->next = NULL;
         c->prev = NULL;
         c->win = w;
@@ -545,7 +557,6 @@ static void add_window_to_list(xcb_window_t w)
     }
     else
     {
-        /*PDEBUG("add_window_to_list %d\n", w);*/
         for (t=head; t->prev != NULL; t=t->prev)
             ;
         c->prev = NULL;
@@ -619,7 +630,7 @@ static void kill_current()
     {
         for (unsigned int i=0; i<reply.atoms_len; i++)
         {
-            if ((reply.atoms[i] == wmatoms[WM_DELETE_WINDOW]))
+            if (reply.atoms[i] == wmatoms[WM_DELETE_WINDOW])
             {
                 use_delete = true;
                 break;
@@ -753,6 +764,11 @@ static void event_loop(void)
         {
             xcb_map_request_event_t *e = (xcb_map_request_event_t *)ev;
             setup_win(e->window);
+            if (CENTER_BY_DEFAULT > 0)
+            {
+                toggle_centered_mode(NULL);
+                xcb_map_window(conn, e->window);
+            }
         } break;
 
         case XCB_DESTROY_NOTIFY:
@@ -786,12 +802,14 @@ static void event_loop(void)
         
         case XCB_KEY_RELEASE: break;
 
+#ifdef DEBUG
         default:
             if (ev->response_type <= MAX_EVENTS)
                 PDEBUG("Event: %s\n", evnames[ev->response_type]);
             else
                 PDEBUG("Event: #%d. Not known.\n", ev->response_type);
             break;
+#endif
 
         } /* switch */
         free(ev);
