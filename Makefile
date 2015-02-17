@@ -1,10 +1,12 @@
-SRC 	= bwm.c
-TARGET 	= $(SRC:.c=)
-OBJ 	= $(SRC:.c=.o)
-CFLAGS 	+= -std=c99 -Os -Wall -pedantic -I.
-LDFLAGS += `pkg-config --libs xcb xcb-keysyms xcb-icccm xcb-ewmh`
 CC		?= gcc
 PREFIX 	?= /usr
+BWM_PATH = ${PREFIX}/bin/bwm
+
+SRC 	 = bwm.c
+TARGET 	 = $(SRC:.c=)
+OBJ 	 = $(SRC:.c=.o)
+CFLAGS 	+= -std=c99 -Os -Wall -pedantic -I. -DBWM_PATH=\"${BWM_PATH}\"
+LDFLAGS += `pkg-config --libs xcb xcb-keysyms xcb-icccm xcb-ewmh`
 
 all: $(TARGET)
 
