@@ -767,7 +767,12 @@ static void event_loop(void)
             {
                 remove_window(c->win);
                 if (current)
+                {
                     focus_client(current);
+                    uint32_t values[1] = {XCB_STACK_MODE_ABOVE};
+                    xcb_configure_window(conn, current->win,
+                                        XCB_CONFIG_WINDOW_STACK_MODE, values);
+                }
             }
         }
 
