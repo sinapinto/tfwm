@@ -129,7 +129,6 @@ static void remove_window(xcb_window_t w);
 static void kill_current();
 static void cycle_win(const Arg *arg);
 static void focus_client(struct client *c);
-static void set_input_focus(xcb_window_t win);
 static void event_loop(void);
 static bool grab_keys(void);
 static xcb_keysym_t xcb_get_keysym(xcb_keycode_t keycode);
@@ -149,7 +148,8 @@ static void bwm_exit() {
 }
 
 static void bwm_restart() {
-    xcb_set_input_focus(conn, XCB_NONE,XCB_INPUT_FOCUS_POINTER_ROOT ,XCB_CURRENT_TIME);
+    xcb_set_input_focus(conn, XCB_NONE,XCB_INPUT_FOCUS_POINTER_ROOT,
+                        XCB_CURRENT_TIME);
     xcb_ewmh_connection_wipe(ewmh);
     if (ewmh) free(ewmh);
     xcb_disconnect(conn);
@@ -159,13 +159,15 @@ static void bwm_restart() {
 
 static void cleanup()
 {
-    xcb_set_input_focus(conn, XCB_NONE, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
+    xcb_set_input_focus(conn, XCB_NONE, XCB_INPUT_FOCUS_POINTER_ROOT,
+                        XCB_CURRENT_TIME);
 	xcb_ewmh_connection_wipe(ewmh);
 	if (ewmh) free(ewmh);
 
     xcb_query_tree_reply_t  *query;
     xcb_window_t *c;
-    if ((query = xcb_query_tree_reply(conn,xcb_query_tree(conn,screen->root),0))) {
+    if ((query = xcb_query_tree_reply(conn,xcb_query_tree(conn,screen->root),0)))
+    {
         c = xcb_query_tree_children(query);
         for (unsigned int i = 0; i != query->children_len; ++i)
             free(window_to_client(c[i]));
@@ -186,7 +188,7 @@ static void sigchld() {
     if (signal(SIGCHLD, sigchld) == SIG_ERR)
         err(EXIT_FAILURE, "cannot install SIGCHLD handler");
 
-    while(0 < waitpid(-1, NULL, WNOHANG));
+    while (0 < waitpid(-1, NULL, WNOHANG));
 }
 
 /* store the window dimensions in x,y,width,height */
@@ -407,7 +409,8 @@ static void toggle_maximize(const Arg *arg)
         focus_client(current);
     }
 
-    long data[] = { current->is_maximized ? wmatoms[NET_FULLSCREEN] : XCB_ICCCM_WM_STATE_NORMAL };
+    long data[] = { current->is_maximized ? wmatoms[NET_FULLSCREEN]
+                                          : XCB_ICCCM_WM_STATE_NORMAL };
 
     xcb_change_property(conn, XCB_PROP_MODE_REPLACE, current->win,
                         wmatoms[NET_WM_STATE], XCB_ATOM_ATOM, 32, 1, data);
@@ -427,7 +430,7 @@ static void center_win(client *c)
 {
     if (!c) return;
 
-    PDEBUG("centering window");
+    PDEBUG("centering window\n");
 
     c->x = screen->width_in_pixels - (c->width + BORDER_WIDTH*2);
     c->x /= 2;
@@ -491,12 +494,12 @@ static void client_to_workspace(const Arg *arg)
     xcb_change_property(conn, XCB_PROP_MODE_REPLACE, current->win,
                     wmatoms[NET_WM_DESKTOP], XCB_ATOM_CARDINAL, 32, 1, &arg->i);
 
-    // Add client to workspace
+    /* add client to workspace */
     select_workspace(arg->i);
     add_window_to_list(tmp->win);
     save_workspace(arg->i);
 
-    // Remove client from current workspace
+    /* remove client from current workspace */
     select_workspace(tmp2);
     xcb_unmap_window(conn,tmp->win);
     remove_window(tmp->win);
@@ -508,7 +511,6 @@ static void client_to_workspace(const Arg *arg)
  * set up window's mask and border and add it to the list, and map+focus it */
 static void setup_win(xcb_window_t w)
 {
-    PDEBUG("map request\n");
     uint32_t values[2];
     values[0] = XCB_EVENT_MASK_ENTER_WINDOW;
     values[1] = XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY;
@@ -537,7 +539,8 @@ static void add_window_to_list(xcb_window_t w)
     if ((c = malloc(sizeof(client))) == NULL)
         err(EXIT_FAILURE, "couldn't allocate memory");
 
-    PDEBUG("add window to list\n");
+    if (!w) return;
+    PDEBUG("add window to list %d\n", w);
     c->id = w;
     c->x = 0;
     c->y = 0;
@@ -633,13 +636,11 @@ static void kill_current()
             if (reply.atoms[i] == wmatoms[WM_DELETE_WINDOW])
             {
                 use_delete = true;
+                xcb_icccm_get_wm_protocols_reply_wipe(&reply);
                 break;
             }
         }
     }
-
-    /* free'ing the reply  makes it crash for some reason :( */
-    /*xcb_icccm_get_wm_protocols_reply_wipe(&reply);*/
 
     if (use_delete)
     {
@@ -651,7 +652,8 @@ static void kill_current()
             .type = wmatoms[WM_PROTOCOLS],
             .data.data32 = { wmatoms[WM_DELETE_WINDOW], XCB_CURRENT_TIME }
         };
-        xcb_send_event(conn, false, current->win, XCB_EVENT_MASK_NO_EVENT, (char*)&ev);
+        xcb_send_event(conn, true, current->win,
+                      XCB_EVENT_MASK_NO_EVENT, (char*)&ev);
     }
     else
     {
@@ -664,48 +666,62 @@ static void kill_current()
 /* focus the prev/next window in the list */
 static void cycle_win(const Arg *arg)
 {
-    if(current == NULL || head == NULL) return;
+    if (current == NULL || head == NULL)
+        return;
+
     client *c;
+
+    if (arg->i == 1) // focus prev
     {
-        if (arg->i == 1) // focus prev
+        if (current->prev == NULL) // at head.. prev win is tail
+            for(c=head; c->next != NULL; c=c->next);
+        else
+            c = current->prev;
+    }
+    else // focus next
+    {
+        if (current->next == NULL) // at tail.. next win is head
         {
-            if (current->prev == NULL) // at head.. prev win is tail
-                for(c=head; c->next != NULL; c=c->next);
-            else
-                c = current->prev;
-        }
-        else // focus next
-        {
-            if (current->next == NULL) // at tail.. next win is head
-            {
-                if (current == head) return;  // this is the only client
-                c = head;
-            }
-            else
-                c = current->next;
-        }
-        change_border_color(current->win, UNFOCUS);
-        current = c;
-        if (arg->i == 2) // focus next window without changing stacking order
-        {
-            xcb_set_input_focus(conn, XCB_INPUT_FOCUS_POINTER_ROOT,
-                                c->win, XCB_CURRENT_TIME);
-            change_border_color(c->win, FOCUS);
-            xcb_flush(conn);
+            if (current == head)
+                return;  // this is the only client
+            c = head;
         }
         else
-            focus_client(current);
+        {
+            c = current->next;
+        }
     }
+
+    change_border_color(current->win, UNFOCUS);
+    current = c;
+
+    if (arg->i == 2) // focus next window without changing stacking order
+    {
+        xcb_set_input_focus(conn, XCB_INPUT_FOCUS_POINTER_ROOT,
+                            c->win, XCB_CURRENT_TIME);
+        change_border_color(c->win, FOCUS);
+        xcb_flush(conn);
+    }
+    else
+    {
+        focus_client(current);
+        uint32_t values[1];
+        values[0] = XCB_STACK_MODE_ABOVE;
+        xcb_configure_window(conn, current->win, XCB_CONFIG_WINDOW_STACK_MODE, 
+                            values);
+    }
+
 	xcb_ewmh_set_active_window(ewmh, def_screen, current->win);
 }
 
 /* focus input on window and change window's border color */
 static void focus_client(struct client *c)
 {
-    if (NULL == current || NULL == c) // we just removed the head, so nothing to focus
+    if (NULL == current || NULL == c)
     {
         xcb_set_input_focus(conn, XCB_NONE, XCB_INPUT_FOCUS_POINTER_ROOT,
                             XCB_CURRENT_TIME);
+        xcb_delete_property(conn, screen->root, wmatoms[NET_ACTIVE]);
         xcb_flush(conn);
         return;
     }
@@ -721,22 +737,11 @@ static void focus_client(struct client *c)
     xcb_change_property(conn, XCB_PROP_MODE_REPLACE, c->win, 
                         wmatoms[WM_STATE], wmatoms[WM_STATE], 32, 2, data);
 
-    set_input_focus(c->win);
+    xcb_set_input_focus(conn, XCB_INPUT_FOCUS_POINTER_ROOT, c->win,
+                        XCB_CURRENT_TIME);
 
     xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root,
                         wmatoms[NET_ACTIVE] , XCB_ATOM_WINDOW, 32, 1,&c->win);
-}
-
-/* set input focus and stack it on top; does not affect border color */
-static void set_input_focus(xcb_window_t win)
-{
-    uint32_t values[1];
-    values[0] = XCB_STACK_MODE_ABOVE;
-    xcb_configure_window(conn, win, XCB_CONFIG_WINDOW_STACK_MODE, 
-                        values);
-    xcb_set_input_focus(conn, XCB_INPUT_FOCUS_POINTER_ROOT, win,
-                        XCB_CURRENT_TIME);
-
     xcb_flush(conn);
 }
 
@@ -752,16 +757,34 @@ static void event_loop(void)
         switch ( CLEANMASK(ev->response_type) ) 
         {
 
+        /* invisible windows */
+        case XCB_UNMAP_NOTIFY:
+        {
+            xcb_unmap_notify_event_t *e = (xcb_unmap_notify_event_t *)ev;
+            client *c = window_to_client(e->window);
+            PDEBUG("Event: Unmap Notify %d\n", e->window);
+            if (c && e->window != screen->root)
+            {
+                remove_window(c->win);
+                if (current)
+                    focus_client(current);
+            }
+        }
+
         case XCB_CONFIGURE_NOTIFY:
         {
-            /* focus whatever window is sending a configure event */
-            xcb_configure_notify_event_t *e =
-                (xcb_configure_notify_event_t *)ev;
-            set_input_focus(e->window);
+            /* focus whatever window is sending a configure notify */
+            PDEBUG("Event: configure notify\n");
+            xcb_configure_notify_event_t *e = (xcb_configure_notify_event_t *)ev;
+            if (e->override_redirect) break;
+            xcb_set_input_focus(conn, XCB_INPUT_FOCUS_POINTER_ROOT, e->window,
+                        XCB_CURRENT_TIME);
+            xcb_flush(conn);
         } break;
 
         case XCB_MAP_REQUEST:
         {
+            PDEBUG("Event: map request\n");
             xcb_map_request_event_t *e = (xcb_map_request_event_t *)ev;
             setup_win(e->window);
             if (CENTER_BY_DEFAULT > 0)
@@ -773,6 +796,7 @@ static void event_loop(void)
 
         case XCB_DESTROY_NOTIFY:
         {
+            PDEBUG("Event: \033[0;31mdestroy notify\033[0m\n");
             xcb_destroy_notify_event_t *e = (xcb_destroy_notify_event_t *)ev;
 
             client *c;
@@ -793,15 +817,12 @@ static void event_loop(void)
                     CLEANMASK(keys[i].mod) == CLEANMASK(e->state) &&
                     keys[i].function)
                 {
-                    PDEBUG("function call, i is %d\n", i);
                     keys[i].function(&keys[i].arg);
                     break;
                 }
             }
         } break;
         
-        case XCB_KEY_RELEASE: break;
-
 #ifdef DEBUG
         default:
             if (ev->response_type <= MAX_EVENTS)
@@ -901,9 +922,11 @@ static void bwm_setup()
     ewmh_init();
 
     /* subscribe to events */
-    uint32_t value[1] = {XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT
-                       | XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY};
-    xcb_void_cookie_t cookie = xcb_change_window_attributes_checked(conn, root, XCB_CW_EVENT_MASK, value);
+    unsigned int value[1] = {XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT
+                          | XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY};
+
+    xcb_void_cookie_t cookie =
+        xcb_change_window_attributes_checked(conn, root, XCB_CW_EVENT_MASK, value);
     xcb_generic_error_t *error = xcb_request_check(conn, cookie);
     if (error != NULL)
         err(EXIT_FAILURE, "another window manager is running.");
