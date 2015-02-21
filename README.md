@@ -1,5 +1,5 @@
-bwm - bandit window manager
-===========================
+bwm
+===
 bwm is a minimalist, keyboard-centric, floating window manager for X.
 
 Current Features
@@ -12,17 +12,17 @@ Current Features
 * Multiple workspaces
 
 ### Centered Mode
-It isn't really a mode, it's more of an attribute.  A 'centered' window will remain planted in the middle of the screen even when it is resized.  When a centered window is moved it will lose it's centered attribute until it is re-activated.  You can configure whether windows start out in centered mode with the `CENTER_BY_DEFAULT` macro in config.h
+It isn't really a mode, it's more of an attribute.  A 'centered' window will stay fixed in the middle of the screen even when it is resized.  When a centered window is moved it will lose it's centered attribute until it is re-activated.  You can configure whether windows start out in centered mode with the `CENTER_BY_DEFAULT` macro in config.h
 
 ### Automatic refocusing
 Something that bugged me when using some other floating window managers was focus being lost after killing a window, making the user have to alt-tab or whatever to focus the next window. bwm does this for you.
 
 ### Focus without stacking
-As easy as this is to implement, most floating window managers don't have this feature.  Focusing a window without changing the stacking order means that your current window won't get covered up by whatever you are changing focus to.  This is useful for when you have a large window and a small window in front of it, and you want to switch focus to the large one, without covering up the smaller one, if that makes any sense.  if not, just try it and you will understand.
+As easy as this is to implement, most floating window managers don't have this feature.  Focusing a window without changing the stacking order means that your current window won't get covered up by whatever you are changing focus to.  This is useful when you have a large window and a small window in front of it, and you want to switch focus to the large one, without covering up the smaller one, if that makes any sense.  if not, just try it and you will understand.
 
 Installation
 ------------
-If you don't already have XCB on your system you will need to install it.
+If you don't already have the XCB library on your system you will need to install it.
 
 On Debian-based distributions:
 `sudo apt-get install xcb libxcb-util0-dev libxcb-keysyms1`
@@ -66,8 +66,8 @@ while :; do
 done | dzen2 -p
 ```
 
-bwm also does not have multi screen support.  I don't own an external monitor, so, unless I obtain one, I likely will not add support.
+bwm also does not have multi screen support.  I don't own an external monitor, so, unless I obtain one, I will/can not add support.
 
 Author
 ------
-Sina Pinto | sina.pinto at the domain gmail.com
+Sina Pinto | sina.pinto@gmail.com
