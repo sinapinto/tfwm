@@ -46,13 +46,14 @@
 #   define PDEBUG(...)
 #endif
 
-#define Mod1Mask     XCB_MOD_MASK_1
-#define Mod4Mask     XCB_MOD_MASK_4
-#define ShiftMask    XCB_MOD_MASK_SHIFT
-#define ControlMask  XCB_MOD_MASK_CONTROL
+#define Mod1Mask        XCB_MOD_MASK_1
+#define Mod4Mask        XCB_MOD_MASK_4
+#define ShiftMask       XCB_MOD_MASK_SHIFT
+#define ControlMask     XCB_MOD_MASK_CONTROL
 
 #define CLEANMASK(mask) ((mask & ~0x80))
 #define LENGTH(X)       (sizeof(X)/sizeof(*X))
+#define MAX(X, Y)       ((X) > (Y) ? (X) : (Y))
 
 typedef union {
     const char **com;   /* command */
@@ -71,6 +72,7 @@ struct client{
     xcb_drawable_t id;                       /* for get_geom */
     int16_t x, y; uint16_t width, height;    /* current dimensions */
     int16_t oldx, oldy; uint16_t oldw, oldh; /* for toggle_maximize */
+    uint16_t base_width, base_height, min_width, min_height; /* size hints */
     bool is_maximized;                       /* was fullscreened */
     bool is_centered;                        /* center mode is active */
     client *next;                            /* next client in list */
@@ -431,6 +433,9 @@ static void center_win(client *c)
     if (!c) return;
 
     PDEBUG("centering window\n");
+    PDEBUG("old: x: %d old y: %d old width: %d old height: %d\nx: %dy: %dwidth: %dheight: %d\n",
+            current->oldx, current->oldy, current->oldw, current->oldh,
+            current->x, current->y, current->width, current->height);
 
     c->x = screen->width_in_pixels - (c->width + BORDER_WIDTH*2);
     c->x /= 2;
@@ -511,13 +516,10 @@ static void client_to_workspace(const Arg *arg)
  * set up window's mask and border and add it to the list, and map+focus it */
 static void setup_win(xcb_window_t w)
 {
-    uint32_t values[2];
-    values[0] = XCB_EVENT_MASK_ENTER_WINDOW;
-    values[1] = XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY;
-    xcb_change_window_attributes(conn, w, XCB_CW_EVENT_MASK, values);
     change_border_width(w, BORDER_WIDTH);
     if (CENTER_BY_DEFAULT == 0)
         xcb_map_window(conn, w);
+
     add_window_to_list(w);
 
     /* set its workspace hint */
@@ -527,8 +529,8 @@ static void setup_win(xcb_window_t w)
     long data[] = { XCB_ICCCM_WM_STATE_NORMAL, XCB_NONE };
     xcb_change_property(conn, XCB_PROP_MODE_REPLACE, w, wmatoms[WM_STATE],
                         wmatoms[WM_STATE], 32, 2, data);
-
     focus_client(current);
+
     xcb_flush(conn); 
 }
 
@@ -542,10 +544,8 @@ static void add_window_to_list(xcb_window_t w)
     if (!w) return;
     PDEBUG("add window to list %d\n", w);
     c->id = w;
-    c->x = 0;
-    c->y = 0;
-    c->width = 0;
-    c->height = 0;
+    c->x = c->y = c->width = c->height = c->oldx = c->oldy = c->oldw = c->oldh = 0;
+    c->min_width = c->min_height = c->base_width = c->base_height = 0;
     c->is_maximized = false;
     c->is_centered = false;
 
@@ -573,6 +573,33 @@ static void add_window_to_list(xcb_window_t w)
     if (current) change_border_color(current->win, UNFOCUS);
     current = c;
 
+    /* size hints */
+    xcb_size_hints_t hints;
+    xcb_icccm_get_wm_normal_hints_reply(conn,
+            xcb_icccm_get_wm_normal_hints_unchecked(conn, w), &hints, NULL);
+    if (hints.flags &XCB_ICCCM_SIZE_HINT_BASE_SIZE)
+    {
+        c->base_width  = hints.base_width;
+        c->base_height = hints.base_height;
+        PDEBUG("base_width %d\nbase_height %d\n", c->base_width, c->base_height);
+    }
+    if (hints.flags & XCB_ICCCM_SIZE_HINT_P_MIN_SIZE)
+    {
+        c->min_width = hints.min_width;
+        c->min_height = hints.min_height;
+        PDEBUG("min_width %d\nmin_height %d\n", c->min_width, c->min_height);
+    }
+    if (c->width < MAX(c->min_width, c->base_width) ||
+        c->height < MAX(c->min_height, c->base_height))
+    {
+        c->width = c->width > c->min_width ? c->width : c->min_width;
+        c->height = c->height > c->min_height ? c->height : c->min_height;
+
+        uint32_t values[2] = { c->width, c->height };
+        xcb_configure_window(conn, current->win, XCB_CONFIG_WINDOW_WIDTH
+                            | XCB_CONFIG_WINDOW_HEIGHT, values);
+    }
+    /* wm state */
     long data[] = { XCB_ICCCM_WM_STATE_NORMAL, XCB_NONE };
     xcb_change_property(conn, XCB_PROP_MODE_REPLACE, current->win, 
                         wmatoms[WM_STATE], wmatoms[WM_STATE], 32, 2, data);
@@ -687,9 +714,7 @@ static void cycle_win(const Arg *arg)
             c = head;
         }
         else
-        {
             c = current->next;
-        }
     }
 
     change_border_color(current->win, UNFOCUS);
@@ -776,16 +801,60 @@ static void event_loop(void)
             }
         }
 
-        case XCB_CONFIGURE_NOTIFY:
+        case XCB_CONFIGURE_REQUEST:
         {
-            /* focus whatever window is sending a configure notify */
-            PDEBUG("Event: configure notify\n");
-            xcb_configure_notify_event_t *e = (xcb_configure_notify_event_t *)ev;
-            if (e->override_redirect) break;
-            xcb_set_input_focus(conn, XCB_INPUT_FOCUS_POINTER_ROOT, e->window,
-                        XCB_CURRENT_TIME);
+            PDEBUG("xcb confgirue request\n");
+            xcb_configure_request_event_t *e = (xcb_configure_request_event_t *)ev;
+            client *c = window_to_client(e->window);
+            if (!c) break;
+            if (c->is_maximized) break;
+
+            unsigned int v[7];
+            uint8_t i = 0;
+
+            if (e->value_mask & XCB_CONFIG_WINDOW_X)
+            {
+                PDEBUG("CONFIG: x: %d\n", e->x);
+                v[i++] = c->x = e->x;
+            }
+            if (e->value_mask & XCB_CONFIG_WINDOW_Y)
+            {
+                PDEBUG("CONFIG: y: %d\n", e->y);
+                v[i++] = c->y = e->y;
+            }
+            if (e->value_mask & XCB_CONFIG_WINDOW_WIDTH)
+            {
+                PDEBUG("CONFIG: width: %d\n", e->width);
+                v[i++] = c->width = e->width;
+            }
+            if (e->value_mask & XCB_CONFIG_WINDOW_HEIGHT)
+            {
+                PDEBUG("CONFIG: height: %d\n", e->height);
+                v[i++] = c->height = e->height;
+            }
+            if (e->value_mask & XCB_CONFIG_WINDOW_BORDER_WIDTH)
+            {
+                PDEBUG("CONFIG: border width: %d\n", e->border_width);
+                v[i++] = e->border_width;
+            }
+            if (e->value_mask & XCB_CONFIG_WINDOW_SIBLING)
+            {
+                PDEBUG("CONFIG: sibling\n");
+                v[i++] = e->sibling;
+            }
+            if (e->value_mask & XCB_CONFIG_WINDOW_STACK_MODE)
+            {
+                PDEBUG("CONFIG: stack mode\n");
+                v[i++] = e->stack_mode;
+            }
+            /* re-center the win if it is in centered mode */
+            if (c->is_centered)
+                center_win(c);
+
+            xcb_configure_window(conn, e->window, e->value_mask, v);
             xcb_flush(conn);
-        } break;
+            break;
+        }
 
         case XCB_MAP_REQUEST:
         {
@@ -797,6 +866,8 @@ static void event_loop(void)
                 toggle_centered_mode(NULL);
                 xcb_map_window(conn, e->window);
             }
+            xcb_set_input_focus(conn, XCB_INPUT_FOCUS_POINTER_ROOT, e->window,
+                        XCB_CURRENT_TIME);
         } break;
 
         case XCB_DESTROY_NOTIFY:
@@ -992,9 +1063,7 @@ int main()
         err(EXIT_FAILURE, "xcb_connect error");
 
     bwm_setup();
-
     event_loop();
-
     cleanup();
     return EXIT_FAILURE;
 }
