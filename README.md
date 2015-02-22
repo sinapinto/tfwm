@@ -30,7 +30,7 @@ On Debian-based distributions:
 On Arch-based distributions:
 `sudo pacman -S libxcb xcb-util xcb-util-keysyms`
 
-When installing bwm, edit Makefile and config.h to your needs (the binary is installed into /usr/bin by default).
+When installing bwm, edit Makefile and config.h to your needs (the binary is installed into /usr/local/bin by default).
 
     $ git clone git://github.com/sinapinto/bwm.git
     $ cd bwm
