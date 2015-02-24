@@ -75,6 +75,7 @@ struct client{
     uint16_t base_width, base_height, min_width, min_height; /* size hints */
     bool is_maximized;                       /* was fullscreened */
     bool is_centered;                        /* center mode is active */
+    bool dontcenter;
     client *next;                            /* next client in list */
     client *prev;                            /* previous client */
     xcb_window_t win;                        /* the client's window */
@@ -107,14 +108,8 @@ enum { WM_PROTOCOLS, WM_DELETE_WINDOW, WM_STATE, NET_SUPPORTED,
 static xcb_atom_t wmatoms[ATOM_COUNT];
 
 /* prototypes */
-static void bwm_exit();
-static void bwm_restart();
-static void cleanup();
-static void sighandle(int signal);
-static void sigchld();
 static int get_geom(xcb_drawable_t win, int16_t *x, int16_t *y,
                     uint16_t *width, uint16_t *height);
-static void spawn(const Arg *arg);
 static client *window_to_client(xcb_window_t w);
 static void resize(const Arg *arg);
 static void move(const Arg *arg);
@@ -138,60 +133,17 @@ static xcb_keycode_t* xcb_get_keycodes(xcb_keysym_t keysym);
 static void change_border_width(xcb_window_t win, uint8_t width);
 static void change_border_color(xcb_window_t win, long color);
 static xcb_atom_t getatom(const char *atom_name);
+static void spawn(const Arg *arg);
 static void bwm_setup();
+static void bwm_exit();
+static void bwm_restart();
+static void cleanup();
+static void sighandle(int signal);
+static void sigchld();
 
 #include "config.h"
 
 static workspace workspaces[NUM_WORKSPACES];
-
-static void bwm_exit() {
-    cleanup();
-    exit(EXIT_SUCCESS);
-}
-
-static void bwm_restart() {
-    xcb_set_input_focus(conn, XCB_NONE,XCB_INPUT_FOCUS_POINTER_ROOT,
-                        XCB_CURRENT_TIME);
-    xcb_ewmh_connection_wipe(ewmh);
-    if (ewmh) free(ewmh);
-    xcb_disconnect(conn);
-
-    execvp(BWM_PATH, NULL);
-}
-
-static void cleanup()
-{
-    xcb_set_input_focus(conn, XCB_NONE, XCB_INPUT_FOCUS_POINTER_ROOT,
-                        XCB_CURRENT_TIME);
-	xcb_ewmh_connection_wipe(ewmh);
-	if (ewmh) free(ewmh);
-
-    xcb_query_tree_reply_t  *query;
-    xcb_window_t *c;
-    if ((query = xcb_query_tree_reply(conn,xcb_query_tree(conn,screen->root),0)))
-    {
-        c = xcb_query_tree_children(query);
-        for (unsigned int i = 0; i != query->children_len; ++i)
-            free(window_to_client(c[i]));
-        free(query);
-    }
-
-    xcb_flush(conn);
-    xcb_disconnect(conn);
-}
-
-static void sighandle(int signal)
-{
-    if (signal == SIGINT || signal == SIGTERM)
-        running = false;
-}
-
-static void sigchld() {
-    if (signal(SIGCHLD, sigchld) == SIG_ERR)
-        err(EXIT_FAILURE, "cannot install SIGCHLD handler");
-
-    while (0 < waitpid(-1, NULL, WNOHANG));
-}
 
 /* store the window dimensions in x,y,width,height */
 static int get_geom(xcb_drawable_t win, int16_t *x, int16_t *y,
@@ -206,19 +158,6 @@ static int get_geom(xcb_drawable_t win, int16_t *x, int16_t *y,
     *height = geom->height;
     free(geom);
     return 0;
-}
-
-/* fork the process and execute command */
-static void spawn(const Arg *arg)
-{
-    if (fork() == 0)
-    {
-        if (conn)
-            close(screen->root);
-        setsid();
-        execvp((char*)arg->com[0], (char**)arg->com);
-        err(EXIT_FAILURE, "execvp %s", ((char **)arg->com)[0]);
-    }
 }
 
 /* iterate througth the client list and find the client with window w */
@@ -357,10 +296,12 @@ static void move(const Arg *arg)
 
 
 /* fullscreen the window or unfullscreen it
- * remove the border when fullscreen */
+ * remove the border when fullscreen 
+ * parameter is unused */
 static void toggle_maximize(const Arg *arg)
 {
     if (current == NULL) return;
+    (void) arg;
 
     uint32_t val[5];
     val[4] = XCB_STACK_MODE_ABOVE;
@@ -433,9 +374,6 @@ static void center_win(client *c)
     if (!c) return;
 
     PDEBUG("centering window\n");
-    PDEBUG("old: x: %d old y: %d old width: %d old height: %d\nx: %dy: %dwidth: %dheight: %d\n",
-            current->oldx, current->oldy, current->oldw, current->oldh,
-            current->x, current->y, current->width, current->height);
 
     c->x = screen->width_in_pixels - (c->width + BORDER_WIDTH*2);
     c->x /= 2;
@@ -488,6 +426,7 @@ static void select_workspace(const uint8_t i)
 }
 
 /* move a client to another workspace */
+/* TODO: save fullscreen and centered properties */
 static void client_to_workspace(const Arg *arg)
 {
     if (arg->i == current_workspace || current == NULL || arg->i >= NUM_WORKSPACES)
@@ -499,7 +438,7 @@ static void client_to_workspace(const Arg *arg)
     xcb_change_property(conn, XCB_PROP_MODE_REPLACE, current->win,
                     wmatoms[NET_WM_DESKTOP], XCB_ATOM_CARDINAL, 32, 1, &arg->i);
 
-    /* add client to workspace */
+    /* add client to new workspace */
     select_workspace(arg->i);
     add_window_to_list(tmp->win);
     save_workspace(arg->i);
@@ -531,10 +470,23 @@ static void setup_win(xcb_window_t w)
                         wmatoms[WM_STATE], 32, 2, data);
     focus_client(current);
 
+    xcb_get_property_reply_t *prop_reply;
+    prop_reply = xcb_get_property_reply(conn,
+            xcb_get_property_unchecked(conn, 0, w, wmatoms[NET_WM_STATE], XCB_ATOM_ATOM, 0, 1), NULL);
+    if (prop_reply) {
+        if (prop_reply->format == 32) {
+            xcb_atom_t *v = xcb_get_property_value(prop_reply);
+            if (v[0] == wmatoms[NET_FULLSCREEN])
+                toggle_maximize(NULL);
+        }
+        free(prop_reply);
+    }
+
     xcb_flush(conn); 
 }
 
-/* make the window into a client and set it to head and current */
+/* make the window into a client and set it to head and current
+ * get wm size hints */
 static void add_window_to_list(xcb_window_t w)
 {
     client *c, *t;
@@ -546,8 +498,7 @@ static void add_window_to_list(xcb_window_t w)
     c->id = w;
     c->x = c->y = c->width = c->height = c->oldx = c->oldy = c->oldw = c->oldh = 0;
     c->min_width = c->min_height = c->base_width = c->base_height = 0;
-    c->is_maximized = false;
-    c->is_centered = false;
+    c->is_maximized = c->is_centered = c->dontcenter = false;
 
     if (head == NULL)
     {
@@ -574,21 +525,35 @@ static void add_window_to_list(xcb_window_t w)
     current = c;
 
     /* size hints */
-    xcb_size_hints_t hints;
+    xcb_size_hints_t h;
     xcb_icccm_get_wm_normal_hints_reply(conn,
-            xcb_icccm_get_wm_normal_hints_unchecked(conn, w), &hints, NULL);
-    if (hints.flags &XCB_ICCCM_SIZE_HINT_BASE_SIZE)
+            xcb_icccm_get_wm_normal_hints_unchecked(conn, w), &h, NULL);
+
+    /* TODO: add support for US_SIZE and MAX_SIZE ? */
+    if (h.flags &XCB_ICCCM_SIZE_HINT_US_POSITION)
+        PDEBUG("HINTS: US POSITION: x: %d y: %d\n", h.x, h.y);
+    if (h.flags &XCB_ICCCM_SIZE_HINT_US_SIZE)
+        PDEBUG("HINTS: US SIZE: width: %d height: %d \n", h.width, h.height);
+    if (h.flags &XCB_ICCCM_SIZE_HINT_P_MIN_SIZE)
     {
-        c->base_width  = hints.base_width;
-        c->base_height = hints.base_height;
-        PDEBUG("base_width %d\nbase_height %d\n", c->base_width, c->base_height);
+        c->min_width = h.min_width;
+        c->min_height = h.min_height;
+        PDEBUG("HINTS: min_width %d min_height %d\n", c->min_width, c->min_height);
     }
-    if (hints.flags & XCB_ICCCM_SIZE_HINT_P_MIN_SIZE)
+
+    if (h.flags & XCB_ICCCM_SIZE_HINT_P_MAX_SIZE)
+        PDEBUG("HINTS: P MAX SIZE max_width: %d max_height: %d\n", h.max_width, h.max_height);
+
+    if (h.flags & XCB_ICCCM_SIZE_HINT_P_RESIZE_INC)
+        PDEBUG("HINTS: P RESIZE INC width_inc: %d height_inc: %d\n", h.width_inc, h.height_inc);
+
+    if (h.flags &XCB_ICCCM_SIZE_HINT_BASE_SIZE)
     {
-        c->min_width = hints.min_width;
-        c->min_height = hints.min_height;
-        PDEBUG("min_width %d\nmin_height %d\n", c->min_width, c->min_height);
+        c->base_width  = h.base_width;
+        c->base_height = h.base_height;
+        PDEBUG("HINTS: base_width %d base_height %d\n", c->base_width, c->base_height);
     }
+
     if (c->width < MAX(c->min_width, c->base_width) ||
         c->height < MAX(c->min_height, c->base_height))
     {
@@ -620,6 +585,7 @@ static void remove_window(xcb_window_t w)
         free(head);
         head = NULL;
         current = NULL;
+        save_workspace(current_workspace);
         return;
     }
     if (c->prev == NULL)
@@ -787,7 +753,7 @@ static void event_loop(void)
         {
             xcb_unmap_notify_event_t *e = (xcb_unmap_notify_event_t *)ev;
             client *c = window_to_client(e->window);
-            PDEBUG("Event: Unmap Notify %d\n", e->window);
+            PDEBUG("event: Unmap Notify %d\n", e->window);
             if (c && e->window != screen->root)
             {
                 remove_window(c->win);
@@ -799,12 +765,35 @@ static void event_loop(void)
                                         XCB_CONFIG_WINDOW_STACK_MODE, values);
                 }
             }
-        }
+        } break;
+
+        /* fullscreen */
+        case XCB_CLIENT_MESSAGE:
+        {
+            PDEBUG("event: Client Message\n");
+            xcb_client_message_event_t *e = (xcb_client_message_event_t*)ev;
+            client *c = window_to_client(e->window);
+            if (!c) break;
+
+            if (e->type == wmatoms[NET_WM_STATE]
+                && (unsigned)e->data.data32[1] == wmatoms[NET_FULLSCREEN])
+            {
+                /* data32[0]=1 -> maximize; data32[0]=0 -> minimize */
+                if ((e->data.data32[0] == 0 && c->is_maximized) ||
+                    (e->data.data32[0] == 1 && !c->is_maximized))
+                {
+                    toggle_maximize(NULL);
+                }
+            }
+            else if (e->type == wmatoms[NET_ACTIVE])
+                focus_client(c);
+
+        } break;
 
         case XCB_CONFIGURE_REQUEST:
         {
-            PDEBUG("xcb confgirue request\n");
             xcb_configure_request_event_t *e = (xcb_configure_request_event_t *)ev;
+            PDEBUG("event: Confgirue Request, mask: %d\n", e->value_mask);
             client *c = window_to_client(e->window);
             if (!c) break;
             if (c->is_maximized) break;
@@ -816,11 +805,13 @@ static void event_loop(void)
             {
                 PDEBUG("CONFIG: x: %d\n", e->x);
                 v[i++] = c->x = e->x;
+                c->dontcenter = true;
             }
             if (e->value_mask & XCB_CONFIG_WINDOW_Y)
             {
                 PDEBUG("CONFIG: y: %d\n", e->y);
                 v[i++] = c->y = e->y;
+                c->dontcenter = true;
             }
             if (e->value_mask & XCB_CONFIG_WINDOW_WIDTH)
             {
@@ -848,17 +839,16 @@ static void event_loop(void)
                 v[i++] = e->stack_mode;
             }
             /* re-center the win if it is in centered mode */
-            if (c->is_centered)
+            if (c->is_centered && !c->dontcenter)
                 center_win(c);
 
             xcb_configure_window(conn, e->window, e->value_mask, v);
             xcb_flush(conn);
-            break;
-        }
+        } break;
 
         case XCB_MAP_REQUEST:
         {
-            PDEBUG("Event: map request\n");
+            PDEBUG("event: Map Request\n");
             xcb_map_request_event_t *e = (xcb_map_request_event_t *)ev;
             setup_win(e->window);
             if (CENTER_BY_DEFAULT > 0)
@@ -872,7 +862,7 @@ static void event_loop(void)
 
         case XCB_DESTROY_NOTIFY:
         {
-            PDEBUG("Event: \033[0;31mdestroy notify\033[0m\n");
+            PDEBUG("event: \033[0;31mDestroy Notify\033[0m\n");
             xcb_destroy_notify_event_t *e = (xcb_destroy_notify_event_t *)ev;
 
             client *c;
@@ -998,9 +988,8 @@ static void bwm_setup()
     ewmh_init();
 
     /* subscribe to events */
-    unsigned int value[1] = {XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT
-                          | XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY};
-
+    unsigned int value[1] = {XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY
+                          | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT };
     xcb_void_cookie_t cookie =
         xcb_change_window_attributes_checked(conn, root, XCB_CW_EVENT_MASK, value);
     xcb_generic_error_t *error = xcb_request_check(conn, cookie);
@@ -1019,21 +1008,20 @@ static void bwm_setup()
 	                          ewmh->_NET_CURRENT_DESKTOP,
 	                          ewmh->_NET_ACTIVE_WINDOW,
 	                          ewmh->_NET_CLOSE_WINDOW,
+                              ewmh->_NET_WM_NAME,
 	                          ewmh->_NET_WM_DESKTOP,
-	                          ewmh->_NET_WM_STATE,
-	                          ewmh->_NET_WM_STATE_FULLSCREEN,
 	                          ewmh->_NET_WM_WINDOW_TYPE,
+	                          ewmh->_NET_WM_STATE,
                               ewmh->_NET_WM_PID,
-                              ewmh->_NET_WM_NAME};
+	                          ewmh->_NET_WM_STATE_FULLSCREEN};
 
 	xcb_ewmh_set_supported(ewmh, def_screen, LENGTH(net_atoms), net_atoms);
 
-	xcb_ewmh_set_supporting_wm_check(ewmh, root, recorder);
-	xcb_ewmh_set_supporting_wm_check(ewmh, recorder, recorder);
 	xcb_ewmh_set_wm_name(ewmh, recorder, 3, "bwm");
 	xcb_ewmh_set_wm_pid(ewmh, recorder, getpid());
+	xcb_ewmh_set_supporting_wm_check(ewmh, root, recorder);
+	xcb_ewmh_set_supporting_wm_check(ewmh, recorder, recorder);
 
-    /* get atoms */
     for (unsigned int i=0; i<ATOM_COUNT; i++)
         wmatoms[i] = getatom(WM_ATOM_NAMES[i]);
 
@@ -1054,7 +1042,73 @@ static void bwm_setup()
     if (!grab_keys())
         err(EXIT_FAILURE, "error setting up keycodes.");
 
+    /* print the atom values for debugging */
+    for (int i = 0; i<ATOM_COUNT; i++)
+        PDEBUG("%s: %d\n", WM_ATOM_NAMES[i], wmatoms[i]);
+
     xcb_flush(conn);
+}
+
+/* fork the process and execute command */
+static void spawn(const Arg *arg)
+{
+    if (fork() == 0)
+    {
+        if (conn)
+            close(screen->root);
+        setsid();
+        execvp((char*)arg->com[0], (char**)arg->com);
+        err(EXIT_FAILURE, "execvp %s", ((char **)arg->com)[0]);
+    }
+}
+
+static void bwm_exit() {
+    cleanup();
+    exit(EXIT_SUCCESS);
+}
+
+static void bwm_restart() {
+    xcb_set_input_focus(conn, XCB_NONE,XCB_INPUT_FOCUS_POINTER_ROOT,
+                        XCB_CURRENT_TIME);
+    xcb_ewmh_connection_wipe(ewmh);
+    if (ewmh) free(ewmh);
+    xcb_disconnect(conn);
+
+    execvp(BWM_PATH, NULL);
+}
+
+static void cleanup()
+{
+    xcb_set_input_focus(conn, XCB_NONE, XCB_INPUT_FOCUS_POINTER_ROOT,
+                        XCB_CURRENT_TIME);
+	xcb_ewmh_connection_wipe(ewmh);
+	if (ewmh) free(ewmh);
+
+    xcb_query_tree_reply_t  *query;
+    xcb_window_t *c;
+    if ((query = xcb_query_tree_reply(conn,xcb_query_tree(conn,screen->root),0)))
+    {
+        c = xcb_query_tree_children(query);
+        for (unsigned int i = 0; i != query->children_len; ++i)
+            free(window_to_client(c[i]));
+        free(query);
+    }
+
+    xcb_flush(conn);
+    xcb_disconnect(conn);
+}
+
+static void sighandle(int signal)
+{
+    if (signal == SIGINT || signal == SIGTERM)
+        running = false;
+}
+
+static void sigchld() {
+    if (signal(SIGCHLD, sigchld) == SIG_ERR)
+        err(EXIT_FAILURE, "cannot install SIGCHLD handler");
+
+    while (0 < waitpid(-1, NULL, WNOHANG));
 }
 
 int main()
