@@ -20,14 +20,14 @@ uint8_t steps[2] = { 25, 30 };
 static const char *terminal[] = { "urxvt", NULL };
 static const char *browser[] = { "firefox", NULL };
 
-#define NUM_WORKSPACES 5 /* number of workspaces */
+#define NUM_WORKSPACES 5 /* number of workspaces (up to 10) */
 
 static key keys[] = {
    /* mod               keycode         function            arg   */
     /* launch a new terminal emulator */
     { MOD,             XK_Return,       spawn,              {.com=terminal} },
     /* launch a browser */
-    { MOD,             XK_f,            spawn,              {.com=browser} },
+    { MOD,             XK_w,            spawn,              {.com=browser} },
     /* move the window down */
     { MOD,              XK_j,           move,               {.i=0}   },
     /* move the window right */
@@ -44,9 +44,9 @@ static key keys[] = {
     { MOD | SHIFT,      XK_k,           resize,             {.i=2}   },
     /* shrink the window horizontally */
     { MOD | SHIFT,      XK_h,           resize,             {.i=3}   },
-    /* grow the window maintaining aspect ratio */
+    /* grow the window height and width */
     { MOD | CTRL,       XK_j,           resize,             {.i=4}   },
-    /* srhink the window maintaining aspect ratio */
+    /* srhink the window height and width */
     { MOD | CTRL,       XK_k,           resize,             {.i=5}   },
     /* window remains centered while resizing (toggle) */
     { MOD,              XK_s,           toggle_centered_mode, {.i=0}   },
@@ -74,4 +74,5 @@ static key keys[] = {
      DESKTOPCHANGE(     XK_7,                          6)
      DESKTOPCHANGE(     XK_8,                          7)
      DESKTOPCHANGE(     XK_9,                          8)
+     DESKTOPCHANGE(     XK_0,                          9)
 };

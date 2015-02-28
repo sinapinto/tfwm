@@ -190,7 +190,7 @@ static void resize(const Arg *arg)
         return;
 
     uint8_t step = steps[1];
-    if (arg->i > 3) /* resize maintaining aspect ratio */
+    if (arg->i > 3) /* resize both x and y */
     {
         if (arg->i == 4) /* grow */
         {
@@ -207,7 +207,7 @@ static void resize(const Arg *arg)
                             : current->width;
         }
     }
-    else /* non aspect ratio resize */
+    else
     {
         if (arg->i == 0)
         {

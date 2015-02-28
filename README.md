@@ -1,13 +1,12 @@
 bwm
 ===
-bwm is a minimalist, keyboard-centric, floating window manager for X.
+bwm is a minimalist, keyboard-centric, floating window manager for X, targeted at use on small screens.
 
 Current Features
 ----------------
 * Centered mode
 * Automatic refocusing
 * Focus without stacking
-* Resize keeping aspect ratio
 * Maximize toggling
 * Multiple workspaces
 
@@ -50,7 +49,7 @@ To set the usual left-pointer, add the following line to your `~/.xinitrc`:
 
 Configuration is done throught the `config.h` file. The documentation in there should make configuration pretty straightforward.
 
-bwm does not come with a panel.  However, if you want to use your own, bwm supports the EWMH hints needed to easily find the workspace (and some others, too). Here's a simple example using [dzen2](http://github.com/robm/dzen).
+bwm does not come with a panel.  However, if you want to use your own, bwm supports the EWMH hints needed to easily find the workspace. Here's a simple example using [dzen2](http://github.com/robm/dzen).
 
 ```sh
 #!/bin/sh
@@ -71,3 +70,4 @@ bwm also does not have multi screen support.  I don't own an external monitor, s
 Author
 ------
 Sina Pinto | sina.pinto@gmail.com
+Licensed under MIT/X Consortium License
