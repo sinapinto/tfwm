@@ -70,4 +70,5 @@ bwm also does not have multi screen support.  I don't own an external monitor, s
 Author
 ------
 Sina Pinto | sina.pinto@gmail.com
+
 Licensed under MIT/X Consortium License

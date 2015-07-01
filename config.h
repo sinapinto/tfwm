@@ -4,7 +4,7 @@
 
 /* 0: move step, 1: resize step
  * i.e. windows will move by increments of 25px and resize by 30px */
-uint8_t steps[2] = { 25, 30 };
+uint8_t steps[2] = { 30, 40 };
 
 #define UNFOCUS      0x3B3B31  /* unfocused window border color */
 #define FOCUS        0xafaf87  /* focused window border color */
@@ -49,7 +49,7 @@ static key keys[] = {
     /* srhink the window height and width */
     { MOD | CTRL,       XK_k,           resize,             {.i=5}   },
     /* window remains centered while resizing (toggle) */
-    { MOD,              XK_s,           toggle_centered_mode, {.i=0}   },
+    { MOD,              XK_s,           toggle_centered,    {.i=0}   },
     /* fullscreen the window (toggle) */
     { MOD,              XK_a,           toggle_maximize,    {.i=0}   },
     /* focus the next window */
@@ -63,7 +63,7 @@ static key keys[] = {
     /* restart bwm */
     { MOD | SHIFT,      XK_r,           bwm_restart,        {.i=0}   },
     /* exit bwm */
-    { MOD | SHIFT,      XK_e,           bwm_exit,            {.i=0}   },
+    { MOD | SHIFT,      XK_e,           bwm_exit,           {.i=0}   },
     /* change workspace */
      DESKTOPCHANGE(     XK_1,                          0)
      DESKTOPCHANGE(     XK_2,                          1)

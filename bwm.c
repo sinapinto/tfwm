@@ -37,6 +37,7 @@
 
 /* uncomment to print debug statements */
 /*#define DEBUG*/
+#define MOUSE
 
 #ifdef DEBUG
 #   define PDEBUG(...) \
@@ -115,7 +116,7 @@ static void resize(const Arg *arg);
 static void move(const Arg *arg);
 static void toggle_maximize(const Arg *arg);
 static void center_win(client *c);
-static void toggle_centered_mode(const Arg *arg);
+static void toggle_centered(const Arg *arg);
 static void setup_win(xcb_window_t w);
 static void change_workspace(const Arg *arg);
 static void save_workspace(const uint8_t i);
@@ -334,7 +335,12 @@ static void toggle_maximize(const Arg *arg)
     else
     {
         /* readd the border */
-        change_border_width(current->win, BORDER_WIDTH);
+        xcb_icccm_get_wm_class_reply_t ch;
+        if (xcb_icccm_get_wm_class_reply(conn, xcb_icccm_get_wm_class(conn, current->win), &ch, NULL)) {
+            if (!strstr(ch.class_name, "Chromium")){
+                change_border_width(current->win, BORDER_WIDTH);
+            }
+        }
         /* switch back to the old dimensions */
         val[0] = current->oldx;
         val[1] = current->oldy;
@@ -360,7 +366,7 @@ static void toggle_maximize(const Arg *arg)
     xcb_flush(conn);
 }
 
-static void toggle_centered_mode(const Arg *arg)
+static void toggle_centered(const Arg *arg)
 {
     if (!current) return;
     (void) arg;
@@ -455,7 +461,13 @@ static void client_to_workspace(const Arg *arg)
  * set up window's mask and border and add it to the list, and map+focus it */
 static void setup_win(xcb_window_t w)
 {
-    change_border_width(w, BORDER_WIDTH);
+    xcb_icccm_get_wm_class_reply_t ch;
+    if (xcb_icccm_get_wm_class_reply(conn, xcb_icccm_get_wm_class(conn, w), &ch, NULL)) {
+        if (!strstr(ch.class_name, "Chromium")){
+            change_border_width(w, BORDER_WIDTH);
+        }
+    }
+
     if (CENTER_BY_DEFAULT == 0)
         xcb_map_window(conn, w);
 
@@ -606,6 +618,7 @@ static void remove_window(xcb_window_t w)
         current = c->prev;
     }
     free(c);
+    c = NULL;
     save_workspace(current_workspace);
     return;
 }
@@ -613,6 +626,7 @@ static void remove_window(xcb_window_t w)
 static void kill_current()
 {
     if (NULL == current)
+        /* TODO: query tree reply */
         return;
 
     /* try sending WM_DELETE_WINDOW message */
@@ -748,13 +762,13 @@ static void event_loop(void)
         switch ( CLEANMASK(ev->response_type) ) 
         {
 
-        /* invisible windows */
         case XCB_UNMAP_NOTIFY:
         {
             xcb_unmap_notify_event_t *e = (xcb_unmap_notify_event_t *)ev;
             client *c = window_to_client(e->window);
             PDEBUG("event: Unmap Notify %d\n", e->window);
-            if (c && e->window != screen->root)
+            if (e->window == screen->root) break;
+            if (c)
             {
                 remove_window(c->win);
                 if (current)
@@ -767,7 +781,7 @@ static void event_loop(void)
             }
         } break;
 
-        /* fullscreen */
+        /* i.e. fullscreen */
         case XCB_CLIENT_MESSAGE:
         {
             PDEBUG("event: Client Message\n");
@@ -853,7 +867,7 @@ static void event_loop(void)
             setup_win(e->window);
             if (CENTER_BY_DEFAULT > 0)
             {
-                toggle_centered_mode(NULL);
+                toggle_centered(NULL);
                 xcb_map_window(conn, e->window);
             }
             xcb_set_input_focus(conn, XCB_INPUT_FOCUS_POINTER_ROOT, e->window,
@@ -888,6 +902,40 @@ static void event_loop(void)
                 }
             }
         } break;
+
+#ifdef MOUSE
+        case XCB_BUTTON_PRESS: {
+            uint32_t values[3];
+            xcb_window_t win = 0;
+
+            xcb_button_press_event_t *e;
+            e = ( xcb_button_press_event_t *)ev;
+            win = e->child;
+
+            if (!win || win == screen->root)
+                break;
+
+            client *c = window_to_client(win);
+            if (c) current = c;
+
+            values[0] = XCB_STACK_MODE_ABOVE;
+            xcb_configure_window(conn, win,
+                    XCB_CONFIG_WINDOW_STACK_MODE, values);
+
+            xcb_grab_pointer(conn, 0, screen->root,
+                XCB_EVENT_MASK_BUTTON_RELEASE
+                | XCB_EVENT_MASK_BUTTON_MOTION
+                | XCB_EVENT_MASK_POINTER_MOTION_HINT,
+                XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC,
+                screen->root, XCB_NONE, XCB_CURRENT_TIME);
+            focus_client(current);
+            xcb_ungrab_pointer(conn, XCB_CURRENT_TIME);
+            xcb_flush(conn);
+        } break;
+
+        case XCB_BUTTON_RELEASE:
+            break;
+#endif
         
 #ifdef DEBUG
         default:
@@ -916,6 +964,17 @@ static bool grab_keys(void)
             xcb_grab_key(conn, 1, screen->root, keys[i].mod, keycode[k],
                          XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
     }
+
+#ifdef MOUSE
+    xcb_grab_button(conn, 0, screen->root, XCB_EVENT_MASK_BUTTON_PRESS |
+            XCB_EVENT_MASK_BUTTON_RELEASE, XCB_GRAB_MODE_ASYNC,
+            XCB_GRAB_MODE_ASYNC, screen->root, XCB_NONE, 1, MOD);
+
+    xcb_grab_button(conn, 0, screen->root, XCB_EVENT_MASK_BUTTON_PRESS |
+            XCB_EVENT_MASK_BUTTON_RELEASE, XCB_GRAB_MODE_ASYNC,
+            XCB_GRAB_MODE_ASYNC, screen->root, XCB_NONE, 3, MOD);
+#endif
+
     return true;
 }
 
