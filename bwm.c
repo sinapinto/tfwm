@@ -329,6 +329,7 @@ static void toggle_maximize(const Arg *arg)
         xcb_icccm_get_wm_class_reply_t ch;
         if (xcb_icccm_get_wm_class_reply(conn, xcb_icccm_get_wm_class(conn, current->win), &ch, NULL)) {
             if (strstr(ch.class_name, "Chromium")){
+                val[1] = -1;
                 val[2] = screen->width_in_pixels + 2;
             }
         }
@@ -355,6 +356,7 @@ static void toggle_maximize(const Arg *arg)
         xcb_icccm_get_wm_class_reply_t ch;
         if (xcb_icccm_get_wm_class_reply(conn, xcb_icccm_get_wm_class(conn, current->win), &ch, NULL)) {
             if (strstr(ch.class_name, "Chromium")){
+                val[1] = -1;
                 val[2] = screen->width_in_pixels + 2;
             }
         }
@@ -570,8 +572,8 @@ static void add_window_to_list(xcb_window_t w)
         PDEBUG("HINTS: US SIZE: width: %d height: %d \n", h.width, h.height);
     if (h.flags &XCB_ICCCM_SIZE_HINT_P_MIN_SIZE)
     {
-        c->min_width = h.min_width;
-        c->min_height = h.min_height;
+        /*c->min_width = h.min_width;*/
+        /*c->min_height = h.min_height;*/
         PDEBUG("HINTS: min_width %d min_height %d\n", c->min_width, c->min_height);
     }
 
