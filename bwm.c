@@ -346,6 +346,7 @@ static void toggle_maximize(const Arg *arg)
     else
     {
         /* readd the border */
+        change_border_width(current->win, BORDER_WIDTH);
         /* switch back to the old dimensions */
         val[0] = current->oldx;
         val[1] = current->oldy;
