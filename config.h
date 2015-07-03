@@ -8,7 +8,7 @@ uint8_t steps[2] = { 30, 40 };
 
 #define UNFOCUS      0x3B3B31  /* unfocused window border color */
 #define FOCUS        0xafaf87  /* focused window border color */
-#define BORDER_WIDTH 2
+#define BORDER_WIDTH 2         /* in pixels */
 
 #define CENTER_BY_DEFAULT 1    /* windows start centered (0 to turn off) */
 
@@ -64,6 +64,8 @@ static key keys[] = {
     { MOD | SHIFT,      XK_r,           bwm_restart,        {.i=0}   },
     /* exit bwm */
     { MOD | SHIFT,      XK_e,           bwm_exit,           {.i=0}   },
+
+    {  MOD ,            XK_grave,       change_to_previous_workspace, {.i=0}   },
     /* change workspace */
      DESKTOPCHANGE(     XK_1,                          0)
      DESKTOPCHANGE(     XK_2,                          1)

@@ -94,6 +94,7 @@ xcb_ewmh_connection_t *ewmh;    /* ewmh connection */
 static client *head;            /* head of window list */
 static client *current;         /* current window in list */
 static uint8_t current_workspace;   /* active workspace number */
+static uint8_t previous_workspace;
 static int def_screen;
 static bool running;
 
@@ -118,6 +119,7 @@ static void toggle_maximize(const Arg *arg);
 static void center_win(client *c);
 static void toggle_centered(const Arg *arg);
 static void setup_win(xcb_window_t w);
+static void change_to_previous_workspace(const Arg *arg);
 static void change_workspace(const Arg *arg);
 static void save_workspace(const uint8_t i);
 static void select_workspace(const uint8_t i);
@@ -322,8 +324,17 @@ static void toggle_maximize(const Arg *arg)
         /* go fullscreen */
         val[0] = 0; val[1] = 0;
         val[2] = screen->width_in_pixels; val[3] = screen->height_in_pixels;
+
+        /* chromium hax */
+        xcb_icccm_get_wm_class_reply_t ch;
+        if (xcb_icccm_get_wm_class_reply(conn, xcb_icccm_get_wm_class(conn, current->win), &ch, NULL)) {
+            if (strstr(ch.class_name, "Chromium")){
+                val[2] = screen->width_in_pixels + 2;
+            }
+        }
+
         PDEBUG("maximize: x: %d y: %d width: %d height: %d\n",
-                current->x, current->y, current->width, current->height);
+                val[0], val[1], val[2], val[3]);
         xcb_configure_window(conn, current->win, mask, val);
         /* update our current dimensions */
         current->x = 0;
@@ -335,19 +346,19 @@ static void toggle_maximize(const Arg *arg)
     else
     {
         /* readd the border */
-        xcb_icccm_get_wm_class_reply_t ch;
-        if (xcb_icccm_get_wm_class_reply(conn, xcb_icccm_get_wm_class(conn, current->win), &ch, NULL)) {
-            if (!strstr(ch.class_name, "Chromium")){
-                change_border_width(current->win, BORDER_WIDTH);
-            }
-        }
         /* switch back to the old dimensions */
         val[0] = current->oldx;
         val[1] = current->oldy;
         val[2] = current->oldw;
         val[3] = current->oldh;
+        xcb_icccm_get_wm_class_reply_t ch;
+        if (xcb_icccm_get_wm_class_reply(conn, xcb_icccm_get_wm_class(conn, current->win), &ch, NULL)) {
+            if (strstr(ch.class_name, "Chromium")){
+                val[2] = screen->width_in_pixels + 2;
+            }
+        }
         PDEBUG("minimize: x: %d y: %d width: %d height: %d\n",
-                current->oldx, current->oldy, current->oldw, current->oldh);
+                val[0], val[1], val[2], val[3]);
         xcb_configure_window(conn, current->win, mask, val);
         /* save our dimensions for later */
         current->x = current->oldx;
@@ -392,6 +403,12 @@ static void center_win(client *c)
     xcb_flush(conn); 
 }
 
+static void change_to_previous_workspace(const Arg *arg)
+{
+    const Arg a = { .i = previous_workspace };
+    change_workspace(&a);
+}
+
 static void change_workspace(const Arg *arg)
 {
     if (arg->i == current_workspace || arg->i >= NUM_WORKSPACES)
@@ -428,6 +445,7 @@ static void select_workspace(const uint8_t i)
 {
     head = workspaces[i].head;
     current = workspaces[i].current;
+    previous_workspace = current_workspace;
     current_workspace = i;
 }
 
@@ -461,12 +479,7 @@ static void client_to_workspace(const Arg *arg)
  * set up window's mask and border and add it to the list, and map+focus it */
 static void setup_win(xcb_window_t w)
 {
-    xcb_icccm_get_wm_class_reply_t ch;
-    if (xcb_icccm_get_wm_class_reply(conn, xcb_icccm_get_wm_class(conn, w), &ch, NULL)) {
-        if (!strstr(ch.class_name, "Chromium")){
-            change_border_width(w, BORDER_WIDTH);
-        }
-    }
+    change_border_width(w, BORDER_WIDTH);
 
     if (CENTER_BY_DEFAULT == 0)
         xcb_map_window(conn, w);
@@ -493,6 +506,14 @@ static void setup_win(xcb_window_t w)
         }
         free(prop_reply);
     }
+
+    xcb_icccm_get_wm_class_reply_t ch;
+    if (xcb_icccm_get_wm_class_reply(conn, xcb_icccm_get_wm_class(conn, w), &ch, NULL)) {
+        if (strstr(ch.class_name, "Chromium")){
+            toggle_maximize(NULL);
+        }
+    }
+
 
     xcb_flush(conn); 
 }
@@ -940,7 +961,7 @@ static void event_loop(void)
 #ifdef DEBUG
         default:
             if (ev->response_type <= MAX_EVENTS)
-                PDEBUG("Event: %s\n", evnames[ev->response_type]);
+                PDEBUG("\033[1;30mEvent: %s\033[0m\n", evnames[ev->response_type]);
             else
                 PDEBUG("Event: #%d. Not known.\n", ev->response_type);
             break;
@@ -1085,7 +1106,7 @@ static void bwm_setup()
         wmatoms[i] = getatom(WM_ATOM_NAMES[i]);
 
     static const uint8_t _WORKSPACES = NUM_WORKSPACES;
-    current_workspace = 0;
+    current_workspace = previous_workspace = 0;
     xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root,
                         wmatoms[NET_CURRENT_DESKTOP], XCB_ATOM_CARDINAL,
                         32, 1,&current_workspace);
