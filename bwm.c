@@ -36,7 +36,7 @@
 #include <X11/keysym.h>
 
 /* uncomment to print debug statements */
-/*#define DEBUG*/
+/* #define DEBUG */
 #define MOUSE
 
 #ifdef DEBUG
@@ -328,9 +328,10 @@ static void toggle_maximize(const Arg *arg)
         /* chromium hax */
         xcb_icccm_get_wm_class_reply_t ch;
         if (xcb_icccm_get_wm_class_reply(conn, xcb_icccm_get_wm_class(conn, current->win), &ch, NULL)) {
-            if (strstr(ch.class_name, "Chromium")){
+            if (strcmp(ch.class_name, "Chromium") == 0){
                 val[1] = -1;
                 val[2] = screen->width_in_pixels + 2;
+                val[3] += 1;
             }
         }
 
@@ -346,8 +347,6 @@ static void toggle_maximize(const Arg *arg)
     }
     else
     {
-        /* readd the border */
-        change_border_width(current->win, BORDER_WIDTH);
         /* switch back to the old dimensions */
         val[0] = current->oldx;
         val[1] = current->oldy;
@@ -355,9 +354,12 @@ static void toggle_maximize(const Arg *arg)
         val[3] = current->oldh;
         xcb_icccm_get_wm_class_reply_t ch;
         if (xcb_icccm_get_wm_class_reply(conn, xcb_icccm_get_wm_class(conn, current->win), &ch, NULL)) {
-            if (strstr(ch.class_name, "Chromium")){
+            if (strcmp(ch.class_name, "Chromium") == 0){
                 val[1] = -1;
                 val[2] = screen->width_in_pixels + 2;
+                val[3] += 1;
+            } else {
+                change_border_width(current->win, BORDER_WIDTH);
             }
         }
         PDEBUG("minimize: x: %d y: %d width: %d height: %d\n",
@@ -572,8 +574,14 @@ static void add_window_to_list(xcb_window_t w)
         PDEBUG("HINTS: US SIZE: width: %d height: %d \n", h.width, h.height);
     if (h.flags &XCB_ICCCM_SIZE_HINT_P_MIN_SIZE)
     {
-        /*c->min_width = h.min_width;*/
-        /*c->min_height = h.min_height;*/
+        PDEBUG("HINTS: min_width %d min_height %d\n", h.min_width, h.min_height);
+        if (h.min_width > 0 && h.min_width < screen->width_in_pixels) {
+            c->min_width = h.min_width;
+        }
+
+        if (h.min_height > 0 && h.min_height < screen->height_in_pixels) {
+            c->min_height = h.min_height;
+        }
         PDEBUG("HINTS: min_width %d min_height %d\n", c->min_width, c->min_height);
     }
 
