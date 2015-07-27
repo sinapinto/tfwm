@@ -48,6 +48,8 @@ static key keys[] = {
     { MOD | CTRL,       XK_j,           resize,             {.i=4}   },
     /* srhink the window height and width */
     { MOD | CTRL,       XK_k,           resize,             {.i=5}   },
+    /* maximize vertically */
+    { MOD,              XK_m,           vert_max,           {.i=0}   },
     /* window remains centered while resizing (toggle) */
     { MOD,              XK_s,           toggle_centered,    {.i=0}   },
     /* fullscreen the window (toggle) */

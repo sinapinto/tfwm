@@ -1,18 +1,18 @@
 /*
 * The MIT License (MIT)
-* 
+*
 * Copyright (c) 2015 Sina Pinto
-* 
+*
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
 * in the Software without restriction, including without limitation the rights
 * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 * copies of the Software, and to permit persons to whom the Software is
 * furnished to do so, subject to the following conditions:
-* 
+*
 * The above copyright notice and this permission notice shall be included in all
 * copies or substantial portions of the Software.
-* 
+*
 * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -83,7 +83,7 @@ struct client{
 };
 
 typedef struct workspace {
-    client *head;        /* head of the client list */ 
+    client *head;        /* head of the client list */
     client *current;     /* current client */
 } workspace;
 
@@ -124,6 +124,7 @@ static void change_workspace(const Arg *arg);
 static void save_workspace(const uint8_t i);
 static void select_workspace(const uint8_t i);
 static void client_to_workspace(const Arg *arg);
+static void vert_max(const Arg *arg);
 static void add_window_to_list(xcb_window_t w);
 static void remove_window(xcb_window_t w);
 static void kill_current();
@@ -259,7 +260,7 @@ static void resize(const Arg *arg)
 
     focus_client(current);
 
-    xcb_flush(conn); 
+    xcb_flush(conn);
 }
 
 /* move the window depending on arg->i
@@ -267,7 +268,7 @@ static void resize(const Arg *arg)
  * i=1 -> move right
  * i=2 -> move up
  * i=3 -> move left
- * note: a maximized client that is moved will keep its maximized attribute 
+ * note: a maximized client that is moved will keep its maximized attribute
  * so that it can still be unmaximized */
 static void move(const Arg *arg)
 {
@@ -287,19 +288,19 @@ static void move(const Arg *arg)
         default: PDEBUG("unknown argument for move\n"); break;
     }
     uint32_t values[2];
-    values[0] = current->x; 
+    values[0] = current->x;
     values[1] = current->y;
     xcb_configure_window(conn, current->win, XCB_CONFIG_WINDOW_X
                                    | XCB_CONFIG_WINDOW_Y, values);
     /* if it was centered it no longer is */
     if (current->is_centered)
         current->is_centered = false;
-    xcb_flush(conn); 
+    xcb_flush(conn);
 }
 
 
 /* fullscreen the window or unfullscreen it
- * remove the border when fullscreen 
+ * remove the border when fullscreen
  * parameter is unused */
 static void toggle_maximize(const Arg *arg)
 {
@@ -376,9 +377,26 @@ static void toggle_maximize(const Arg *arg)
 
     long data[] = { current->is_maximized ? wmatoms[NET_FULLSCREEN]
                                           : XCB_ICCCM_WM_STATE_NORMAL };
-
     xcb_change_property(conn, XCB_PROP_MODE_REPLACE, current->win,
                         wmatoms[NET_WM_STATE], XCB_ATOM_ATOM, 32, 1, data);
+    xcb_flush(conn);
+}
+
+static void vert_max(const Arg *arg)
+{
+    if (!current) return;
+    (void) arg;
+    uint32_t val[3];
+    val[0] = 0;
+    val[1] = screen->height_in_pixels - 2 * BORDER_WIDTH;
+    val[2] = XCB_STACK_MODE_ABOVE;
+    current->y = 0;
+    current->height = val[1];
+    uint32_t mask = XCB_CONFIG_WINDOW_Y
+        | XCB_CONFIG_WINDOW_HEIGHT
+        | XCB_CONFIG_WINDOW_STACK_MODE;
+
+    xcb_configure_window(conn, current->win, mask, val);
     xcb_flush(conn);
 }
 
@@ -405,7 +423,7 @@ static void center_win(client *c)
     uint32_t values[4] = { c->x, c->y };
     xcb_configure_window(conn, c->win, XCB_CONFIG_WINDOW_X
             | XCB_CONFIG_WINDOW_Y, values);
-    xcb_flush(conn); 
+    xcb_flush(conn);
 }
 
 static void change_to_previous_workspace(const Arg *arg)
@@ -422,7 +440,7 @@ static void change_workspace(const Arg *arg)
     xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root,
                         wmatoms[NET_CURRENT_DESKTOP], XCB_ATOM_CARDINAL, 32, 1,
                         &arg->i);
-	xcb_ewmh_set_current_desktop(ewmh, def_screen, arg->i);
+    xcb_ewmh_set_current_desktop(ewmh, def_screen, arg->i);
 
     uint8_t previous = current_workspace;
     save_workspace(current_workspace);
@@ -520,7 +538,7 @@ static void setup_win(xcb_window_t w)
     }
 
 
-    xcb_flush(conn); 
+    xcb_flush(conn);
 }
 
 /* make the window into a client and set it to head and current
@@ -610,7 +628,7 @@ static void add_window_to_list(xcb_window_t w)
     }
     /* wm state */
     long data[] = { XCB_ICCCM_WM_STATE_NORMAL, XCB_NONE };
-    xcb_change_property(conn, XCB_PROP_MODE_REPLACE, current->win, 
+    xcb_change_property(conn, XCB_PROP_MODE_REPLACE, current->win,
                         wmatoms[WM_STATE], wmatoms[WM_STATE], 32, 2, data);
 
     save_workspace(current_workspace);
@@ -699,7 +717,7 @@ static void kill_current()
         xcb_kill_client(conn, current->win);
     }
 
-    xcb_flush(conn); 
+    xcb_flush(conn);
 }
 
 /* focus the prev/next window in the list */
@@ -744,11 +762,11 @@ static void cycle_win(const Arg *arg)
         focus_client(current);
         uint32_t values[1];
         values[0] = XCB_STACK_MODE_ABOVE;
-        xcb_configure_window(conn, current->win, XCB_CONFIG_WINDOW_STACK_MODE, 
+        xcb_configure_window(conn, current->win, XCB_CONFIG_WINDOW_STACK_MODE,
                             values);
     }
 
-	xcb_ewmh_set_active_window(ewmh, def_screen, current->win);
+    xcb_ewmh_set_active_window(ewmh, def_screen, current->win);
 }
 
 /* focus input on window and change window's border color */
@@ -771,7 +789,7 @@ static void focus_client(struct client *c)
     }
 
     long data[] = { XCB_ICCCM_WM_STATE_NORMAL, XCB_NONE };
-    xcb_change_property(conn, XCB_PROP_MODE_REPLACE, c->win, 
+    xcb_change_property(conn, XCB_PROP_MODE_REPLACE, c->win,
                         wmatoms[WM_STATE], wmatoms[WM_STATE], 32, 2, data);
 
     xcb_set_input_focus(conn, XCB_INPUT_FOCUS_POINTER_ROOT, c->win,
@@ -791,7 +809,7 @@ static void event_loop(void)
         xcb_flush(conn);
         ev = xcb_wait_for_event(conn);
 
-        switch ( CLEANMASK(ev->response_type) ) 
+        switch ( CLEANMASK(ev->response_type) )
         {
 
         case XCB_UNMAP_NOTIFY:
@@ -968,7 +986,7 @@ static void event_loop(void)
         case XCB_BUTTON_RELEASE:
             break;
 #endif
-        
+
 #ifdef DEBUG
         default:
             if (ev->response_type <= MAX_EVENTS)
@@ -1087,31 +1105,31 @@ static void bwm_setup()
     if (error != NULL)
         err(EXIT_FAILURE, "another window manager is running.");
 
-	uint32_t mask = XCB_CW_EVENT_MASK;
-	uint32_t values[] = { XCB_EVENT_MASK_POINTER_MOTION };
-	xcb_window_t recorder = xcb_generate_id(conn);
-	xcb_create_window(conn, XCB_COPY_FROM_PARENT, recorder, root, 0, 0,
+    uint32_t mask = XCB_CW_EVENT_MASK;
+    uint32_t values[] = { XCB_EVENT_MASK_POINTER_MOTION };
+    xcb_window_t recorder = xcb_generate_id(conn);
+    xcb_create_window(conn, XCB_COPY_FROM_PARENT, recorder, root, 0, 0,
             screen->width_in_pixels, screen->height_in_pixels, 0,
             XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT, mask, values);
 
-	xcb_atom_t net_atoms[] = {ewmh->_NET_SUPPORTED,
-	                          ewmh->_NET_NUMBER_OF_DESKTOPS,
-	                          ewmh->_NET_CURRENT_DESKTOP,
-	                          ewmh->_NET_ACTIVE_WINDOW,
-	                          ewmh->_NET_CLOSE_WINDOW,
+    xcb_atom_t net_atoms[] = {ewmh->_NET_SUPPORTED,
+                              ewmh->_NET_NUMBER_OF_DESKTOPS,
+                              ewmh->_NET_CURRENT_DESKTOP,
+                              ewmh->_NET_ACTIVE_WINDOW,
+                              ewmh->_NET_CLOSE_WINDOW,
                               ewmh->_NET_WM_NAME,
-	                          ewmh->_NET_WM_DESKTOP,
-	                          ewmh->_NET_WM_WINDOW_TYPE,
-	                          ewmh->_NET_WM_STATE,
+                              ewmh->_NET_WM_DESKTOP,
+                              ewmh->_NET_WM_WINDOW_TYPE,
+                              ewmh->_NET_WM_STATE,
                               ewmh->_NET_WM_PID,
-	                          ewmh->_NET_WM_STATE_FULLSCREEN};
+                              ewmh->_NET_WM_STATE_FULLSCREEN};
 
-	xcb_ewmh_set_supported(ewmh, def_screen, LENGTH(net_atoms), net_atoms);
+    xcb_ewmh_set_supported(ewmh, def_screen, LENGTH(net_atoms), net_atoms);
 
-	xcb_ewmh_set_wm_name(ewmh, recorder, 3, "bwm");
-	xcb_ewmh_set_wm_pid(ewmh, recorder, getpid());
-	xcb_ewmh_set_supporting_wm_check(ewmh, root, recorder);
-	xcb_ewmh_set_supporting_wm_check(ewmh, recorder, recorder);
+    xcb_ewmh_set_wm_name(ewmh, recorder, 3, "bwm");
+    xcb_ewmh_set_wm_pid(ewmh, recorder, getpid());
+    xcb_ewmh_set_supporting_wm_check(ewmh, root, recorder);
+    xcb_ewmh_set_supporting_wm_check(ewmh, recorder, recorder);
 
     for (unsigned int i=0; i<ATOM_COUNT; i++)
         wmatoms[i] = getatom(WM_ATOM_NAMES[i]);
@@ -1125,9 +1143,9 @@ static void bwm_setup()
                         wmatoms[NET_NUMBER_OF_DESKTOPS], XCB_ATOM_CARDINAL,
                         32, 1,&_WORKSPACES);
     xcb_ewmh_set_number_of_desktops(ewmh, def_screen, _WORKSPACES);
-	xcb_ewmh_set_current_desktop(ewmh, def_screen, 0);
+    xcb_ewmh_set_current_desktop(ewmh, def_screen, 0);
 
-    focus_client(NULL); 
+    focus_client(NULL);
 
     /* keys */
     if (!grab_keys())
@@ -1172,8 +1190,8 @@ static void cleanup()
 {
     xcb_set_input_focus(conn, XCB_NONE, XCB_INPUT_FOCUS_POINTER_ROOT,
                         XCB_CURRENT_TIME);
-	xcb_ewmh_connection_wipe(ewmh);
-	if (ewmh) free(ewmh);
+    xcb_ewmh_connection_wipe(ewmh);
+    if (ewmh) free(ewmh);
 
     xcb_query_tree_reply_t  *query;
     xcb_window_t *c;
