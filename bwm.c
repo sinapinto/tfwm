@@ -72,9 +72,10 @@ typedef struct client client;
 struct client{
     xcb_drawable_t id;                       /* for get_geom */
     int16_t x, y; uint16_t width, height;    /* current dimensions */
-    int16_t oldx, oldy; uint16_t oldw, oldh; /* for toggle_maximize */
+    int16_t oldx, oldy; uint16_t oldw, oldh; /* for maximizes */
     uint16_t base_width, base_height, min_width, min_height; /* size hints */
     bool is_maximized;                       /* was fullscreened */
+    bool is_maximized_vert;
     bool is_centered;                        /* center mode is active */
     bool dontcenter;
     client *next;                            /* next client in list */
@@ -124,7 +125,7 @@ static void change_workspace(const Arg *arg);
 static void save_workspace(const uint8_t i);
 static void select_workspace(const uint8_t i);
 static void client_to_workspace(const Arg *arg);
-static void vert_max(const Arg *arg);
+static void vert_max_toggle(const Arg *arg);
 static void add_window_to_list(xcb_window_t w);
 static void remove_window(xcb_window_t w);
 static void kill_current();
@@ -256,6 +257,7 @@ static void resize(const Arg *arg)
 
     /* unmaximize (redraw border) */
     if (current->is_maximized) current->is_maximized = false;
+    if (current->is_maximized_vert) current->is_maximized_vert = false;
     change_border_width(current->win, BORDER_WIDTH);
 
     focus_client(current);
@@ -269,7 +271,7 @@ static void resize(const Arg *arg)
  * i=2 -> move up
  * i=3 -> move left
  * note: a maximized client that is moved will keep its maximized attribute
- * so that it can still be unmaximized */
+ * so that it can still be unmaximized  -- not the case for vert maxed */
 static void move(const Arg *arg)
 {
     if (current == NULL)
@@ -293,8 +295,8 @@ static void move(const Arg *arg)
     xcb_configure_window(conn, current->win, XCB_CONFIG_WINDOW_X
                                    | XCB_CONFIG_WINDOW_Y, values);
     /* if it was centered it no longer is */
-    if (current->is_centered)
-        current->is_centered = false;
+    if (current->is_centered) current->is_centered = false;
+    if (current->is_maximized_vert) current->is_maximized_vert = false;
     xcb_flush(conn);
 }
 
@@ -382,19 +384,40 @@ static void toggle_maximize(const Arg *arg)
     xcb_flush(conn);
 }
 
-static void vert_max(const Arg *arg)
+static void vert_max_toggle(const Arg *arg)
 {
     if (!current) return;
+    if (current->is_maximized) return;
     (void) arg;
     uint32_t val[3];
-    val[0] = 0;
-    val[1] = screen->height_in_pixels - 2 * BORDER_WIDTH;
-    val[2] = XCB_STACK_MODE_ABOVE;
-    current->y = 0;
-    current->height = val[1];
-    uint32_t mask = XCB_CONFIG_WINDOW_Y
-        | XCB_CONFIG_WINDOW_HEIGHT
-        | XCB_CONFIG_WINDOW_STACK_MODE;
+    uint32_t mask;
+    if (!current->is_maximized_vert) {
+        val[0] = 0;
+        val[1] = screen->height_in_pixels - 2 * BORDER_WIDTH;
+        val[2] = XCB_STACK_MODE_ABOVE;
+        current->oldx = current->x;
+        current->oldy = current->y;
+        current->oldh = current->height;
+        current->oldw = current->width;
+        current->y = 0;
+        current->height = val[1];
+        mask = XCB_CONFIG_WINDOW_Y
+            | XCB_CONFIG_WINDOW_HEIGHT
+            | XCB_CONFIG_WINDOW_STACK_MODE;
+        current->is_maximized_vert = true;
+    } else {
+        current->x = current->oldx;
+        current->y = current->oldy;
+        current->height = current->oldh;
+        current->width = current->oldw;
+        val[0] = current->y;
+        val[1] = current->height;
+        val[2] = XCB_STACK_MODE_ABOVE;
+        mask = XCB_CONFIG_WINDOW_Y
+            | XCB_CONFIG_WINDOW_HEIGHT
+            | XCB_CONFIG_WINDOW_STACK_MODE;
+        current->is_maximized_vert = false;
+    }
 
     xcb_configure_window(conn, current->win, mask, val);
     xcb_flush(conn);
@@ -554,7 +577,7 @@ static void add_window_to_list(xcb_window_t w)
     c->id = w;
     c->x = c->y = c->width = c->height = c->oldx = c->oldy = c->oldw = c->oldh = 0;
     c->min_width = c->min_height = c->base_width = c->base_height = 0;
-    c->is_maximized = c->is_centered = c->dontcenter = false;
+    c->is_maximized = c->is_maximized_vert = c->is_centered = c->dontcenter = false;
 
     if (head == NULL)
     {

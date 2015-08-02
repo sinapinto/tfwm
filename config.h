@@ -49,7 +49,7 @@ static key keys[] = {
     /* srhink the window height and width */
     { MOD | CTRL,       XK_k,           resize,             {.i=5}   },
     /* maximize vertically */
-    { MOD,              XK_m,           vert_max,           {.i=0}   },
+    { MOD,              XK_m,           vert_max_toggle,    {.i=0}   },
     /* window remains centered while resizing (toggle) */
     { MOD,              XK_s,           toggle_centered,    {.i=0}   },
     /* fullscreen the window (toggle) */
