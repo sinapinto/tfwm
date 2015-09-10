@@ -36,7 +36,7 @@
 #include <X11/keysym.h>
 
 /* uncomment to print debug statements */
-/* #define DEBUG */
+// #define DEBUG
 #define MOUSE
 
 #ifdef DEBUG
@@ -326,6 +326,7 @@ static void toggle_maximize(const Arg *arg)
     uint32_t mask = XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y
                   | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT
                   | XCB_CONFIG_WINDOW_STACK_MODE;
+    PDEBUG("current->x is %d\n", current->x);
 
     if (!current->is_maximized)
     {
@@ -339,16 +340,6 @@ static void toggle_maximize(const Arg *arg)
         /* go fullscreen */
         val[0] = 0; val[1] = 0;
         val[2] = screen->width_in_pixels; val[3] = screen->height_in_pixels;
-
-        /* TODO: this is a dirty hack. figure out why chromium doesn't fullscreen properly on its own */
-        xcb_icccm_get_wm_class_reply_t ch;
-        if (xcb_icccm_get_wm_class_reply(conn, xcb_icccm_get_wm_class(conn, current->win), &ch, NULL)) {
-            if (strcmp(ch.class_name, "Chromium") == 0){
-                val[1] = -1;
-                val[2] = screen->width_in_pixels + 2;
-                val[3] += 1;
-            }
-        }
 
         PDEBUG("maximize: x: %d y: %d width: %d height: %d\n",
                 val[0], val[1], val[2], val[3]);
@@ -367,16 +358,7 @@ static void toggle_maximize(const Arg *arg)
         val[1] = current->oldy;
         val[2] = current->oldw;
         val[3] = current->oldh;
-        xcb_icccm_get_wm_class_reply_t ch;
-        if (xcb_icccm_get_wm_class_reply(conn, xcb_icccm_get_wm_class(conn, current->win), &ch, NULL)) {
-            if (strcmp(ch.class_name, "Chromium") == 0){
-                val[1] = -1;
-                val[2] = screen->width_in_pixels + 2;
-                val[3] += 1;
-            } else {
-                change_border_width(current->win, BORDER_WIDTH);
-            }
-        }
+        change_border_width(current->win, BORDER_WIDTH);
         PDEBUG("minimize: x: %d y: %d width: %d height: %d\n",
                 val[0], val[1], val[2], val[3]);
         xcb_configure_window(conn, current->win, mask, val);
@@ -564,14 +546,6 @@ static void setup_win(xcb_window_t w)
         }
         free(prop_reply);
     }
-
-    xcb_icccm_get_wm_class_reply_t ch;
-    if (xcb_icccm_get_wm_class_reply(conn, xcb_icccm_get_wm_class(conn, w), &ch, NULL)) {
-        if (strstr(ch.class_name, "Chromium")){
-            toggle_maximize(NULL);
-        }
-    }
-
 
     xcb_flush(conn);
 }
@@ -1085,6 +1059,13 @@ static xcb_keycode_t* xcb_get_keycodes(xcb_keysym_t keysym)
 
 static void change_border_width(xcb_window_t win, uint8_t width)
 {
+    xcb_icccm_get_wm_class_reply_t ch;
+    if (xcb_icccm_get_wm_class_reply(conn, xcb_icccm_get_wm_class(conn, win), &ch, NULL)) {
+        for (int i = 0; i < LENGTH(border_blacklist); i++) {
+            if (strcmp(ch.class_name, border_blacklist[i]) == 0)
+                return;
+        }
+    }
     uint32_t value[1] = { width };
     xcb_configure_window(conn, win, XCB_CONFIG_WINDOW_BORDER_WIDTH, value);
 }

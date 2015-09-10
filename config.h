@@ -10,6 +10,8 @@ uint8_t steps[2] = { 30, 40 };
 #define FOCUS        0xafaf87  /* focused window border color */
 #define BORDER_WIDTH 2         /* in pixels */
 
+char *border_blacklist[] = { "Chromium" }; /* never draw borders for these applications */
+
 #define CENTER_BY_DEFAULT 1    /* windows start centered (0 to turn off) */
 
 #define DESKTOPCHANGE(K,N) \
