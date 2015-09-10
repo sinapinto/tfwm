@@ -166,8 +166,20 @@ static int get_geom(xcb_drawable_t win, int16_t *x, int16_t *y,
 }
 
 /* iterate througth the client list and find the client with window w */
+/* TODO: check other WS's */
 static client *window_to_client(xcb_window_t w)
 {
+    /* client *c = NULL; */
+    /* int d = 0, cd = current_workspace; */
+    /* for (bool found = false; d<NUM_WORKSPACES && !found; ++d) */
+    /*     for (select_workspace(d), c=head; c; c=c->next){ */
+    /*         PDEBUG("matching win %d..\nmatch with %d? on workspace %d\n", e->window, c->win, d); */
+    /*         if ( e->window == c->win){ */
+    /*             found = true; */
+    /*             break; */
+    /*         } */
+    /*     } */
+    /* if (cd != d-1) select_workspace(cd); */
     if (!w) return NULL;
 
     client *c;
@@ -328,7 +340,7 @@ static void toggle_maximize(const Arg *arg)
         val[0] = 0; val[1] = 0;
         val[2] = screen->width_in_pixels; val[3] = screen->height_in_pixels;
 
-        /* chromium hax */
+        /* TODO: this is a dirty hack. figure out why chromium doesn't fullscreen properly on its own */
         xcb_icccm_get_wm_class_reply_t ch;
         if (xcb_icccm_get_wm_class_reply(conn, xcb_icccm_get_wm_class(conn, current->win), &ch, NULL)) {
             if (strcmp(ch.class_name, "Chromium") == 0){
@@ -699,7 +711,6 @@ static void remove_window(xcb_window_t w)
 static void kill_current()
 {
     if (NULL == current)
-        /* TODO: query tree reply */
         return;
 
     /* try sending WM_DELETE_WINDOW message */

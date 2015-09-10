@@ -3,7 +3,7 @@
 #define CTRL    XCB_MOD_MASK_CONTROL
 
 /* 0: move step, 1: resize step
- * i.e. windows will move by increments of 25px and resize by 30px */
+ * i.e. windows will move by increments of 30px and resize by 40px */
 uint8_t steps[2] = { 30, 40 };
 
 #define UNFOCUS      0x3B3B31  /* unfocused window border color */
