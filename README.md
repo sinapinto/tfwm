@@ -1,6 +1,6 @@
-bwm
+tfwm
 ===
-bwm is a minimalist, keyboard-centric, floating window manager for X
+tfwm is a minimalist, keyboard-centric, floating window manager for X
 
 *NB:* this program is not well tested and it is entirely possible that it will crash X. It is suitable for everyday use, though.
 
@@ -26,20 +26,20 @@ On Debian-based distributions:
 On Arch-based distributions:
 `sudo pacman -S libxcb xcb-util xcb-util-keysyms`
 
-When installing bwm, edit Makefile and config.h to your needs (the binary is installed into /usr/local/bin by default).
+When installing tfwm, edit Makefile and config.h to your needs (the binary is installed into /usr/local/bin by default).
 
     $ git clone git://github.com/sinapinto/bwm.git
-    $ cd bwm
+    $ cd tfwm
     $ make
     # make install
 
-Running bwm
+Running tfwm
 -----------
-Add the following line to your `~/.xinitrc` to start bwm from the console using `startx`:
+Add the following line to your `~/.xinitrc` to start tfwm from the console using `startx`:
 
-    bwm
+    tfwm
 
-By default, bwm does not set an X cursor, so the "cross" cursor is usually displayed.
+By default, tfwm does not set an X cursor, so the "cross" cursor is usually displayed.
 To set the usual left-pointer, add the following line to your `~/.xinitrc`:
 
     xsetroot -cursor_name left_ptr

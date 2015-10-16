@@ -1,18 +1,17 @@
-WMNAME  = bwm
-VERSION = 2015-02
-DIST 	= $(WMNAME)-$(VERSION)
+WMNAME  	= tfwm
+VERSION 	= 2015-10
+DIST 			= $(WMNAME)-$(VERSION)
 
-CC			?= gcc
-RM			 = /bin/rm
-PREFIX 		?= /usr/local
-BWM_PATH 	 = $(PREFIX)/bin/$(WMNAME)
+CC				?= gcc
+RM				?= /bin/rm
+# PREFIX		?= /usr/local
+PREFIX		?= /home/veggie
 X11_INC		?= /usr/include/xcb
 
-SRC 	 = $(WMNAME).c
-OBJ 	 = $(WMNAME).o
-CFLAGS 	+= -std=c99 -Os -Wall -pedantic -I. -I$(X11_INC) \
-		   -DBWM_PATH=\"$(BWM_PATH)\"
-LDFLAGS += `pkg-config --libs xcb xcb-keysyms xcb-icccm xcb-ewmh`
+SRC				= $(WMNAME).c
+OBJ 	 		= $(WMNAME).o
+CFLAGS 		+= -std=c99 -Os -Wall -pedantic -I. -I$(X11_INC)
+LDFLAGS 	+= `pkg-config --libs xcb xcb-keysyms xcb-icccm xcb-ewmh`
 
 all: options $(WMNAME)
 
@@ -22,7 +21,7 @@ options:
 	@echo "LDFLAGS  = $(LDFLAGS)"
 	@echo "CC       = $(CC)"
 
-$(OBJ): config.h events.h
+$(OBJ): config.h
 
 %.o: %.c
 	@echo CC $<
@@ -49,7 +48,7 @@ uninstall:
 dist: clean
 	@echo creating dist tarball
 	@mkdir -p $(DIST)
-	@cp -R Makefile README.md config.h events.h $(SRC) $(DIST)
+	@cp -R Makefile README.md config.h $(SRC) $(DIST)
 	@tar -cf $(DIST).tar --exclude .git $(DIST)
 	@gzip $(DIST).tar
 	@$(RM) -rf $(DIST)
