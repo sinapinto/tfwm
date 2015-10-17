@@ -67,10 +67,12 @@ static void focus(struct Client *c);
 static void getatoms(xcb_atom_t *atoms, char **names, int count);
 static xcb_keycode_t* getkeycodes(xcb_keysym_t keysym);
 static xcb_keysym_t getkeysym(xcb_keycode_t keycode);
+static void setupkeys();
 static bool isvisible(Client *c);
 static void keypress(xcb_generic_event_t *ev);
 static void killclient(const Arg *arg);
 static void manage(xcb_window_t w);
+static void mappingnotify(xcb_generic_event_t *ev);
 static void maprequest(xcb_generic_event_t *ev);
 static void move(const Arg *arg);
 static void quit(const Arg *arg);
@@ -257,6 +259,16 @@ getkeysym(xcb_keycode_t keycode) {
 	xcb_key_symbols_free(keysyms);
 	return keysym;
 }
+void
+setupkeys() {
+	xcb_keycode_t *keycode;
+	for (unsigned int i = 0; i < LENGTH(keys); ++i) {
+		keycode = getkeycodes(keys[i].keysym);
+		for (unsigned int k = 0; keycode[k] != XCB_NO_SYMBOL; k++)
+			xcb_grab_key(conn, 1, screen->root, keys[i].mod, keycode[k],
+				XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
+	}
+}
 
 bool
 isvisible(Client *c) {
@@ -295,7 +307,6 @@ manage(xcb_window_t w) {
 	if (!(c = malloc(sizeof(Client))))
 		err(EXIT_FAILURE, "ERROR: couldn't allocate memory");
 	c->win = w;
-
 	/* geometry */
 	xcb_get_geometry_reply_t *geom;
 	geom = xcb_get_geometry_reply(conn, xcb_get_geometry(conn, w), NULL);
@@ -317,6 +328,16 @@ manage(xcb_window_t w) {
 }
 
 void
+mappingnotify(xcb_generic_event_t *ev) {
+	DEBUG("mappingnotify\n");
+	xcb_mapping_notify_event_t *e = (xcb_mapping_notify_event_t *)ev;
+	if (e->request != XCB_MAPPING_MODIFIER && e->request != XCB_MAPPING_KEYBOARD)
+		return;
+	xcb_ungrab_key(conn, XCB_GRAB_ANY, screen->root, XCB_MOD_MASK_ANY);
+	setupkeys();
+}
+
+void
 maprequest(xcb_generic_event_t *ev) {
 	DEBUG("maprequest\n");
 	xcb_map_request_event_t *e = (xcb_map_request_event_t *)ev;
@@ -327,9 +348,7 @@ maprequest(xcb_generic_event_t *ev) {
 
 void
 move(const Arg *arg) {
-	if (!sel)
-		return;
-	if (sel->win == screen->root)
+	if (!sel || sel->win == screen->root)
 		return;
 	DEBUG("move\n");
 	int step = steps[0];
@@ -354,9 +373,7 @@ quit(const Arg *arg) {
 
 void
 resize(const Arg *arg) {
-	if (!sel)
-		return;
-	if (sel->win == screen->root)
+	if (!sel || sel->win == screen->root)
 		return;
 	DEBUG("resize\n");
 	int step = steps[1];
@@ -395,12 +412,10 @@ sendevent(Client *c, xcb_atom_t proto) {
 	bool exists = false;
 	cookie = xcb_icccm_get_wm_protocols(conn, c->win, wmatom[WMProtocols]);
 	if (xcb_icccm_get_wm_protocols_reply(conn, cookie, &reply, NULL) == 1) {
-		for (int i = 0; i < reply.atoms_len && !exists; i++) {
-			if (reply.atoms[i] == proto) {
+		for (int i = 0; i < reply.atoms_len && !exists; i++)
+			if (reply.atoms[i] == proto)
 				exists = true;
-				xcb_icccm_get_wm_protocols_reply_wipe(&reply);
-			}
-		}
+		xcb_icccm_get_wm_protocols_reply_wipe(&reply);
 	}
 	if (exists) {
 		ev.response_type = XCB_CLIENT_MESSAGE;
@@ -453,13 +468,7 @@ setup() {
 	getatoms(wmatom, wmatomnames, WMLast);
 	getatoms(netatom, netatomnames, NetLast);
 	/* init keys */
-	xcb_keycode_t *keycode;
-	for (unsigned int i = 0; i < LENGTH(keys); ++i) {
-		keycode = getkeycodes(keys[i].keysym);
-		for (unsigned int k = 0; keycode[k] != XCB_NO_SYMBOL; k++)
-			xcb_grab_key(conn, 1, screen->root, keys[i].mod, keycode[k],
-				XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
-	}
+	setupkeys();
 	/* set handlers */
 	for (unsigned int i = 0; i < XCB_NO_OPERATION; ++i)
 		handler[i] = NULL;
@@ -467,6 +476,7 @@ setup() {
 	handler[XCB_DESTROY_NOTIFY] = destroynotify;
 	handler[XCB_UNMAP_NOTIFY] = unmapnotify;
 	handler[XCB_MAP_REQUEST] = maprequest;
+	handler[XCB_MAPPING_NOTIFY] = mappingnotify;
 	handler[XCB_CLIENT_MESSAGE] = clientmessage;
 	handler[XCB_KEY_PRESS] = keypress;
 	setcursor(68); /* left_ptr */
