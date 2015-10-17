@@ -64,10 +64,10 @@ static void destroynotify(xcb_generic_event_t *ev);
 static void detach(Client *c);
 static void detachstack(Client *c);
 static void focus(struct Client *c);
+static void focusstack(const Arg *arg);
 static void getatoms(xcb_atom_t *atoms, char **names, int count);
 static xcb_keycode_t* getkeycodes(xcb_keysym_t keysym);
 static xcb_keysym_t getkeysym(xcb_keycode_t keycode);
-static void setupkeys();
 static bool isvisible(Client *c);
 static void keypress(xcb_generic_event_t *ev);
 static void killclient(const Arg *arg);
@@ -76,13 +76,17 @@ static void mappingnotify(xcb_generic_event_t *ev);
 static void maprequest(xcb_generic_event_t *ev);
 static void move(const Arg *arg);
 static void quit(const Arg *arg);
+static void raisewindow(xcb_drawable_t win);
 static void resize(const Arg *arg);
+static void restack();
 static void run(void);
 static bool sendevent(Client *c, xcb_atom_t proto);
 static void setcursor(int cursorid);
 static void setup();
+static void setupkeys();
 static void sigchld();
 static void testcookie(xcb_void_cookie_t cookie, char *errormsg);
+static void togglefullscreen(const Arg *arg);
 static void unfocus(struct Client *c);
 static void unmanage(Client *c);
 static void unmapnotify(xcb_generic_event_t *ev);
@@ -149,10 +153,17 @@ cleanup() {
 void
 clientmessage(xcb_generic_event_t *ev) {
 	DEBUG("clientmessage\n");
-	/* xcb_client_message_event_t *e = (xcb_client_message_event_t*)ev; */
-	/* Client *c; */
-	/* if (c = wintoclient(e->window)) { */
-	/* } */
+	xcb_client_message_event_t *e = (xcb_client_message_event_t*)ev;
+	Client *c;
+	if ((c = wintoclient(e->window))) {
+		if (e->type == netatom[NetWMState] &&
+				(unsigned)e->data.data32[1] == netatom[NetWMFullscreen]) {
+			if (e->data.data32[0] == 0 || e->data.data32[0] == 1)
+				togglefullscreen(NULL);
+		}
+		else if (e->type == netatom[NetActiveWindow])
+			focus(c);
+	}
 }
 
 void
@@ -173,7 +184,6 @@ configurerequest(xcb_generic_event_t *ev) {
 
 void
 destroynotify(xcb_generic_event_t *ev) {
-	DEBUG("destroynotify\n");
 	xcb_destroy_notify_event_t *e = (xcb_destroy_notify_event_t *)ev;
 	Client *c;
 
@@ -204,7 +214,6 @@ detachstack(Client *c) {
 
 void
 focus(struct Client *c) {
-	DEBUG("focus\n");
 	if(!c || !isvisible(c))
 		for(c = stack; c && !isvisible(c); c = c->snext)
 			if(sel && sel != c)
@@ -222,6 +231,32 @@ focus(struct Client *c) {
 				XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
 	}
 	sel = c;
+}
+
+void
+focusstack(const Arg *arg) {
+	Client *c = NULL, *i;
+
+	if(!sel)
+		return;
+	if(arg->i > 0) {
+		for(c = sel->next; c && !isvisible(c); c = c->next);
+		if(!c)
+			for(c = clients; c && !isvisible(c); c = c->next);
+	}
+	else {
+		for(i = clients; i != sel; i = i->next)
+			if(isvisible(i))
+				c = i;
+		if(!c)
+			for(; i; i = i->next)
+				if(isvisible(i))
+					c = i;
+	}
+	if(c) {
+		focus(c);
+		restack();
+	}
 }
 
 void
@@ -259,16 +294,6 @@ getkeysym(xcb_keycode_t keycode) {
 	xcb_key_symbols_free(keysyms);
 	return keysym;
 }
-void
-setupkeys() {
-	xcb_keycode_t *keycode;
-	for (unsigned int i = 0; i < LENGTH(keys); ++i) {
-		keycode = getkeycodes(keys[i].keysym);
-		for (unsigned int k = 0; keycode[k] != XCB_NO_SYMBOL; k++)
-			xcb_grab_key(conn, 1, screen->root, keys[i].mod, keycode[k],
-				XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
-	}
-}
 
 bool
 isvisible(Client *c) {
@@ -302,7 +327,6 @@ killclient(const Arg *arg) {
 
 void
 manage(xcb_window_t w) {
-	DEBUG("manage\n");
 	Client *c = NULL;
 	if (!(c = malloc(sizeof(Client))))
 		err(EXIT_FAILURE, "ERROR: couldn't allocate memory");
@@ -329,7 +353,6 @@ manage(xcb_window_t w) {
 
 void
 mappingnotify(xcb_generic_event_t *ev) {
-	DEBUG("mappingnotify\n");
 	xcb_mapping_notify_event_t *e = (xcb_mapping_notify_event_t *)ev;
 	if (e->request != XCB_MAPPING_MODIFIER && e->request != XCB_MAPPING_KEYBOARD)
 		return;
@@ -339,7 +362,6 @@ mappingnotify(xcb_generic_event_t *ev) {
 
 void
 maprequest(xcb_generic_event_t *ev) {
-	DEBUG("maprequest\n");
 	xcb_map_request_event_t *e = (xcb_map_request_event_t *)ev;
 	if (!wintoclient(e->window))
 		manage(e->window);
@@ -350,7 +372,6 @@ void
 move(const Arg *arg) {
 	if (!sel || sel->win == screen->root)
 		return;
-	DEBUG("move\n");
 	int step = steps[0];
 	switch (arg->i) {
 		case 0: sel->y += step; break;
@@ -367,15 +388,21 @@ move(const Arg *arg) {
 
 void
 quit(const Arg *arg) {
-	DEBUG("bye\n");
 	running = false;
+}
+
+void
+raisewindow(xcb_drawable_t win) {
+    uint32_t values[] = { XCB_STACK_MODE_ABOVE };
+    if (screen->root == win || 0 == win)
+        return;
+    xcb_configure_window(conn, win, XCB_CONFIG_WINDOW_STACK_MODE, values);
 }
 
 void
 resize(const Arg *arg) {
 	if (!sel || sel->win == screen->root)
 		return;
-	DEBUG("resize\n");
 	int step = steps[1];
 	switch (arg->i) {
 		case 0: sel->h = sel->h + step; break;
@@ -388,6 +415,15 @@ resize(const Arg *arg) {
 	values[1] = sel->h;
 	xcb_configure_window(conn, sel->win, XCB_CONFIG_WINDOW_WIDTH
 			|XCB_CONFIG_WINDOW_HEIGHT, values);
+}
+
+void
+restack() {
+	if(!sel)
+		return;
+	raisewindow(sel->win);
+	/* for(c = stack; c; c = c->snext) */
+	/* 	if(isvisible(c)) */
 }
 
 void
@@ -484,6 +520,17 @@ setup() {
 }
 
 void
+setupkeys() {
+	xcb_keycode_t *keycode;
+	for (unsigned int i = 0; i < LENGTH(keys); ++i) {
+		keycode = getkeycodes(keys[i].keysym);
+		for (unsigned int k = 0; keycode[k] != XCB_NO_SYMBOL; k++)
+			xcb_grab_key(conn, 1, screen->root, keys[i].mod, keycode[k],
+				XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
+	}
+}
+
+void
 sigchld() {
 	if (signal(SIGCHLD, sigchld) == SIG_ERR)
 		err(EXIT_FAILURE, "ERROR: can't install SIGCHLD handler");
@@ -499,10 +546,53 @@ testcookie(xcb_void_cookie_t cookie, char *errormsg) {
 		exit(EXIT_FAILURE);
 	}
 }
+void
+togglefullscreen(const Arg *arg) {
+	if (!sel)
+		return;
+	uint32_t val[5];
+	val[4] = XCB_STACK_MODE_ABOVE;
+	uint32_t mask = XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y
+		| XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT
+		| XCB_CONFIG_WINDOW_STACK_MODE;
+
+	if (!sel->isfullscreen) {
+		change_border_width(sel->win, 0);
+		sel->oldx = sel->x;
+		sel->oldy = sel->y;
+		sel->oldw = sel->w;
+		sel->oldh = sel->h;
+		val[0] = 0; val[1] = 0;
+		val[2] = sw; val[3] = sh;
+		xcb_configure_window(conn, sel->win, mask, val);
+		sel->x = 0;
+		sel->y = 0;
+		sel->w = sw;
+		sel->h = sh;
+		sel->isfullscreen = true;
+	}
+	else {
+		val[0] = sel->oldx;
+		val[1] = sel->oldy;
+		val[2] = sel->oldw;
+		val[3] = sel->oldh;
+		change_border_width(sel->win, BORDER_WIDTH);
+		xcb_configure_window(conn, sel->win, mask, val);
+		sel->x = sel->oldx;
+		sel->y = sel->oldy;
+		sel->w = sel->oldw;
+		sel->h = sel->oldh;
+		sel->isfullscreen = false;
+		focus(NULL);
+	}
+	long data[] = { sel->isfullscreen ? netatom[NetWMFullscreen]
+		: XCB_ICCCM_WM_STATE_NORMAL };
+	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, sel->win,
+			netatom[NetWMState], XCB_ATOM_ATOM, 32, 1, data);
+}
 
 void
 unfocus(struct Client *c) {
-	DEBUG("unfocus\n");
 	if(!c)
 		return;
 	change_border_color(c->win, UNFOCUS);
@@ -512,7 +602,6 @@ unfocus(struct Client *c) {
 
 void
 unmanage(Client *c) {
-	DEBUG("unmanage\n");
 	xcb_kill_client(conn, c->win);
 	detach(c);
 	detachstack(c);
@@ -523,7 +612,6 @@ unmanage(Client *c) {
 void
 unmapnotify(xcb_generic_event_t *ev) {
 	xcb_unmap_notify_event_t *e = (xcb_unmap_notify_event_t *)ev;
-	DEBUG("unmapnotify\n");
 	Client *c;
 	if ((c = wintoclient(e->window))) {
 		unmanage(c);

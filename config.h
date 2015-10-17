@@ -15,6 +15,9 @@ static Key keys[] = {
 	{ MOD | SHIFT,      XK_l,           resize,                       {.i=1}   },
 	{ MOD | SHIFT,      XK_k,           resize,                       {.i=2}   },
 	{ MOD | SHIFT,      XK_h,           resize,                       {.i=3}   },
+	{ MOD,              XK_Tab,         focusstack,                   {.i=+1}  },
+	{ MOD | SHIFT,      XK_Tab,         focusstack,                   {.i=-1}  },
+	{ MOD,              XK_a,           togglefullscreen,             {.i=0}   },
 	{ MOD,              XK_q,           killclient,                   {.i=0}   },
 	{ MOD | SHIFT,      XK_e,           quit,                         {.i=0}   },
 };
