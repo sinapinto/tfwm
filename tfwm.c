@@ -76,8 +76,10 @@ static void move(const Arg *arg);
 static void quit(const Arg *arg);
 static void run(void);
 static bool sendevent(Client *c, xcb_atom_t proto);
+static void setcursor(int cursorid);
 static void setup();
 static void sigchld();
+static void testcookie(xcb_void_cookie_t cookie, char *errormsg);
 static void unfocus(struct Client *c);
 static void unmanage(Client *c);
 static void unmapnotify(xcb_generic_event_t *ev);
@@ -90,7 +92,6 @@ enum { NetSupported, NetWMFullscreen, NetWMState, NetActiveWindow, NetLast }; /*
 /* variables */
 static xcb_connection_t *conn;
 static xcb_screen_t *screen;
-static int scrno;
 static int sw, sh;
 static Client *clients;
 static Client *sel;
@@ -106,14 +107,12 @@ static char *netatomnames[] = { "_NET_SUPPORTED", "_NET_WM_STATE_FULLSCREEN", "_
 
 void
 attach(Client *c) {
-	DEBUG("attach\n");
 	c->next = clients;
 	clients = c;
 }
 
 void
 attachstack(Client *c) {
-	DEBUG("attachstack\n");
 	c->snext = stack;
 	stack = c;
 }
@@ -153,7 +152,7 @@ clientmessage(xcb_generic_event_t *ev) {
 void
 configurerequest(xcb_generic_event_t *ev) {
 	xcb_configure_request_event_t *e = (xcb_configure_request_event_t *)ev;
-	DEBUG("event: Confgirue Request, mask: %d\n", e->value_mask);
+	DEBUG("confgiruerequest\n");
 	Client *c;
 	if (!(c = wintoclient(e->window)))
 		return;
@@ -178,7 +177,6 @@ destroynotify(xcb_generic_event_t *ev) {
 
 void
 detach(Client *c) {
-	DEBUG("detach\n");
 	Client **tc;
 
 	for(tc = &clients; *tc && *tc != c; tc = &(*tc)->next);
@@ -187,7 +185,6 @@ detach(Client *c) {
 
 void
 detachstack(Client *c) {
-	DEBUG("detachstack\n");
 	Client **tc, *t;
 
 	for(tc = &stack; *tc && *tc != c; tc = &(*tc)->snext);
@@ -238,7 +235,7 @@ xcb_keycode_t *
 getkeycodes(xcb_keysym_t keysym) {
 	xcb_key_symbols_t *keysyms;
 	if (!(keysyms = xcb_key_symbols_alloc(conn)))
-		err(EXIT_FAILURE, "couldn't get keycode.");
+		err(EXIT_FAILURE, "ERROR: couldn't get keycode.");
 	xcb_keycode_t *keycode = xcb_key_symbols_get_keycode(keysyms, keysym);
 	xcb_key_symbols_free(keysyms);
 	return keycode;
@@ -248,7 +245,7 @@ xcb_keysym_t
 getkeysym(xcb_keycode_t keycode) {
 	xcb_key_symbols_t *keysyms;
 	if (!(keysyms = xcb_key_symbols_alloc(conn)))
-		err(EXIT_FAILURE, "couldn't get keysym.");
+		err(EXIT_FAILURE, "ERROR: couldn't get keysym.");
 	xcb_keysym_t keysym = xcb_key_symbols_get_keysym(keysyms, keycode, 0);
 	xcb_key_symbols_free(keysyms);
 	return keysym;
@@ -289,14 +286,14 @@ manage(xcb_window_t w) {
 	DEBUG("manage\n");
 	Client *c = NULL;
 	if (!(c = malloc(sizeof(Client))))
-		err(EXIT_FAILURE, "couldn't allocate memory");
+		err(EXIT_FAILURE, "ERROR: couldn't allocate memory");
 	c->win = w;
 
 	/* geometry */
 	xcb_get_geometry_reply_t *geom;
 	geom = xcb_get_geometry_reply(conn, xcb_get_geometry(conn, w), NULL);
 	if (!geom)
-		err(EXIT_FAILURE, "geometry reply failed");
+		err(EXIT_FAILURE, "ERROR: geometry reply failed");
 	c->x = c->oldx = geom->x;
 	c->y = c->oldy = geom->y;
 	c->w = c->oldw = geom->width;
@@ -323,14 +320,12 @@ maprequest(xcb_generic_event_t *ev) {
 
 void
 move(const Arg *arg) {
-	if (sel == NULL)
+	if (!sel)
 		return;
-	if (!sel->win || sel->win == screen->root)
+	if (sel->win == screen->root)
 		return;
-
 	DEBUG("move\n");
 	int step = steps[0];
-
 	switch (arg->i) {
 		case 0: sel->y += step; break;
 		case 1: sel->x += step; break;
@@ -345,6 +340,7 @@ move(const Arg *arg) {
 
 void
 quit(const Arg *arg) {
+	DEBUG("bye\n");
 	running = false;
 }
 
@@ -391,20 +387,34 @@ sendevent(Client *c, xcb_atom_t proto) {
 }
 
 void
+setcursor(int cursorid) {
+	xcb_font_t font = xcb_generate_id(conn);
+	xcb_void_cookie_t fontcookie = xcb_open_font_checked(conn, font, strlen ("cursor"), "cursor");
+	testcookie(fontcookie, "can't open font");
+	xcb_cursor_t cursor = xcb_generate_id(conn);
+	xcb_create_glyph_cursor(conn, cursor, font, font, cursorid, cursorid + 1, 0, 0, 0, 65535, 65535, 65535);
+	uint32_t mask = XCB_CW_CURSOR;
+	uint32_t value_list = cursor;
+	xcb_change_window_attributes(conn, screen->root, mask, &value_list);
+	xcb_free_cursor(conn, cursor);
+	fontcookie = xcb_close_font_checked(conn, font);
+	testcookie(fontcookie, "can't close font");
+}
+
+void
 setup() {
 	/* clean up any zombies */
 	sigchld();
 	/* init screen */
 	screen = xcb_setup_roots_iterator(xcb_get_setup(conn)).data;
 	if (!screen)
-		err(EXIT_FAILURE, "couldn't find screen.");
+		err(EXIT_FAILURE, "ERROR: couldn't find screen.");
 	sw = screen->width_in_pixels;
 	sh = screen->height_in_pixels;
 	/* subscribe to handler */
 	unsigned int value[1] = {XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY|XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT};
 	xcb_void_cookie_t cookie = xcb_change_window_attributes_checked(conn, screen->root, XCB_CW_EVENT_MASK, value);
-	if (xcb_request_check(conn, cookie))
-		err(EXIT_FAILURE, "another window manager is running.");
+	testcookie(cookie, "another window manager is running.");
 	/* init atoms */
 	getatoms(wmatom, wmatomnames, WMLast);
 	getatoms(netatom, netatomnames, NetLast);
@@ -425,15 +435,26 @@ setup() {
 	handler[XCB_MAP_REQUEST] = maprequest;
 	handler[XCB_CLIENT_MESSAGE] = clientmessage;
 	handler[XCB_KEY_PRESS] = keypress;
+	setcursor(68); /* left_ptr */
 	focus(NULL);
 }
 
 void
 sigchld() {
 	if (signal(SIGCHLD, sigchld) == SIG_ERR)
-		err(EXIT_FAILURE, "can't install SIGCHLD handler");
+		err(EXIT_FAILURE, "ERROR: can't install SIGCHLD handler");
 	while (0 < waitpid(-1, NULL, WNOHANG));
 }
+
+void
+testcookie(xcb_void_cookie_t cookie, char *errormsg) {   
+	xcb_generic_error_t *error = xcb_request_check(conn, cookie);
+	if (error) {
+		fprintf(stderr, "ERROR: %s : %d\n", errormsg, error->error_code);
+		xcb_disconnect(conn);
+		exit(EXIT_FAILURE);
+	}   
+}   
 
 void
 unfocus(struct Client *c) {
@@ -466,7 +487,6 @@ unmapnotify(xcb_generic_event_t *ev) {
 
 Client *
 wintoclient(xcb_window_t w) {
-	DEBUG("wintoclient\n");
 	Client *c;
 	for (c = clients; c; c = c->next)
 		if (w == c->win)
@@ -476,9 +496,9 @@ wintoclient(xcb_window_t w) {
 
 int
 main() {
-	conn = xcb_connect(NULL, &scrno);
+	conn = xcb_connect(NULL, NULL);
 	if (xcb_connection_has_error(conn))
-		err(EXIT_FAILURE, "xcb_connect error");
+		err(EXIT_FAILURE, "ERROR: xcb_connect error");
 	setup();
 	run();
 	cleanup();

@@ -6,11 +6,11 @@ int steps[2] =                        { 30, 40 }; /* move step, resize step */
 #define FOCUS                         0xafaf87
 #define BORDER_WIDTH                  2
 static Key keys[] = {
-   /* mod               keycode         function                      arg   */
-    { MOD,              XK_j,           move,                         {.i=0}   },
-    { MOD,              XK_l,           move,                         {.i=1}   },
-    { MOD,              XK_k,           move,                         {.i=2}   },
-    { MOD,              XK_h,           move,                         {.i=3}   },
-    { MOD,              XK_q,           killclient,                   {.i=0}   },
-    { MOD | SHIFT,      XK_e,           quit,                         {.i=0}   },
+	/* modifier         key             function                      argument */
+	{ MOD,              XK_j,           move,                         {.i=0}   },
+	{ MOD,              XK_l,           move,                         {.i=1}   },
+	{ MOD,              XK_k,           move,                         {.i=2}   },
+	{ MOD,              XK_h,           move,                         {.i=3}   },
+	{ MOD,              XK_q,           killclient,                   {.i=0}   },
+	{ MOD | SHIFT,      XK_e,           quit,                         {.i=0}   },
 };
