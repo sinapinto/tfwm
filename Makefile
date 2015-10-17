@@ -4,8 +4,7 @@ DIST 			= $(WMNAME)-$(VERSION)
 
 CC				?= gcc
 RM				?= /bin/rm
-# PREFIX		?= /usr/local
-PREFIX		?= /home/veggie
+PREFIX		?= /usr/local
 X11_INC		?= /usr/include/xcb
 
 SRC				= $(WMNAME).c
