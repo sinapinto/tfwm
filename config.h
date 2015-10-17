@@ -11,6 +11,10 @@ static Key keys[] = {
 	{ MOD,              XK_l,           move,                         {.i=1}   },
 	{ MOD,              XK_k,           move,                         {.i=2}   },
 	{ MOD,              XK_h,           move,                         {.i=3}   },
+	{ MOD | SHIFT,      XK_j,           resize,                       {.i=0}   },
+	{ MOD | SHIFT,      XK_l,           resize,                       {.i=1}   },
+	{ MOD | SHIFT,      XK_k,           resize,                       {.i=2}   },
+	{ MOD | SHIFT,      XK_h,           resize,                       {.i=3}   },
 	{ MOD,              XK_q,           killclient,                   {.i=0}   },
 	{ MOD | SHIFT,      XK_e,           quit,                         {.i=0}   },
 };

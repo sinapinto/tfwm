@@ -74,6 +74,7 @@ static void manage(xcb_window_t w);
 static void maprequest(xcb_generic_event_t *ev);
 static void move(const Arg *arg);
 static void quit(const Arg *arg);
+static void resize(const Arg *arg);
 static void run(void);
 static bool sendevent(Client *c, xcb_atom_t proto);
 static void setcursor(int cursorid);
@@ -87,7 +88,8 @@ static Client *wintoclient(xcb_window_t w);
 
 /* enums */
 enum { WMProtocols, WMDeleteWindow, WMState, WMLast }; /* default atoms */
-enum { NetSupported, NetWMFullscreen, NetWMState, NetActiveWindow, NetLast }; /* EWMH atoms */
+enum { NetSupported, NetWMFullscreen, NetWMState, NetActiveWindow,
+	NetLast }; /* EWMH atoms */
 
 /* variables */
 static xcb_connection_t *conn;
@@ -101,7 +103,8 @@ static void (*handler[XCB_NO_OPERATION]) (xcb_generic_event_t *ev);
 static xcb_atom_t wmatom[WMLast];
 static xcb_atom_t netatom[NetLast];
 static char *wmatomnames[] = { "WM_PROTOCOLS", "WM_DELETE_WINDOW", "WM_STATE" };
-static char *netatomnames[] = { "_NET_SUPPORTED", "_NET_WM_STATE_FULLSCREEN", "_NET_WM_STATE", "_NET_ACTIVE_WINDOW" };
+static char *netatomnames[] = { "_NET_SUPPORTED", "_NET_WM_STATE_FULLSCREEN",
+	"_NET_WM_STATE", "_NET_ACTIVE_WINDOW" };
 
 #include "config.h"
 
@@ -135,7 +138,8 @@ cleanup() {
 	while (stack)
 		unmanage(stack);
 
-	xcb_set_input_focus(conn, XCB_NONE, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
+	xcb_set_input_focus(conn, XCB_NONE,
+			XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
 	xcb_flush(conn);
 	xcb_disconnect(conn);
 }
@@ -200,7 +204,7 @@ void
 focus(struct Client *c) {
 	DEBUG("focus\n");
 	if(!c || !isvisible(c))
-		for(c = stack; c && !isvisible(c); c = c->snext) /* find first visible client */
+		for(c = stack; c && !isvisible(c); c = c->snext)
 			if(sel && sel != c)
 				unfocus(sel);
 	if(c) {
@@ -208,10 +212,12 @@ focus(struct Client *c) {
 		attachstack(c);
 		change_border_width(c->win, BORDER_WIDTH);
 		change_border_color(c->win, FOCUS);
-		xcb_set_input_focus(conn, XCB_INPUT_FOCUS_POINTER_ROOT, c->win, XCB_CURRENT_TIME);
+		xcb_set_input_focus(conn, XCB_INPUT_FOCUS_POINTER_ROOT,
+				c->win, XCB_CURRENT_TIME);
 	}
 	else {
-		xcb_set_input_focus(conn, XCB_NONE, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
+		xcb_set_input_focus(conn, XCB_NONE,
+				XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
 	}
 	sel = c;
 }
@@ -222,7 +228,8 @@ getatoms(xcb_atom_t *atoms, char **names, int count) {
 	for (unsigned int i = 0; i < count; ++i)
 		cookies[i] = xcb_intern_atom(conn, 0, strlen(names[i]), names[i]);
 	for (unsigned int i = 0; i < count; ++i) {
-		xcb_intern_atom_reply_t *reply = xcb_intern_atom_reply(conn, cookies[i], NULL);
+		xcb_intern_atom_reply_t *reply =
+			xcb_intern_atom_reply(conn, cookies[i], NULL);
 		if (reply) {
 			atoms[i] = reply->atom;
 			free(reply);
@@ -335,13 +342,35 @@ move(const Arg *arg) {
 	uint32_t values[2];
 	values[0] = sel->x;
 	values[1] = sel->y;
-	xcb_configure_window(conn, sel->win, XCB_CONFIG_WINDOW_X|XCB_CONFIG_WINDOW_Y, values);
+	xcb_configure_window(conn, sel->win, XCB_CONFIG_WINDOW_X|
+			XCB_CONFIG_WINDOW_Y, values);
 }
 
 void
 quit(const Arg *arg) {
 	DEBUG("bye\n");
 	running = false;
+}
+
+void
+resize(const Arg *arg) {
+	if (!sel)
+		return;
+	if (sel->win == screen->root)
+		return;
+	DEBUG("resize\n");
+	int step = steps[1];
+	switch (arg->i) {
+		case 0: sel->h = sel->h + step; break;
+		case 1: sel->w = sel->w + step; break;
+		case 2: sel->h = sel->h - step > 0 ? sel->h - step : sel->h; break;
+		case 3: sel->w = sel->w - step > 0 ? sel->w - step : sel->w; break;
+	}
+	uint32_t values[2];
+	values[0] = sel->w;
+	values[1] = sel->h;
+	xcb_configure_window(conn, sel->win, XCB_CONFIG_WINDOW_WIDTH
+			|XCB_CONFIG_WINDOW_HEIGHT, values);
 }
 
 void
@@ -389,10 +418,12 @@ sendevent(Client *c, xcb_atom_t proto) {
 void
 setcursor(int cursorid) {
 	xcb_font_t font = xcb_generate_id(conn);
-	xcb_void_cookie_t fontcookie = xcb_open_font_checked(conn, font, strlen ("cursor"), "cursor");
+	xcb_void_cookie_t fontcookie =
+		xcb_open_font_checked(conn, font, strlen ("cursor"), "cursor");
 	testcookie(fontcookie, "can't open font");
 	xcb_cursor_t cursor = xcb_generate_id(conn);
-	xcb_create_glyph_cursor(conn, cursor, font, font, cursorid, cursorid + 1, 0, 0, 0, 65535, 65535, 65535);
+	xcb_create_glyph_cursor(conn, cursor, font, font,
+			cursorid, cursorid + 1, 0, 0, 0, 65535, 65535, 65535);
 	uint32_t mask = XCB_CW_CURSOR;
 	uint32_t value_list = cursor;
 	xcb_change_window_attributes(conn, screen->root, mask, &value_list);
@@ -412,8 +443,11 @@ setup() {
 	sw = screen->width_in_pixels;
 	sh = screen->height_in_pixels;
 	/* subscribe to handler */
-	unsigned int value[1] = {XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY|XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT};
-	xcb_void_cookie_t cookie = xcb_change_window_attributes_checked(conn, screen->root, XCB_CW_EVENT_MASK, value);
+	unsigned int value[1] = {XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY |
+		XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT};
+	xcb_void_cookie_t cookie;
+	cookie = xcb_change_window_attributes_checked(conn, screen->root,
+			XCB_CW_EVENT_MASK, value);
 	testcookie(cookie, "another window manager is running.");
 	/* init atoms */
 	getatoms(wmatom, wmatomnames, WMLast);
@@ -447,14 +481,14 @@ sigchld() {
 }
 
 void
-testcookie(xcb_void_cookie_t cookie, char *errormsg) {   
+testcookie(xcb_void_cookie_t cookie, char *errormsg) {
 	xcb_generic_error_t *error = xcb_request_check(conn, cookie);
 	if (error) {
 		fprintf(stderr, "ERROR: %s : %d\n", errormsg, error->error_code);
 		xcb_disconnect(conn);
 		exit(EXIT_FAILURE);
-	}   
-}   
+	}
+}
 
 void
 unfocus(struct Client *c) {
@@ -462,7 +496,8 @@ unfocus(struct Client *c) {
 	if(!c)
 		return;
 	change_border_color(c->win, UNFOCUS);
-	xcb_set_input_focus(conn, XCB_INPUT_FOCUS_POINTER_ROOT, c->win, XCB_CURRENT_TIME);
+	xcb_set_input_focus(conn, XCB_INPUT_FOCUS_POINTER_ROOT,
+			c->win, XCB_CURRENT_TIME);
 }
 
 void
