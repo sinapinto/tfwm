@@ -1,16 +1,14 @@
-WMNAME  	= tfwm
-VERSION 	= 2015-10
-DIST 			= $(WMNAME)-$(VERSION)
-
-CC				?= gcc
-RM				?= /bin/rm
-PREFIX		?= /usr/local
-X11_INC		?= /usr/include/xcb
-
-SRC				= $(WMNAME).c
-OBJ 	 		= $(WMNAME).o
-CFLAGS 		+= -std=c99 -Os -Wall -pedantic -I. -I$(X11_INC)
-LDFLAGS 	+= `pkg-config --libs xcb xcb-keysyms xcb-icccm xcb-ewmh`
+WMNAME = tfwm
+VERSION = 2015-10
+DIST = $(WMNAME)-$(VERSION)
+CC ?= gcc
+RM ?= /bin/rm
+PREFIX ?= /usr/local
+X11_INC ?= /usr/include/xcb
+SRC = $(WMNAME).c
+OBJ = $(WMNAME).o
+CFLAGS += -std=c99 -Os -Wall -pedantic -I. -I$(X11_INC)
+LDFLAGS += `pkg-config --libs xcb xcb-keysyms xcb-icccm xcb-ewmh`
 
 all: options $(WMNAME)
 
@@ -47,7 +45,7 @@ uninstall:
 dist: clean
 	@echo creating dist tarball
 	@mkdir -p $(DIST)
-	@cp -R Makefile README.md config.h $(SRC) $(DIST)
+	@cp -R Makefile LICENSE README.md config.h $(SRC) $(DIST)
 	@tar -cf $(DIST).tar --exclude .git $(DIST)
 	@gzip $(DIST).tar
 	@$(RM) -rf $(DIST)

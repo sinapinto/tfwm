@@ -27,6 +27,7 @@
 #define CLEANMASK(mask)         ((mask & ~0x80))
 #define LENGTH(X)               (sizeof(X)/sizeof(*X))
 #define MAX(X, Y)               ((X) > (Y) ? (X) : (Y))
+#define TRYSUBTRACT(X, Y)       ((X - Y > 0) ? (X - Y) : (X))
 
 typedef union {
 	const char **com;
@@ -49,14 +50,14 @@ struct Client{
 	Client *next;
 	Client *snext;
 	xcb_window_t win;
-	unsigned int workspace;
+	unsigned int ws;
 };
 
 /* function declarations */
 static void attach(Client *c);
 static void attachstack(Client *c);
-static void change_border_color(xcb_window_t win, long color);
-static void change_border_width(xcb_window_t win, int width);
+static void changebordercolor(xcb_window_t win, long color);
+static void changeborderwidth(xcb_window_t win, int width);
 static void cleanup();
 static void clientmessage(xcb_generic_event_t *ev);
 static void configurerequest(xcb_generic_event_t *ev);
@@ -80,6 +81,7 @@ static void raisewindow(xcb_drawable_t win);
 static void resize(const Arg *arg);
 static void restack();
 static void run(void);
+static void selectws(const Arg* arg);
 static bool sendevent(Client *c, xcb_atom_t proto);
 static void setcursor(int cursorid);
 static void setup();
@@ -93,6 +95,8 @@ static void unmapnotify(xcb_generic_event_t *ev);
 static Client *wintoclient(xcb_window_t w);
 
 /* enums */
+enum { MoveDown, MoveRight, MoveUp, MoveLeft };
+enum { ResizeDown, ResizeRight, ResizeUp, ResizeLeft };
 enum { WMProtocols, WMDeleteWindow, WMState, WMLast }; /* default atoms */
 enum { NetSupported, NetWMFullscreen, NetWMState, NetActiveWindow,
 	NetLast }; /* EWMH atoms */
@@ -100,7 +104,8 @@ enum { NetSupported, NetWMFullscreen, NetWMState, NetActiveWindow,
 /* variables */
 static xcb_connection_t *conn;
 static xcb_screen_t *screen;
-static int sw, sh;
+static unsigned int sw, sh;
+static unsigned int selws = 0;
 static Client *clients;
 static Client *sel;
 static Client *stack;
@@ -127,16 +132,17 @@ attachstack(Client *c) {
 }
 
 void
-change_border_width(xcb_window_t win, int width) {
+changeborderwidth(xcb_window_t win, int width) {
 	uint32_t value[1] = { width };
 	xcb_configure_window(conn, win, XCB_CONFIG_WINDOW_BORDER_WIDTH, value);
 }
 
 void
-change_border_color(xcb_window_t win, long color) {
-	if (!win || BORDER_WIDTH == 0) return;
-	uint32_t value[1] = { color };
-	xcb_change_window_attributes(conn, win, XCB_CW_BORDER_PIXEL, value);
+changebordercolor(xcb_window_t win, long color) {
+	if (win && BORDER_WIDTH > 0) {
+		uint32_t value[1] = { color };
+		xcb_change_window_attributes(conn, win, XCB_CW_BORDER_PIXEL, value);
+	}
 }
 
 void
@@ -175,9 +181,9 @@ configurerequest(xcb_generic_event_t *ev) {
 		return;
 	unsigned int v[4];
 	int i = 0;
-	if (e->value_mask & XCB_CONFIG_WINDOW_X) v[i++] = c->x = e->x;
-	if (e->value_mask & XCB_CONFIG_WINDOW_Y) v[i++] = c->y = e->y;
-	if (e->value_mask & XCB_CONFIG_WINDOW_WIDTH) v[i++] = c->w = e->width;
+	if (e->value_mask & XCB_CONFIG_WINDOW_X)      v[i++] = c->x = e->x;
+	if (e->value_mask & XCB_CONFIG_WINDOW_Y)      v[i++] = c->y = e->y;
+	if (e->value_mask & XCB_CONFIG_WINDOW_WIDTH)  v[i++] = c->w = e->width;
 	if (e->value_mask & XCB_CONFIG_WINDOW_HEIGHT) v[i++] = c->h = e->height;
 	xcb_configure_window(conn, e->window, e->value_mask, v);
 }
@@ -195,7 +201,7 @@ void
 detach(Client *c) {
 	Client **tc;
 
-	for(tc = &clients; *tc && *tc != c; tc = &(*tc)->next);
+	for (tc = &clients; *tc && *tc != c; tc = &(*tc)->next);
 	*tc = c->next;
 }
 
@@ -203,26 +209,26 @@ void
 detachstack(Client *c) {
 	Client **tc, *t;
 
-	for(tc = &stack; *tc && *tc != c; tc = &(*tc)->snext);
+	for (tc = &stack; *tc && *tc != c; tc = &(*tc)->snext);
 	*tc = c->snext;
 
-	if(c == sel) {
-		for(t = stack; t && !isvisible(t); t = t->snext);
+	if (c == sel) {
+		for (t = stack; t && !isvisible(t); t = t->snext);
 		sel = t;
 	}
 }
 
 void
 focus(struct Client *c) {
-	if(!c || !isvisible(c))
-		for(c = stack; c && !isvisible(c); c = c->snext)
-			if(sel && sel != c)
+	if (!c || !isvisible(c))
+		for (c = stack; c && !isvisible(c); c = c->snext)
+			if (sel && sel != c)
 				unfocus(sel);
-	if(c) {
+	if (c) {
 		detachstack(c);
 		attachstack(c);
-		change_border_width(c->win, BORDER_WIDTH);
-		change_border_color(c->win, FOCUS);
+		changeborderwidth(c->win, BORDER_WIDTH);
+		changebordercolor(c->win, FOCUS);
 		xcb_set_input_focus(conn, XCB_INPUT_FOCUS_POINTER_ROOT,
 				c->win, XCB_CURRENT_TIME);
 	}
@@ -237,23 +243,23 @@ void
 focusstack(const Arg *arg) {
 	Client *c = NULL, *i;
 
-	if(!sel)
+	if (!sel)
 		return;
-	if(arg->i > 0) {
-		for(c = sel->next; c && !isvisible(c); c = c->next);
-		if(!c)
-			for(c = clients; c && !isvisible(c); c = c->next);
+	if (arg->i > 0) {
+		for (c = sel->next; c && !isvisible(c); c = c->next);
+		if (!c)
+			for (c = clients; c && !isvisible(c); c = c->next);
 	}
 	else {
-		for(i = clients; i != sel; i = i->next)
-			if(isvisible(i))
+		for (i = clients; i != sel; i = i->next)
+			if (isvisible(i))
 				c = i;
-		if(!c)
-			for(; i; i = i->next)
-				if(isvisible(i))
+		if (!c)
+			for (; i; i = i->next)
+				if (isvisible(i))
 					c = i;
 	}
-	if(c) {
+	if (c) {
 		focus(c);
 		restack();
 	}
@@ -279,7 +285,7 @@ xcb_keycode_t *
 getkeycodes(xcb_keysym_t keysym) {
 	xcb_key_symbols_t *keysyms;
 	if (!(keysyms = xcb_key_symbols_alloc(conn)))
-		err(EXIT_FAILURE, "ERROR: couldn't get keycode.");
+		err(EXIT_FAILURE, "ERROR: can't get keycode.");
 	xcb_keycode_t *keycode = xcb_key_symbols_get_keycode(keysyms, keysym);
 	xcb_key_symbols_free(keysyms);
 	return keycode;
@@ -289,7 +295,7 @@ xcb_keysym_t
 getkeysym(xcb_keycode_t keycode) {
 	xcb_key_symbols_t *keysyms;
 	if (!(keysyms = xcb_key_symbols_alloc(conn)))
-		err(EXIT_FAILURE, "ERROR: couldn't get keysym.");
+		err(EXIT_FAILURE, "ERROR: can't get keysym.");
 	xcb_keysym_t keysym = xcb_key_symbols_get_keysym(keysyms, keycode, 0);
 	xcb_key_symbols_free(keysyms);
 	return keysym;
@@ -297,8 +303,9 @@ getkeysym(xcb_keycode_t keycode) {
 
 bool
 isvisible(Client *c) {
-	if (!sel || !c) return false;
-	return c->workspace == sel->workspace;
+	if (!sel || !c)
+		return false;
+	return c->ws == selws;
 }
 
 void
@@ -318,9 +325,9 @@ keypress(xcb_generic_event_t *ev) {
 
 void
 killclient(const Arg *arg) {
-	if(!sel)
+	if (!sel)
 		return;
-	if(!sendevent(sel, wmatom[WMDeleteWindow])) {
+	if (!sendevent(sel, wmatom[WMDeleteWindow])) {
 		xcb_kill_client(conn, sel->win);
 	}
 }
@@ -329,7 +336,7 @@ void
 manage(xcb_window_t w) {
 	Client *c = NULL;
 	if (!(c = malloc(sizeof(Client))))
-		err(EXIT_FAILURE, "ERROR: couldn't allocate memory");
+		err(EXIT_FAILURE, "ERROR: can't allocate memory");
 	c->win = w;
 	/* geometry */
 	xcb_get_geometry_reply_t *geom;
@@ -341,12 +348,12 @@ manage(xcb_window_t w) {
 	c->w = c->oldw = geom->width;
 	c->h = c->oldh = geom->height;
 	free(geom);
-	c->workspace = 0;
+	c->ws = 0;
 	c->isfullscreen = false;
 	attach(c);
 	attachstack(c);
 	sel = c;
-	change_border_width(w, BORDER_WIDTH);
+	changeborderwidth(w, BORDER_WIDTH);
 	xcb_map_window(conn, w);
 	focus(NULL);
 }
@@ -374,10 +381,10 @@ move(const Arg *arg) {
 		return;
 	int step = steps[0];
 	switch (arg->i) {
-		case 0: sel->y += step; break;
-		case 1: sel->x += step; break;
-		case 2: sel->y -= step; break;
-		case 3: sel->x -= step; break;
+		case MoveDown:  sel->y += step; break;
+		case MoveRight: sel->x += step; break;
+		case MoveUp:    sel->y -= step; break;
+		case MoveLeft:  sel->x -= step; break;
 	}
 	uint32_t values[2];
 	values[0] = sel->x;
@@ -405,10 +412,10 @@ resize(const Arg *arg) {
 		return;
 	int step = steps[1];
 	switch (arg->i) {
-		case 0: sel->h = sel->h + step; break;
-		case 1: sel->w = sel->w + step; break;
-		case 2: sel->h = sel->h - step > 0 ? sel->h - step : sel->h; break;
-		case 3: sel->w = sel->w - step > 0 ? sel->w - step : sel->w; break;
+		case ResizeDown:  sel->h = sel->h + step; break;
+		case ResizeRight: sel->w = sel->w + step; break;
+		case ResizeUp:    sel->h = TRYSUBTRACT(sel->h, step); break;
+		case ResizeLeft:  sel->w = TRYSUBTRACT(sel->w, step); break;
 	}
 	uint32_t values[2];
 	values[0] = sel->w;
@@ -419,11 +426,9 @@ resize(const Arg *arg) {
 
 void
 restack() {
-	if(!sel)
+	if (!sel)
 		return;
 	raisewindow(sel->win);
-	/* for(c = stack; c; c = c->snext) */
-	/* 	if(isvisible(c)) */
 }
 
 void
@@ -438,6 +443,14 @@ run(void) {
 		if (xcb_connection_has_error(conn))
 			running = false;
 	}
+}
+
+void
+selectws(const Arg* arg) {
+	if (selws == arg->i)
+		return;
+	selws = arg->i;
+	focus(NULL);
 }
 
 bool
@@ -470,14 +483,14 @@ void
 setcursor(int cursorid) {
 	xcb_font_t font = xcb_generate_id(conn);
 	xcb_void_cookie_t fontcookie =
-		xcb_open_font_checked(conn, font, strlen ("cursor"), "cursor");
+		xcb_open_font_checked(conn, font, strlen("cursor"), "cursor");
 	testcookie(fontcookie, "can't open font");
 	xcb_cursor_t cursor = xcb_generate_id(conn);
 	xcb_create_glyph_cursor(conn, cursor, font, font,
-			cursorid, cursorid + 1, 0, 0, 0, 65535, 65535, 65535);
+			cursorid, cursorid + 1, 65535, 65535, 65535, 0, 0, 0);
 	uint32_t mask = XCB_CW_CURSOR;
-	uint32_t value_list = cursor;
-	xcb_change_window_attributes(conn, screen->root, mask, &value_list);
+	uint32_t values = cursor;
+	xcb_change_window_attributes(conn, screen->root, mask, &values);
 	xcb_free_cursor(conn, cursor);
 	fontcookie = xcb_close_font_checked(conn, font);
 	testcookie(fontcookie, "can't close font");
@@ -490,7 +503,7 @@ setup() {
 	/* init screen */
 	screen = xcb_setup_roots_iterator(xcb_get_setup(conn)).data;
 	if (!screen)
-		err(EXIT_FAILURE, "ERROR: couldn't find screen.");
+		err(EXIT_FAILURE, "ERROR: can't find screen.");
 	sw = screen->width_in_pixels;
 	sh = screen->height_in_pixels;
 	/* subscribe to handler */
@@ -503,8 +516,6 @@ setup() {
 	/* init atoms */
 	getatoms(wmatom, wmatomnames, WMLast);
 	getatoms(netatom, netatomnames, NetLast);
-	/* init keys */
-	setupkeys();
 	/* set handlers */
 	for (unsigned int i = 0; i < XCB_NO_OPERATION; ++i)
 		handler[i] = NULL;
@@ -516,6 +527,7 @@ setup() {
 	handler[XCB_CLIENT_MESSAGE] = clientmessage;
 	handler[XCB_KEY_PRESS] = keypress;
 	setcursor(68); /* left_ptr */
+	setupkeys();
 	focus(NULL);
 }
 
@@ -557,7 +569,7 @@ togglefullscreen(const Arg *arg) {
 		| XCB_CONFIG_WINDOW_STACK_MODE;
 
 	if (!sel->isfullscreen) {
-		change_border_width(sel->win, 0);
+		changeborderwidth(sel->win, 0);
 		sel->oldx = sel->x;
 		sel->oldy = sel->y;
 		sel->oldw = sel->w;
@@ -576,7 +588,7 @@ togglefullscreen(const Arg *arg) {
 		val[1] = sel->oldy;
 		val[2] = sel->oldw;
 		val[3] = sel->oldh;
-		change_border_width(sel->win, BORDER_WIDTH);
+		changeborderwidth(sel->win, BORDER_WIDTH);
 		xcb_configure_window(conn, sel->win, mask, val);
 		sel->x = sel->oldx;
 		sel->y = sel->oldy;
@@ -593,9 +605,9 @@ togglefullscreen(const Arg *arg) {
 
 void
 unfocus(struct Client *c) {
-	if(!c)
+	if (!c)
 		return;
-	change_border_color(c->win, UNFOCUS);
+	changebordercolor(c->win, UNFOCUS);
 	xcb_set_input_focus(conn, XCB_INPUT_FOCUS_POINTER_ROOT,
 			c->win, XCB_CURRENT_TIME);
 }
