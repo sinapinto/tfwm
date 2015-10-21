@@ -27,7 +27,9 @@
 #define CLEANMASK(mask)         ((mask & ~0x80))
 #define LENGTH(X)               (sizeof(X)/sizeof(*X))
 #define MAX(X, Y)               ((X) > (Y) ? (X) : (Y))
-#define TRYSUBTRACT(X, Y)       ((X - Y > 0) ? (X - Y) : (X))
+#define SUBTRACTLIM(X, Y)       ((X - Y > 0) ? (X - Y) : (X))
+#define WIDTH(C)                ((C)->w + 2 * BORDER_WIDTH)
+#define ISVISIBLE(C)            ((C)->ws == selws)
 
 typedef union {
 	const char **com;
@@ -69,13 +71,13 @@ static void focusstack(const Arg *arg);
 static void getatoms(xcb_atom_t *atoms, char **names, int count);
 static xcb_keycode_t* getkeycodes(xcb_keysym_t keysym);
 static xcb_keysym_t getkeysym(xcb_keycode_t keycode);
-static bool isvisible(Client *c);
 static void keypress(xcb_generic_event_t *ev);
 static void killclient(const Arg *arg);
 static void manage(xcb_window_t w);
 static void mappingnotify(xcb_generic_event_t *ev);
 static void maprequest(xcb_generic_event_t *ev);
 static void move(const Arg *arg);
+static void movewin(xcb_window_t win, int x, int y);
 static void quit(const Arg *arg);
 static void raisewindow(xcb_drawable_t win);
 static void resize(const Arg *arg);
@@ -86,6 +88,7 @@ static bool sendevent(Client *c, xcb_atom_t proto);
 static void setcursor(int cursorid);
 static void setup();
 static void setupkeys();
+static void showhide(Client *c);
 static void sigchld();
 static void testcookie(xcb_void_cookie_t cookie, char *errormsg);
 static void togglefullscreen(const Arg *arg);
@@ -110,7 +113,7 @@ static Client *clients;
 static Client *sel;
 static Client *stack;
 static bool running = true;
-static void (*handler[XCB_NO_OPERATION]) (xcb_generic_event_t *ev);
+static void (*handler[XCB_NO_OPERATION])(xcb_generic_event_t *ev);
 static xcb_atom_t wmatom[WMLast];
 static xcb_atom_t netatom[NetLast];
 static char *wmatomnames[] = { "WM_PROTOCOLS", "WM_DELETE_WINDOW", "WM_STATE" };
@@ -213,15 +216,15 @@ detachstack(Client *c) {
 	*tc = c->snext;
 
 	if (c == sel) {
-		for (t = stack; t && !isvisible(t); t = t->snext);
+		for (t = stack; t && !ISVISIBLE(t); t = t->snext);
 		sel = t;
 	}
 }
 
 void
 focus(struct Client *c) {
-	if (!c || !isvisible(c))
-		for (c = stack; c && !isvisible(c); c = c->snext)
+	if (!c || !ISVISIBLE(c))
+		for (c = stack; c && !ISVISIBLE(c); c = c->snext)
 			if (sel && sel != c)
 				unfocus(sel);
 	if (c) {
@@ -246,17 +249,17 @@ focusstack(const Arg *arg) {
 	if (!sel)
 		return;
 	if (arg->i > 0) {
-		for (c = sel->next; c && !isvisible(c); c = c->next);
+		for (c = sel->next; c && !ISVISIBLE(c); c = c->next);
 		if (!c)
-			for (c = clients; c && !isvisible(c); c = c->next);
+			for (c = clients; c && !ISVISIBLE(c); c = c->next);
 	}
 	else {
 		for (i = clients; i != sel; i = i->next)
-			if (isvisible(i))
+			if (ISVISIBLE(i))
 				c = i;
 		if (!c)
 			for (; i; i = i->next)
-				if (isvisible(i))
+				if (ISVISIBLE(i))
 					c = i;
 	}
 	if (c) {
@@ -299,13 +302,6 @@ getkeysym(xcb_keycode_t keycode) {
 	xcb_keysym_t keysym = xcb_key_symbols_get_keysym(keysyms, keycode, 0);
 	xcb_key_symbols_free(keysyms);
 	return keysym;
-}
-
-bool
-isvisible(Client *c) {
-	if (!sel || !c)
-		return false;
-	return c->ws == selws;
 }
 
 void
@@ -379,18 +375,20 @@ void
 move(const Arg *arg) {
 	if (!sel || sel->win == screen->root)
 		return;
-	int step = steps[0];
 	switch (arg->i) {
-		case MoveDown:  sel->y += step; break;
-		case MoveRight: sel->x += step; break;
-		case MoveUp:    sel->y -= step; break;
-		case MoveLeft:  sel->x -= step; break;
+		case MoveDown:  sel->y += steps[0]; break;
+		case MoveRight: sel->x += steps[0]; break;
+		case MoveUp:    sel->y -= steps[0]; break;
+		case MoveLeft:  sel->x -= steps[0]; break;
+		default:        err(EXIT_FAILURE, "ERROR: bad move argument");
 	}
-	uint32_t values[2];
-	values[0] = sel->x;
-	values[1] = sel->y;
-	xcb_configure_window(conn, sel->win, XCB_CONFIG_WINDOW_X|
-			XCB_CONFIG_WINDOW_Y, values);
+	movewin(sel->win, sel->x, sel->y);
+}
+
+void
+movewin(xcb_window_t win, int x, int y) {
+	unsigned int pos[2] = { x, y };
+	xcb_configure_window(conn, win, XCB_CONFIG_WINDOW_X|XCB_CONFIG_WINDOW_Y, pos);
 }
 
 void
@@ -414,8 +412,9 @@ resize(const Arg *arg) {
 	switch (arg->i) {
 		case ResizeDown:  sel->h = sel->h + step; break;
 		case ResizeRight: sel->w = sel->w + step; break;
-		case ResizeUp:    sel->h = TRYSUBTRACT(sel->h, step); break;
-		case ResizeLeft:  sel->w = TRYSUBTRACT(sel->w, step); break;
+		case ResizeUp:    sel->h = SUBTRACTLIM(sel->h, step); break;
+		case ResizeLeft:  sel->w = SUBTRACTLIM(sel->w, step); break;
+		default:          err(EXIT_FAILURE, "ERROR: bad resize argument");
 	}
 	uint32_t values[2];
 	values[0] = sel->w;
@@ -451,6 +450,7 @@ selectws(const Arg* arg) {
 		return;
 	selws = arg->i;
 	focus(NULL);
+	showhide(stack);
 }
 
 bool
@@ -543,6 +543,20 @@ setupkeys() {
 }
 
 void
+showhide(Client *c) {
+	if (!c)
+		return;
+	if (ISVISIBLE(c)) {
+		movewin(c->win, c->x, c->y);
+		showhide(c->snext);
+	}
+	else {
+		showhide(c->snext);
+		movewin(c->win, WIDTH(c) * -2, c->y);
+	}
+}
+
+void
 sigchld() {
 	if (signal(SIGCHLD, sigchld) == SIG_ERR)
 		err(EXIT_FAILURE, "ERROR: can't install SIGCHLD handler");
@@ -560,6 +574,7 @@ testcookie(xcb_void_cookie_t cookie, char *errormsg) {
 }
 void
 togglefullscreen(const Arg *arg) {
+	// TODO: split this function up
 	if (!sel)
 		return;
 	uint32_t val[5];
