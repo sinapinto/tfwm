@@ -13,7 +13,7 @@
 #include <xcb/xcb_ewmh.h>
 #include <X11/keysym.h>
 
-#if 1
+#if 0
 #   define DEBUG(...) \
 		do { fprintf(stderr, "tfwm: ");fprintf(stderr, __VA_ARGS__); } while(0)
 #else
@@ -95,7 +95,7 @@ static void togglefullscreen(const Arg *arg);
 static void unfocus(struct Client *c);
 static void unmanage(Client *c);
 static void unmapnotify(xcb_generic_event_t *ev);
-static Client *wintoclient(xcb_window_t w);
+static Client* wintoclient(xcb_window_t w);
 
 /* enums */
 enum { MoveDown, MoveRight, MoveUp, MoveLeft };
@@ -161,7 +161,6 @@ cleanup() {
 
 void
 clientmessage(xcb_generic_event_t *ev) {
-	DEBUG("clientmessage\n");
 	xcb_client_message_event_t *e = (xcb_client_message_event_t*)ev;
 	Client *c;
 	if ((c = wintoclient(e->window))) {
@@ -178,7 +177,6 @@ clientmessage(xcb_generic_event_t *ev) {
 void
 configurerequest(xcb_generic_event_t *ev) {
 	xcb_configure_request_event_t *e = (xcb_configure_request_event_t *)ev;
-	DEBUG("confgiruerequest\n");
 	Client *c;
 	if (!(c = wintoclient(e->window)))
 		return;
@@ -280,7 +278,7 @@ getatoms(xcb_atom_t *atoms, char **names, int count) {
 			atoms[i] = reply->atom;
 			free(reply);
 		} else
-			DEBUG("failed to register %s atom.\n", wmatomnames[i]);
+			fprintf(stderr, "WARN: failed to register %s atom.\n", wmatomnames[i]);
 	}
 }
 
@@ -344,7 +342,7 @@ manage(xcb_window_t w) {
 	c->w = c->oldw = geom->width;
 	c->h = c->oldh = geom->height;
 	free(geom);
-	c->ws = 0;
+	c->ws = selws;
 	c->isfullscreen = false;
 	attach(c);
 	attachstack(c);
@@ -368,7 +366,6 @@ maprequest(xcb_generic_event_t *ev) {
 	xcb_map_request_event_t *e = (xcb_map_request_event_t *)ev;
 	if (!wintoclient(e->window))
 		manage(e->window);
-	focus(NULL);
 }
 
 void
