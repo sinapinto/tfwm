@@ -1,12 +1,14 @@
 #define MOD                           XCB_MOD_MASK_1
 #define SHIFT                         XCB_MOD_MASK_SHIFT
 #define CTRL                          XCB_MOD_MASK_CONTROL
-#define UNFOCUS                       0x3B3B31
-#define FOCUS                         0xafaf87
-#define BORDER_WIDTH                  2
+#define UNFOCUS                       0x333333
+#define FOCUS                         0xcccccc
+#define BORDER_WIDTH                  0
 static const int steps[2] =           { 30, 40 }; /* move step, resize step */
 
-#define WORKSPACE(K,N)                { MOD, K, selectws, {.i=N} },
+#define WORKSPACE(K,N) \
+	{ MOD,              K,           selectws,               {.i=N} }, \
+	{ MOD | SHIFT,      K,           sendtows,               {.i=N} },
 
 static Key keys[] = {
 	/* modifier         key          function                argument */
@@ -22,6 +24,7 @@ static Key keys[] = {
 	{ MOD | SHIFT,      XK_Tab,      focusstack,             {.i=-1}          },
 	{ MOD,              XK_a,        togglefullscreen,       {.i=0}           },
 	{ MOD,              XK_q,        killclient,             {.i=0}           },
+	{ MOD,              XK_grave,    selectprevws,           {.i=0}           },
 	WORKSPACE(          XK_1,                                0 )
 	WORKSPACE(          XK_2,                                1 )
 	WORKSPACE(          XK_3,                                2 )

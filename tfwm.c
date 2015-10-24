@@ -13,7 +13,7 @@
 #include <xcb/xcb_ewmh.h>
 #include <X11/keysym.h>
 
-#if 0
+#if 1
 #   define DEBUG(...) \
 		do { fprintf(stderr, "tfwm: ");fprintf(stderr, __VA_ARGS__); } while(0)
 #else
@@ -29,6 +29,7 @@
 #define MAX(X, Y)               ((X) > (Y) ? (X) : (Y))
 #define SUBTRACTLIM(X, Y)       ((X - Y > 0) ? (X - Y) : (X))
 #define WIDTH(C)                ((C)->w + 2 * BORDER_WIDTH)
+#define HEIGHT(C)               ((C)->h + 2 * BORDER_WIDTH)
 #define ISVISIBLE(C)            ((C)->ws == selws)
 
 typedef union {
@@ -47,7 +48,8 @@ typedef struct Client Client;
 struct Client{
 	int x, y, w, h;
 	int oldx, oldy, oldw, oldh;
-	int basew, baseh, minw, minh;
+	int basew, baseh, minw, minh, maxw, maxh;
+	int borderwidth;
 	bool isfullscreen;
 	Client *next;
 	Client *snext;
@@ -84,8 +86,11 @@ static void resize(const Arg *arg);
 static void restack();
 static void run(void);
 static void selectws(const Arg* arg);
+static void selectprevws(const Arg* arg);
 static bool sendevent(Client *c, xcb_atom_t proto);
-static void setcursor(int cursorid);
+static void sendtows(const Arg *arg);
+static void setcursor(xcb_window_t w, int cursorid);
+static void sethints(Client *c);
 static void setup();
 static void setupkeys();
 static void showhide(Client *c);
@@ -102,23 +107,27 @@ enum { MoveDown, MoveRight, MoveUp, MoveLeft };
 enum { ResizeDown, ResizeRight, ResizeUp, ResizeLeft };
 enum { WMProtocols, WMDeleteWindow, WMState, WMLast }; /* default atoms */
 enum { NetSupported, NetWMFullscreen, NetWMState, NetActiveWindow,
-	NetLast }; /* EWMH atoms */
+	NetWMDesktop, NetCurrentDesktop, NetNumberOfDesktops, NetLast }; /* EWMH atoms */
 
 /* variables */
 static xcb_connection_t *conn;
 static xcb_screen_t *screen;
 static unsigned int sw, sh;
 static unsigned int selws = 0;
+static unsigned int prevws = 0;
+static int scrno;
 static Client *clients;
 static Client *sel;
 static Client *stack;
 static bool running = true;
 static void (*handler[XCB_NO_OPERATION])(xcb_generic_event_t *ev);
+xcb_ewmh_connection_t *ewmh;
 static xcb_atom_t wmatom[WMLast];
 static xcb_atom_t netatom[NetLast];
 static char *wmatomnames[] = { "WM_PROTOCOLS", "WM_DELETE_WINDOW", "WM_STATE" };
 static char *netatomnames[] = { "_NET_SUPPORTED", "_NET_WM_STATE_FULLSCREEN",
-	"_NET_WM_STATE", "_NET_ACTIVE_WINDOW" };
+	"_NET_WM_STATE", "_NET_ACTIVE_WINDOW", "_NET_WM_DESKTOP",
+	"_NET_CURRENT_DESKTOP", "_NET_NUMBER_OF_DESKTOPS" };
 
 #include "config.h"
 
@@ -142,10 +151,8 @@ changeborderwidth(xcb_window_t win, int width) {
 
 void
 changebordercolor(xcb_window_t win, long color) {
-	if (win && BORDER_WIDTH > 0) {
-		uint32_t value[1] = { color };
-		xcb_change_window_attributes(conn, win, XCB_CW_BORDER_PIXEL, value);
-	}
+	uint32_t value[1] = { color };
+	xcb_change_window_attributes(conn, win, XCB_CW_BORDER_PIXEL, value);
 }
 
 void
@@ -153,6 +160,9 @@ cleanup() {
 	while (stack)
 		unmanage(stack);
 
+    xcb_ewmh_connection_wipe(ewmh);
+    if (ewmh)
+		free(ewmh);
 	xcb_set_input_focus(conn, XCB_NONE,
 			XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
 	xcb_flush(conn);
@@ -180,12 +190,15 @@ configurerequest(xcb_generic_event_t *ev) {
 	Client *c;
 	if (!(c = wintoclient(e->window)))
 		return;
-	unsigned int v[4];
+	unsigned int v[7];
 	int i = 0;
-	if (e->value_mask & XCB_CONFIG_WINDOW_X)      v[i++] = c->x = e->x;
-	if (e->value_mask & XCB_CONFIG_WINDOW_Y)      v[i++] = c->y = e->y;
-	if (e->value_mask & XCB_CONFIG_WINDOW_WIDTH)  v[i++] = c->w = e->width;
-	if (e->value_mask & XCB_CONFIG_WINDOW_HEIGHT) v[i++] = c->h = e->height;
+	if (e->value_mask & XCB_CONFIG_WINDOW_X)            v[i++] = c->x = e->x;
+	if (e->value_mask & XCB_CONFIG_WINDOW_Y)            v[i++] = c->y = e->y;
+	if (e->value_mask & XCB_CONFIG_WINDOW_WIDTH)        v[i++] = c->w = e->width;
+	if (e->value_mask & XCB_CONFIG_WINDOW_HEIGHT)       v[i++] = c->h = e->height;
+	if (e->value_mask & XCB_CONFIG_WINDOW_SIBLING)      v[i++] = e->sibling;
+	if (e->value_mask & XCB_CONFIG_WINDOW_STACK_MODE)   v[i++] = e->stack_mode;
+	if (e->value_mask & XCB_CONFIG_WINDOW_BORDER_WIDTH) v[i++] = c->borderwidth = e->border_width;
 	xcb_configure_window(conn, e->window, e->value_mask, v);
 }
 
@@ -228,12 +241,18 @@ focus(struct Client *c) {
 	if (c) {
 		detachstack(c);
 		attachstack(c);
-		changeborderwidth(c->win, BORDER_WIDTH);
+		changeborderwidth(c->win, c->borderwidth);
 		changebordercolor(c->win, FOCUS);
+		long data[] = { XCB_ICCCM_WM_STATE_NORMAL, XCB_NONE };
+		xcb_change_property(conn, XCB_PROP_MODE_REPLACE, c->win,
+				wmatom[WMState], wmatom[WMState], 32, 2, data);
 		xcb_set_input_focus(conn, XCB_INPUT_FOCUS_POINTER_ROOT,
 				c->win, XCB_CURRENT_TIME);
+		xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root,
+				netatom[NetActiveWindow] , XCB_ATOM_WINDOW, 32, 1,&c->win);
 	}
 	else {
+        xcb_delete_property(conn, screen->root, netatom[NetActiveWindow]);
 		xcb_set_input_focus(conn, XCB_NONE,
 				XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
 	}
@@ -342,13 +361,34 @@ manage(xcb_window_t w) {
 	c->w = c->oldw = geom->width;
 	c->h = c->oldh = geom->height;
 	free(geom);
+	sethints(c);
 	c->ws = selws;
 	c->isfullscreen = false;
 	attach(c);
 	attachstack(c);
 	sel = c;
-	changeborderwidth(w, BORDER_WIDTH);
+	c->borderwidth = BORDER_WIDTH;
+	changeborderwidth(w, c->borderwidth);
 	xcb_map_window(conn, w);
+	/* set its workspace hint */
+	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, c->win, netatom[NetWMDesktop],
+			XCB_ATOM_CARDINAL, 32, 1, &selws);
+	/* set normal state */
+	long data[] = { XCB_ICCCM_WM_STATE_NORMAL, XCB_NONE };
+	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, w, netatom[NetWMState],
+			netatom[NetWMState], 32, 2, data);
+
+	// TODO: check reply
+	xcb_get_property_reply_t *prop_reply;
+	prop_reply = xcb_get_property_reply(conn, xcb_get_property_unchecked(conn, 0, w, netatom[NetWMState], XCB_ATOM_ATOM, 0, 1), NULL);
+	if (prop_reply) {
+		if (prop_reply->format == 32) {
+			xcb_atom_t *v = xcb_get_property_value(prop_reply);
+			if (v[0] == netatom[NetWMFullscreen])
+				togglefullscreen(NULL);
+		}
+		free(prop_reply);
+	}
 	focus(NULL);
 }
 
@@ -445,9 +485,19 @@ void
 selectws(const Arg* arg) {
 	if (selws == arg->i)
 		return;
+	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root,
+			netatom[NetCurrentDesktop], XCB_ATOM_CARDINAL, 32, 1, &arg->i);
+	xcb_ewmh_set_current_desktop(ewmh, scrno, arg->i);
+	prevws = selws;
 	selws = arg->i;
 	focus(NULL);
 	showhide(stack);
+}
+
+void
+selectprevws(const Arg* arg) {
+	const Arg a = { .i = prevws };
+	selectws(&a);
 }
 
 bool
@@ -477,7 +527,17 @@ sendevent(Client *c, xcb_atom_t proto) {
 }
 
 void
-setcursor(int cursorid) {
+sendtows(const Arg *arg) {
+	if (arg->i == selws)
+		return;
+	// TODO
+	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, sel->win,
+			netatom[NetWMDesktop], XCB_ATOM_CARDINAL, 32, 1, &arg->i);
+	focus(NULL);
+}
+
+void
+setcursor(xcb_window_t w, int cursorid) {
 	xcb_font_t font = xcb_generate_id(conn);
 	xcb_void_cookie_t fontcookie =
 		xcb_open_font_checked(conn, font, strlen("cursor"), "cursor");
@@ -487,10 +547,38 @@ setcursor(int cursorid) {
 			cursorid, cursorid + 1, 65535, 65535, 65535, 0, 0, 0);
 	uint32_t mask = XCB_CW_CURSOR;
 	uint32_t values = cursor;
-	xcb_change_window_attributes(conn, screen->root, mask, &values);
+	xcb_change_window_attributes(conn, w, mask, &values);
 	xcb_free_cursor(conn, cursor);
 	fontcookie = xcb_close_font_checked(conn, font);
 	testcookie(fontcookie, "can't close font");
+}
+
+void
+sethints(Client *c) {
+	xcb_size_hints_t h;
+	// TODO: check reply
+	xcb_icccm_get_wm_normal_hints_reply(conn,
+			xcb_icccm_get_wm_normal_hints_unchecked(conn, c->win), &h, NULL);
+
+	if (h.flags & XCB_ICCCM_SIZE_HINT_P_MIN_SIZE) {
+		c->minw = h.min_width;
+		c->minh = h.min_height;
+	}
+	if (h.flags & XCB_ICCCM_SIZE_HINT_P_MAX_SIZE) {
+		c->maxw = h.max_width;
+		c->maxh = h.max_height;
+	}
+	if (h.flags & XCB_ICCCM_SIZE_HINT_BASE_SIZE) {
+		c->basew = h.base_width;
+		c->baseh = h.base_height;
+	}
+	if (c->w < MAX(c->minw, c->basew) || c->h < MAX(c->minh, c->baseh)) {
+		c->w = MAX(c->w, c->minw);
+		c->h = MAX(c->h, c->minh);
+		uint32_t values[2] = { c->w, c->h };
+		xcb_configure_window(conn, c->win, XCB_CONFIG_WINDOW_WIDTH
+				| XCB_CONFIG_WINDOW_HEIGHT, values);
+	}
 }
 
 void
@@ -513,9 +601,39 @@ setup() {
 	/* init atoms */
 	getatoms(wmatom, wmatomnames, WMLast);
 	getatoms(netatom, netatomnames, NetLast);
+	/* init ewmh */
+    ewmh = malloc(sizeof(xcb_ewmh_connection_t));
+    if (xcb_ewmh_init_atoms_replies(ewmh, xcb_ewmh_init_atoms(conn, ewmh), NULL) == 0)
+            err(EXIT_FAILURE, "ERROR: can't initialize ewmh.");
+    xcb_drawable_t root = screen->root;
+	uint32_t mask = XCB_CW_EVENT_MASK;
+	uint32_t values[] = { XCB_EVENT_MASK_POINTER_MOTION };
+	xcb_window_t recorder = xcb_generate_id(conn);
+	xcb_create_window(conn, XCB_COPY_FROM_PARENT, recorder, root, 0, 0,
+			screen->width_in_pixels, screen->height_in_pixels, 0,
+			XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT, mask, values);
+	xcb_atom_t net_atoms[] = {
+		ewmh->_NET_SUPPORTED,
+		ewmh->_NET_NUMBER_OF_DESKTOPS,
+		ewmh->_NET_CURRENT_DESKTOP,
+		ewmh->_NET_ACTIVE_WINDOW,
+		ewmh->_NET_WM_DESKTOP,
+		ewmh->_NET_WM_STATE,
+		ewmh->_NET_WM_STATE_FULLSCREEN
+	};
+	xcb_ewmh_set_supported(ewmh, scrno, LENGTH(net_atoms), net_atoms);
+	xcb_ewmh_set_supporting_wm_check(ewmh, root, recorder);
+	xcb_ewmh_set_supporting_wm_check(ewmh, recorder, recorder);
+    static const uint8_t numworkspaces = 5;
+    xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root,
+                        netatom[NetCurrentDesktop], XCB_ATOM_CARDINAL,
+                        32, 1, &selws);
+    xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root,
+                        netatom[NetNumberOfDesktops], XCB_ATOM_CARDINAL,
+                        32, 1, &numworkspaces);
+    xcb_ewmh_set_number_of_desktops(ewmh, scrno, numworkspaces);
+    xcb_ewmh_set_current_desktop(ewmh, scrno, 0);
 	/* set handlers */
-	for (unsigned int i = 0; i < XCB_NO_OPERATION; ++i)
-		handler[i] = NULL;
 	handler[XCB_CONFIGURE_REQUEST] = configurerequest;
 	handler[XCB_DESTROY_NOTIFY] = destroynotify;
 	handler[XCB_UNMAP_NOTIFY] = unmapnotify;
@@ -523,7 +641,7 @@ setup() {
 	handler[XCB_MAPPING_NOTIFY] = mappingnotify;
 	handler[XCB_CLIENT_MESSAGE] = clientmessage;
 	handler[XCB_KEY_PRESS] = keypress;
-	setcursor(68); /* left_ptr */
+	setcursor(screen->root, 68); /* left_ptr */
 	setupkeys();
 	focus(NULL);
 }
@@ -581,18 +699,20 @@ togglefullscreen(const Arg *arg) {
 		| XCB_CONFIG_WINDOW_STACK_MODE;
 
 	if (!sel->isfullscreen) {
-		changeborderwidth(sel->win, 0);
+		/* changeborderwidth(sel->win, 0); */
 		sel->oldx = sel->x;
 		sel->oldy = sel->y;
 		sel->oldw = sel->w;
 		sel->oldh = sel->h;
-		val[0] = 0; val[1] = 0;
-		val[2] = sw; val[3] = sh;
+		val[0] = 0;
+		val[1] = 0;
+		val[2] = sw - 2*sel->borderwidth;
+		val[3] = sh - 2*sel->borderwidth;
 		xcb_configure_window(conn, sel->win, mask, val);
-		sel->x = 0;
-		sel->y = 0;
-		sel->w = sw;
-		sel->h = sh;
+		sel->x = val[0];
+		sel->y = val[1];
+		sel->w = val[2];
+		sel->h = val[3];
 		sel->isfullscreen = true;
 	}
 	else {
@@ -600,7 +720,7 @@ togglefullscreen(const Arg *arg) {
 		val[1] = sel->oldy;
 		val[2] = sel->oldw;
 		val[3] = sel->oldh;
-		changeborderwidth(sel->win, BORDER_WIDTH);
+		/* changeborderwidth(sel->win, BORDER_WIDTH); */
 		xcb_configure_window(conn, sel->win, mask, val);
 		sel->x = sel->oldx;
 		sel->y = sel->oldy;
@@ -653,7 +773,7 @@ wintoclient(xcb_window_t w) {
 
 int
 main() {
-	conn = xcb_connect(NULL, NULL);
+	conn = xcb_connect(NULL, &scrno);
 	if (xcb_connection_has_error(conn))
 		err(EXIT_FAILURE, "ERROR: xcb_connect error");
 	setup();
