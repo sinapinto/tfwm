@@ -20,11 +20,7 @@
 #   define DEBUG(...)
 #endif
 
-#define Mod1Mask                XCB_MOD_MASK_1
-#define Mod4Mask                XCB_MOD_MASK_4
-#define ShiftMask               XCB_MOD_MASK_SHIFT
-#define ControlMask             XCB_MOD_MASK_CONTROL
-#define CLEANMASK(mask)         ((mask & ~0x80))
+#define CLEANMASK(mask)         (mask & ~(numlockmask|XCB_MOD_MASK_LOCK))
 #define LENGTH(X)               (sizeof(X)/sizeof(*X))
 #define MAX(X, Y)               ((X) > (Y) ? (X) : (Y))
 #define SUBTRACTLIM(X, Y)       ((X - Y > 0) ? (X - Y) : (X))
@@ -40,15 +36,23 @@ typedef union {
 typedef struct Key {
 	unsigned int mod;
 	xcb_keysym_t keysym;
-	void (*function)(const Arg *);
+	void (*func)(const Arg *);
 	const Arg arg;
 } Key;
 
+typedef struct {
+	unsigned int mask;
+	unsigned int button;
+	void (*func)(const Arg *);
+	const Arg arg;
+} Button;
+
 typedef struct Client Client;
 struct Client{
-	int x, y, w, h;
+	int16_t x, y;
+    uint16_t w, h;
 	int oldx, oldy, oldw, oldh;
-	int basew, baseh, minw, minh, maxw, maxh;
+	uint16_t basew, baseh, minw, minh, maxw, maxh;
 	int borderwidth;
 	bool isfullscreen;
 	Client *next;
@@ -60,49 +64,57 @@ struct Client{
 /* function declarations */
 static void attach(Client *c);
 static void attachstack(Client *c);
+static void buttonpress(xcb_generic_event_t *ev);
 static void changebordercolor(xcb_window_t win, long color);
 static void changeborderwidth(xcb_window_t win, int width);
+static void circulaterequest(xcb_generic_event_t *ev);
 static void cleanup();
 static void clientmessage(xcb_generic_event_t *ev);
 static void configurerequest(xcb_generic_event_t *ev);
 static void destroynotify(xcb_generic_event_t *ev);
 static void detach(Client *c);
 static void detachstack(Client *c);
+static void enternotify(xcb_generic_event_t *ev);
 static void focus(struct Client *c);
 static void focusstack(const Arg *arg);
 static void getatoms(xcb_atom_t *atoms, char **names, int count);
 static xcb_keycode_t* getkeycodes(xcb_keysym_t keysym);
 static xcb_keysym_t getkeysym(xcb_keycode_t keycode);
+static void grabbuttons(Client *c);
+static void grabkeys();
 static void keypress(xcb_generic_event_t *ev);
 static void killclient(const Arg *arg);
 static void manage(xcb_window_t w);
 static void mappingnotify(xcb_generic_event_t *ev);
 static void maprequest(xcb_generic_event_t *ev);
 static void move(const Arg *arg);
+static void mousemotion(const Arg *arg);
 static void movewin(xcb_window_t win, int x, int y);
 static void quit(const Arg *arg);
 static void raisewindow(xcb_drawable_t win);
 static void resize(const Arg *arg);
+static void resizewin(xcb_window_t win, int w, int h);
 static void restack();
 static void run(void);
 static void selectws(const Arg* arg);
 static void selectprevws(const Arg* arg);
 static bool sendevent(Client *c, xcb_atom_t proto);
 static void sendtows(const Arg *arg);
-static void setcursor(xcb_window_t w, int cursorid);
 static void sethints(Client *c);
 static void setup();
-static void setupkeys();
 static void showhide(Client *c);
+static void sigcatch(int sig);
 static void sigchld();
 static void testcookie(xcb_void_cookie_t cookie, char *errormsg);
 static void togglefullscreen(const Arg *arg);
 static void unfocus(struct Client *c);
 static void unmanage(Client *c);
 static void unmapnotify(xcb_generic_event_t *ev);
+static void updatenumlockmask();
 static Client* wintoclient(xcb_window_t w);
 
 /* enums */
+enum { MouseMove, MouseResize };
 enum { MoveDown, MoveRight, MoveUp, MoveLeft };
 enum { ResizeDown, ResizeRight, ResizeUp, ResizeLeft };
 enum { WMProtocols, WMDeleteWindow, WMState, WMLast }; /* default atoms */
@@ -115,11 +127,12 @@ static xcb_screen_t *screen;
 static unsigned int sw, sh;
 static unsigned int selws = 0;
 static unsigned int prevws = 0;
+static unsigned int numlockmask = 0;
 static int scrno;
 static Client *clients;
 static Client *sel;
 static Client *stack;
-static bool running = true;
+static int sigcode;
 static void (*handler[XCB_NO_OPERATION])(xcb_generic_event_t *ev);
 xcb_ewmh_connection_t *ewmh;
 static xcb_atom_t wmatom[WMLast];
@@ -144,6 +157,20 @@ attachstack(Client *c) {
 }
 
 void
+buttonpress(xcb_generic_event_t *ev) {
+	xcb_button_press_event_t *e = (xcb_button_press_event_t*)ev;
+	Client *c;
+	if ((c = wintoclient(e->event)))
+		focus(c);
+	for (int i = 0; i < LENGTH(buttons); i++)
+		if (buttons[i].button == e->detail &&
+				CLEANMASK(buttons[i].mask) == CLEANMASK(e->state) &&
+				buttons[i].func)
+			if (sel != NULL && e->event != screen->root)
+				buttons[i].func(&buttons[i].arg);
+}
+
+void
 changeborderwidth(xcb_window_t win, int width) {
 	uint32_t value[1] = { width };
 	xcb_configure_window(conn, win, XCB_CONFIG_WINDOW_BORDER_WIDTH, value);
@@ -156,6 +183,12 @@ changebordercolor(xcb_window_t win, long color) {
 }
 
 void
+circulaterequest(xcb_generic_event_t *ev) {
+	xcb_circulate_request_event_t *e = (xcb_circulate_request_event_t *)ev;
+	xcb_circulate_window(conn, e->window, e->place);
+}
+
+void
 cleanup() {
 	while (stack)
 		unmanage(stack);
@@ -163,8 +196,8 @@ cleanup() {
     xcb_ewmh_connection_wipe(ewmh);
     if (ewmh)
 		free(ewmh);
-	xcb_set_input_focus(conn, XCB_NONE,
-			XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
+
+	xcb_set_input_focus(conn, XCB_NONE, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
 	xcb_flush(conn);
 	xcb_disconnect(conn);
 }
@@ -233,6 +266,19 @@ detachstack(Client *c) {
 }
 
 void
+enternotify(xcb_generic_event_t *ev) {
+	xcb_enter_notify_event_t *e = (xcb_enter_notify_event_t *)ev;
+	struct Client *c;
+	if (e->mode == XCB_NOTIFY_MODE_NORMAL || e->mode == XCB_NOTIFY_MODE_UNGRAB) {
+		if (sel != NULL && e->event == sel->win)
+			return;
+		if ((c = wintoclient(e->event))) {
+			focus(c);
+		}
+	}
+}
+
+void
 focus(struct Client *c) {
 	if (!c || !ISVISIBLE(c))
 		for (c = stack; c && !ISVISIBLE(c); c = c->snext)
@@ -241,8 +287,11 @@ focus(struct Client *c) {
 	if (c) {
 		detachstack(c);
 		attachstack(c);
-		changeborderwidth(c->win, c->borderwidth);
-		changebordercolor(c->win, FOCUS);
+		grabbuttons(c);
+		if (c->borderwidth) {
+			changeborderwidth(c->win, c->borderwidth);
+			changebordercolor(c->win, FOCUS);
+		}
 		long data[] = { XCB_ICCCM_WM_STATE_NORMAL, XCB_NONE };
 		xcb_change_property(conn, XCB_PROP_MODE_REPLACE, c->win,
 				wmatom[WMState], wmatom[WMState], 32, 2, data);
@@ -291,13 +340,11 @@ getatoms(xcb_atom_t *atoms, char **names, int count) {
 	for (unsigned int i = 0; i < count; ++i)
 		cookies[i] = xcb_intern_atom(conn, 0, strlen(names[i]), names[i]);
 	for (unsigned int i = 0; i < count; ++i) {
-		xcb_intern_atom_reply_t *reply =
-			xcb_intern_atom_reply(conn, cookies[i], NULL);
+		xcb_intern_atom_reply_t *reply = xcb_intern_atom_reply(conn, cookies[i], NULL);
 		if (reply) {
 			atoms[i] = reply->atom;
 			free(reply);
-		} else
-			fprintf(stderr, "WARN: failed to register %s atom.\n", wmatomnames[i]);
+		}
 	}
 }
 
@@ -322,15 +369,41 @@ getkeysym(xcb_keycode_t keycode) {
 }
 
 void
+grabbuttons(Client *c) {
+	unsigned int i, j;
+	unsigned int modifiers[] = { 0, XCB_MOD_MASK_LOCK, numlockmask, numlockmask|XCB_MOD_MASK_LOCK };
+
+	for (i = 0; i < LENGTH(buttons); i++)
+		for (j = 0; j < LENGTH(modifiers); j++)
+			xcb_grab_button(conn, 1, c->win, XCB_EVENT_MASK_BUTTON_PRESS, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC,
+					screen->root, XCB_NONE, buttons[i].button, buttons[i].mask|modifiers[j]);
+}
+
+void
+grabkeys() {
+	unsigned int i, j, k;
+	unsigned int modifiers[] = { 0, XCB_MOD_MASK_LOCK, numlockmask, numlockmask|XCB_MOD_MASK_LOCK };
+	xcb_keycode_t *keycode;
+
+	xcb_ungrab_key(conn, XCB_GRAB_ANY, screen->root, XCB_MOD_MASK_ANY);
+	for (i = 0; i < LENGTH(keys); ++i) {
+		keycode = getkeycodes(keys[i].keysym);
+		for (j = 0; keycode[j] != XCB_NO_SYMBOL; j++)
+			for (k = 0; k < LENGTH(modifiers); k++)
+				xcb_grab_key(conn, 1, screen->root, keys[i].mod | modifiers[k],
+						keycode[j], XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
+	}
+}
+
+void
 keypress(xcb_generic_event_t *ev) {
 	xcb_key_press_event_t *e = (xcb_key_press_event_t *)ev;
 	xcb_keysym_t keysym = getkeysym(e->detail);
-	for (int i=0; i<LENGTH(keys); i++) {
+	for (int i=0; i < LENGTH(keys); i++) {
 		if (keysym == keys[i].keysym &&
 				CLEANMASK(keys[i].mod) == CLEANMASK(e->state) &&
-				keys[i].function)
-		{
-			keys[i].function(&keys[i].arg);
+				keys[i].func) {
+			keys[i].func(&keys[i].arg);
 			break;
 		}
 	}
@@ -398,7 +471,7 @@ mappingnotify(xcb_generic_event_t *ev) {
 	if (e->request != XCB_MAPPING_MODIFIER && e->request != XCB_MAPPING_KEYBOARD)
 		return;
 	xcb_ungrab_key(conn, XCB_GRAB_ANY, screen->root, XCB_MOD_MASK_ANY);
-	setupkeys();
+	grabkeys();
 }
 
 void
@@ -423,6 +496,89 @@ move(const Arg *arg) {
 }
 
 void
+mousemotion(const Arg *arg) {
+	if (!sel || sel->win == screen->root)
+		return;
+	raisewindow(sel->win);
+	xcb_query_pointer_reply_t *pointer;
+	pointer = xcb_query_pointer_reply(conn, xcb_query_pointer(conn, screen->root), 0);
+	/* create cursor */
+	xcb_font_t font = xcb_generate_id(conn);
+	xcb_void_cookie_t fontcookie =
+		xcb_open_font_checked(conn, font, strlen("cursor"), "cursor");
+	testcookie(fontcookie, "can't open font");
+	xcb_cursor_t cursor = xcb_generate_id(conn);
+	int cursorid;
+	if (arg->i == MouseMove)
+		cursorid = 52;
+	else
+		cursorid = 14;
+	xcb_create_glyph_cursor(conn, cursor, font, font,
+			cursorid, cursorid + 1, 0, 0, 0, 65535, 65535, 65535);
+	/* grab pointer */
+	xcb_grab_pointer_reply_t *grab_reply = xcb_grab_pointer_reply(conn,
+			xcb_grab_pointer(conn, 0, screen->root,
+				XCB_EVENT_MASK_BUTTON_PRESS |
+				XCB_EVENT_MASK_BUTTON_RELEASE |
+				XCB_EVENT_MASK_BUTTON_MOTION |
+				XCB_EVENT_MASK_POINTER_MOTION, XCB_GRAB_MODE_ASYNC,
+				XCB_GRAB_MODE_ASYNC, XCB_NONE, cursor, XCB_CURRENT_TIME), NULL);
+	if (grab_reply->status != XCB_GRAB_STATUS_SUCCESS) {
+		free(grab_reply);
+		return;
+	}
+	free(grab_reply);
+
+	xcb_generic_event_t *ev;
+	xcb_motion_notify_event_t *e;
+	bool ungrab = false;
+	int nx = sel->x;
+	int ny = sel->y;
+	int nw = sel->w;
+	int nh = sel->h;
+	while ((ev = xcb_wait_for_event(conn)) && !ungrab) {
+		switch (ev->response_type & ~0x80) {
+			case XCB_CONFIGURE_REQUEST:
+			case XCB_MAP_REQUEST:
+				handler[ev->response_type & ~0x80](ev);
+				break;
+			case XCB_MOTION_NOTIFY:
+				e = (xcb_motion_notify_event_t*)ev;
+				if (arg->i == MouseMove) {
+					nx = sel->x + e->root_x - pointer->root_x;
+					ny = sel->y + e->root_y - pointer->root_y;
+					movewin(sel->win, nx, ny);
+				}
+				else {
+					nw = sel->w + e->root_x - pointer->root_x;
+					nh = sel->h + e->root_y - pointer->root_y;
+					resizewin(sel->win, nw, nh);
+				}
+				break;
+			case XCB_BUTTON_RELEASE:
+				if (arg->i == MouseMove) {
+					sel->x = nx;
+					sel->y = ny;
+				}
+				else {
+					sel->w = nw;
+					sel->h = nh;
+				}
+				ungrab = true;
+		}
+		free(ev);
+		xcb_flush(conn);
+	}
+	sel->isfullscreen = false;
+	free(ev);
+	free(pointer);
+	fontcookie = xcb_close_font_checked(conn, font);
+	testcookie(fontcookie, "can't close font");
+	xcb_free_cursor(conn, cursor);
+	xcb_ungrab_pointer(conn, XCB_CURRENT_TIME);
+}
+
+void
 movewin(xcb_window_t win, int x, int y) {
 	unsigned int pos[2] = { x, y };
 	xcb_configure_window(conn, win, XCB_CONFIG_WINDOW_X|XCB_CONFIG_WINDOW_Y, pos);
@@ -430,7 +586,8 @@ movewin(xcb_window_t win, int x, int y) {
 
 void
 quit(const Arg *arg) {
-	running = false;
+	cleanup();
+	exit(sigcode);
 }
 
 void
@@ -458,6 +615,15 @@ resize(const Arg *arg) {
 	values[1] = sel->h;
 	xcb_configure_window(conn, sel->win, XCB_CONFIG_WINDOW_WIDTH
 			|XCB_CONFIG_WINDOW_HEIGHT, values);
+	if (sel->isfullscreen)
+		sel->isfullscreen = false;
+}
+
+void
+resizewin(xcb_window_t win, int w, int h) {
+	unsigned int values[2] = { w, h };
+	xcb_configure_window(conn, win, XCB_CONFIG_WINDOW_WIDTH |
+			XCB_CONFIG_WINDOW_HEIGHT, values);
 }
 
 void
@@ -470,14 +636,17 @@ restack() {
 void
 run(void) {
 	xcb_generic_event_t *ev;
-	while (running) {
+	sigcode = 0;
+	while (sigcode == 0) {
 		xcb_flush(conn);
 		ev = xcb_wait_for_event(conn);
-		if (handler[CLEANMASK(ev->response_type)])
-			handler[CLEANMASK(ev->response_type)](ev);
+		if (handler[ev->response_type & ~0x80])
+			handler[ev->response_type & ~0x80](ev);
 		free(ev);
-		if (xcb_connection_has_error(conn))
-			running = false;
+		if (xcb_connection_has_error(conn)) {
+			cleanup();
+			exit(1);
+		}
 	}
 }
 
@@ -530,27 +699,11 @@ void
 sendtows(const Arg *arg) {
 	if (arg->i == selws)
 		return;
-	// TODO
+	sel->ws = arg->i;
 	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, sel->win,
 			netatom[NetWMDesktop], XCB_ATOM_CARDINAL, 32, 1, &arg->i);
+	showhide(stack);
 	focus(NULL);
-}
-
-void
-setcursor(xcb_window_t w, int cursorid) {
-	xcb_font_t font = xcb_generate_id(conn);
-	xcb_void_cookie_t fontcookie =
-		xcb_open_font_checked(conn, font, strlen("cursor"), "cursor");
-	testcookie(fontcookie, "can't open font");
-	xcb_cursor_t cursor = xcb_generate_id(conn);
-	xcb_create_glyph_cursor(conn, cursor, font, font,
-			cursorid, cursorid + 1, 65535, 65535, 65535, 0, 0, 0);
-	uint32_t mask = XCB_CW_CURSOR;
-	uint32_t values = cursor;
-	xcb_change_window_attributes(conn, w, mask, &values);
-	xcb_free_cursor(conn, cursor);
-	fontcookie = xcb_close_font_checked(conn, font);
-	testcookie(fontcookie, "can't close font");
 }
 
 void
@@ -564,27 +717,33 @@ sethints(Client *c) {
 		c->minw = h.min_width;
 		c->minh = h.min_height;
 	}
-	if (h.flags & XCB_ICCCM_SIZE_HINT_P_MAX_SIZE) {
-		c->maxw = h.max_width;
-		c->maxh = h.max_height;
-	}
+	/* if (h.flags & XCB_ICCCM_SIZE_HINT_P_MAX_SIZE) { */
+	/* 	c->maxw = h.max_width; */
+	/* 	c->maxh = h.max_height; */
+	/* } */
 	if (h.flags & XCB_ICCCM_SIZE_HINT_BASE_SIZE) {
 		c->basew = h.base_width;
 		c->baseh = h.base_height;
 	}
-	if (c->w < MAX(c->minw, c->basew) || c->h < MAX(c->minh, c->baseh)) {
+	/* configure win */
+	if (c->basew < sw)
+		c->w = MAX(c->w, c->basew);
+	if (c->baseh < sh)
+		c->h = MAX(c->h, c->baseh);
+	if (c->minw < sw)
 		c->w = MAX(c->w, c->minw);
+	if (c->minh < sh)
 		c->h = MAX(c->h, c->minh);
-		uint32_t values[2] = { c->w, c->h };
-		xcb_configure_window(conn, c->win, XCB_CONFIG_WINDOW_WIDTH
-				| XCB_CONFIG_WINDOW_HEIGHT, values);
-	}
+	uint32_t values[2] = { c->w, c->h };
+	xcb_configure_window(conn, c->win, XCB_CONFIG_WINDOW_WIDTH
+			| XCB_CONFIG_WINDOW_HEIGHT, values);
 }
 
 void
 setup() {
-	/* clean up any zombies */
 	sigchld();
+    signal(SIGINT, sigcatch);
+    signal(SIGTERM, sigcatch);
 	/* init screen */
 	screen = xcb_setup_roots_iterator(xcb_get_setup(conn)).data;
 	if (!screen)
@@ -592,12 +751,16 @@ setup() {
 	sw = screen->width_in_pixels;
 	sh = screen->height_in_pixels;
 	/* subscribe to handler */
-	unsigned int value[1] = {XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY |
-		XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT};
+	unsigned int value[1] = {
+		XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY |
+		XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT |
+		XCB_EVENT_MASK_BUTTON_PRESS
+	};
 	xcb_void_cookie_t cookie;
 	cookie = xcb_change_window_attributes_checked(conn, screen->root,
 			XCB_CW_EVENT_MASK, value);
 	testcookie(cookie, "another window manager is running.");
+	xcb_flush(conn);
 	/* init atoms */
 	getatoms(wmatom, wmatomnames, WMLast);
 	getatoms(netatom, netatomnames, NetLast);
@@ -612,18 +775,23 @@ setup() {
 	xcb_create_window(conn, XCB_COPY_FROM_PARENT, recorder, root, 0, 0,
 			screen->width_in_pixels, screen->height_in_pixels, 0,
 			XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT, mask, values);
+    xcb_ewmh_set_wm_pid(ewmh, recorder, getpid());
+    xcb_ewmh_set_wm_name(ewmh, screen->root, 4, "tfwm");
+    xcb_ewmh_set_supporting_wm_check(ewmh, recorder, recorder);
+    xcb_ewmh_set_supporting_wm_check(ewmh, screen->root, recorder);
 	xcb_atom_t net_atoms[] = {
 		ewmh->_NET_SUPPORTED,
 		ewmh->_NET_NUMBER_OF_DESKTOPS,
+        ewmh->_NET_SUPPORTING_WM_CHECK,
 		ewmh->_NET_CURRENT_DESKTOP,
 		ewmh->_NET_ACTIVE_WINDOW,
 		ewmh->_NET_WM_DESKTOP,
 		ewmh->_NET_WM_STATE,
-		ewmh->_NET_WM_STATE_FULLSCREEN
+		ewmh->_NET_WM_STATE_FULLSCREEN,
+		ewmh->_NET_WM_NAME,
+		ewmh->_NET_WM_PID
 	};
 	xcb_ewmh_set_supported(ewmh, scrno, LENGTH(net_atoms), net_atoms);
-	xcb_ewmh_set_supporting_wm_check(ewmh, root, recorder);
-	xcb_ewmh_set_supporting_wm_check(ewmh, recorder, recorder);
     static const uint8_t numworkspaces = 5;
     xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root,
                         netatom[NetCurrentDesktop], XCB_ATOM_CARDINAL,
@@ -635,26 +803,18 @@ setup() {
     xcb_ewmh_set_current_desktop(ewmh, scrno, 0);
 	/* set handlers */
 	handler[XCB_CONFIGURE_REQUEST] = configurerequest;
-	handler[XCB_DESTROY_NOTIFY] = destroynotify;
-	handler[XCB_UNMAP_NOTIFY] = unmapnotify;
-	handler[XCB_MAP_REQUEST] = maprequest;
-	handler[XCB_MAPPING_NOTIFY] = mappingnotify;
-	handler[XCB_CLIENT_MESSAGE] = clientmessage;
-	handler[XCB_KEY_PRESS] = keypress;
-	setcursor(screen->root, 68); /* left_ptr */
-	setupkeys();
+	handler[XCB_DESTROY_NOTIFY]    = destroynotify;
+	handler[XCB_UNMAP_NOTIFY]      = unmapnotify;
+	handler[XCB_MAP_REQUEST]       = maprequest;
+	handler[XCB_MAPPING_NOTIFY]    = mappingnotify;
+	handler[XCB_CLIENT_MESSAGE]    = clientmessage;
+	handler[XCB_KEY_PRESS]         = keypress;
+	handler[XCB_BUTTON_PRESS]      = buttonpress;
+    handler[XCB_ENTER_NOTIFY]      = enternotify;
+    handler[XCB_CIRCULATE_REQUEST] = circulaterequest;
+	updatenumlockmask();
+	grabkeys();
 	focus(NULL);
-}
-
-void
-setupkeys() {
-	xcb_keycode_t *keycode;
-	for (unsigned int i = 0; i < LENGTH(keys); ++i) {
-		keycode = getkeycodes(keys[i].keysym);
-		for (unsigned int k = 0; keycode[k] != XCB_NO_SYMBOL; k++)
-			xcb_grab_key(conn, 1, screen->root, keys[i].mod, keycode[k],
-				XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
-	}
 }
 
 void
@@ -672,6 +832,11 @@ showhide(Client *c) {
 }
 
 void
+sigcatch(int sig) {
+	sigcode = sig;
+}
+
+void
 sigchld() {
 	if (signal(SIGCHLD, sigchld) == SIG_ERR)
 		err(EXIT_FAILURE, "ERROR: can't install SIGCHLD handler");
@@ -683,6 +848,7 @@ testcookie(xcb_void_cookie_t cookie, char *errormsg) {
 	xcb_generic_error_t *error = xcb_request_check(conn, cookie);
 	if (error) {
 		fprintf(stderr, "ERROR: %s : %d\n", errormsg, error->error_code);
+		free(error);
 		xcb_disconnect(conn);
 		exit(EXIT_FAILURE);
 	}
@@ -729,8 +895,7 @@ togglefullscreen(const Arg *arg) {
 		sel->isfullscreen = false;
 		focus(NULL);
 	}
-	long data[] = { sel->isfullscreen ? netatom[NetWMFullscreen]
-		: XCB_ICCCM_WM_STATE_NORMAL };
+	long data[] = { sel->isfullscreen ? netatom[NetWMFullscreen] : XCB_ICCCM_WM_STATE_NORMAL };
 	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, sel->win,
 			netatom[NetWMState], XCB_ATOM_ATOM, 32, 1, data);
 }
@@ -760,6 +925,38 @@ unmapnotify(xcb_generic_event_t *ev) {
 	if ((c = wintoclient(e->window))) {
 		unmanage(c);
 	}
+}
+
+void
+updatenumlockmask() {
+	unsigned int i, j, n;
+	numlockmask = 0;
+	xcb_keycode_t *modmap ;
+	xcb_get_modifier_mapping_reply_t *reply;
+
+	reply = xcb_get_modifier_mapping_reply(conn, xcb_get_modifier_mapping_unchecked(conn), NULL);
+	if (!reply)
+		err(EXIT_FAILURE, "ERROR: mod map reply");
+	modmap = xcb_get_modifier_mapping_keycodes(reply);
+	if (!modmap)
+		err(EXIT_FAILURE, "ERROR: mod map keycodes");
+
+	xcb_keycode_t *numlock = getkeycodes(XK_Num_Lock);
+	for (i = 0; i < 8; i++) {
+		for (j = 0; j < reply->keycodes_per_modifier; j++) {
+			xcb_keycode_t keycode = modmap[i * reply->keycodes_per_modifier + j];
+			if (keycode == XCB_NO_SYMBOL)
+				continue;
+			if (numlock)
+				for (n = 0; numlock[n] != XCB_NO_SYMBOL; n++)
+					if (numlock[n] == keycode) {
+						numlockmask = 1 << i;
+						break;
+					}
+		}
+	}
+	free(reply);
+	free(numlock);
 }
 
 Client *

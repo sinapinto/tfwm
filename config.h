@@ -32,3 +32,7 @@ static Key keys[] = {
 	WORKSPACE(          XK_5,                                4 )
 	{ MOD | SHIFT,      XK_e,        quit,                   {.i=0}           },
 };
+static Button buttons[] = {
+	{  MOD,     XCB_BUTTON_INDEX_1,  mousemotion,            {.i=MouseMove}   },
+	{  MOD,     XCB_BUTTON_INDEX_3,  mousemotion,            {.i=MouseResize} }
+};
