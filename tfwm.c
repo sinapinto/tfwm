@@ -13,19 +13,11 @@
 #include <xcb/xcb_ewmh.h>
 #include <X11/keysym.h>
 
-#if 1
-#   define DEBUG(...) \
-		do { fprintf(stderr, "tfwm: ");fprintf(stderr, __VA_ARGS__); } while(0)
-#else
-#   define DEBUG(...)
-#endif
-
 #define CLEANMASK(mask)         (mask & ~(numlockmask|XCB_MOD_MASK_LOCK))
 #define LENGTH(X)               (sizeof(X)/sizeof(*X))
 #define MAX(X, Y)               ((X) > (Y) ? (X) : (Y))
 #define SUBTRACTLIM(X, Y)       ((X - Y > 0) ? (X - Y) : (X))
 #define WIDTH(C)                ((C)->w + 2 * BORDER_WIDTH)
-#define HEIGHT(C)               ((C)->h + 2 * BORDER_WIDTH)
 #define ISVISIBLE(C)            ((C)->ws == selws)
 
 typedef union {
@@ -65,6 +57,7 @@ struct Client{
 static void attach(Client *c);
 static void attachstack(Client *c);
 static void buttonpress(xcb_generic_event_t *ev);
+static void centerwin(const Arg *arg);
 static void changebordercolor(xcb_window_t win, long color);
 static void changeborderwidth(xcb_window_t win, int width);
 static void circulaterequest(xcb_generic_event_t *ev);
@@ -105,6 +98,7 @@ static void setup();
 static void showhide(Client *c);
 static void sigcatch(int sig);
 static void sigchld();
+static void spawn(const Arg *arg);
 static void testcookie(xcb_void_cookie_t cookie, char *errormsg);
 static void togglefullscreen(const Arg *arg);
 static void unfocus(struct Client *c);
@@ -138,9 +132,8 @@ xcb_ewmh_connection_t *ewmh;
 static xcb_atom_t wmatom[WMLast];
 static xcb_atom_t netatom[NetLast];
 static char *wmatomnames[] = { "WM_PROTOCOLS", "WM_DELETE_WINDOW", "WM_STATE" };
-static char *netatomnames[] = { "_NET_SUPPORTED", "_NET_WM_STATE_FULLSCREEN",
-	"_NET_WM_STATE", "_NET_ACTIVE_WINDOW", "_NET_WM_DESKTOP",
-	"_NET_CURRENT_DESKTOP", "_NET_NUMBER_OF_DESKTOPS" };
+static char *netatomnames[] = { "_NET_SUPPORTED", "_NET_WM_STATE_FULLSCREEN", "_NET_WM_STATE",
+	"_NET_ACTIVE_WINDOW", "_NET_WM_DESKTOP", "_NET_CURRENT_DESKTOP", "_NET_NUMBER_OF_DESKTOPS" };
 
 #include "config.h"
 
@@ -168,6 +161,17 @@ buttonpress(xcb_generic_event_t *ev) {
 				buttons[i].func)
 			if (sel != NULL && e->event != screen->root)
 				buttons[i].func(&buttons[i].arg);
+}
+
+void
+centerwin(const Arg *arg) {
+	if (!sel)
+		return;
+	sel->x = sw - (sel->w + sel->borderwidth*2);
+	sel->x /= 2;
+	sel->y = sh - (sel->h + sel->borderwidth*2);
+	sel->y /= 2;
+	movewin(sel->win, sel->x, sel->y);
 }
 
 void
@@ -812,6 +816,7 @@ setup() {
 	handler[XCB_BUTTON_PRESS]      = buttonpress;
     handler[XCB_ENTER_NOTIFY]      = enternotify;
     handler[XCB_CIRCULATE_REQUEST] = circulaterequest;
+	/* init keys */
 	updatenumlockmask();
 	grabkeys();
 	focus(NULL);
@@ -841,6 +846,17 @@ sigchld() {
 	if (signal(SIGCHLD, sigchld) == SIG_ERR)
 		err(EXIT_FAILURE, "ERROR: can't install SIGCHLD handler");
 	while (0 < waitpid(-1, NULL, WNOHANG));
+}
+
+void
+spawn(const Arg *arg) {
+	if (fork() == 0) {
+		if (conn)
+			close(screen->root);
+		setsid();
+		execvp((char*)arg->com[0], (char**)arg->com);
+		err(EXIT_FAILURE, "execvp %s", ((char **)arg->com)[0]);
+	}
 }
 
 void
