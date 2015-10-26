@@ -59,7 +59,7 @@ static void attachstack(Client *c);
 static void buttonpress(xcb_generic_event_t *ev);
 static void centerwin(const Arg *arg);
 static void changebordercolor(xcb_window_t win, long color);
-static void changeborderwidth(xcb_window_t win, int width);
+static void changeborderwidth(Client *c, int width);
 static void circulaterequest(xcb_generic_event_t *ev);
 static void cleanup();
 static void clientmessage(xcb_generic_event_t *ev);
@@ -87,7 +87,6 @@ static void quit(const Arg *arg);
 static void raisewindow(xcb_drawable_t win);
 static void resize(const Arg *arg);
 static void resizewin(xcb_window_t win, int w, int h);
-static void restack();
 static void run(void);
 static void selectws(const Arg* arg);
 static void selectprevws(const Arg* arg);
@@ -175,9 +174,10 @@ centerwin(const Arg *arg) {
 }
 
 void
-changeborderwidth(xcb_window_t win, int width) {
+changeborderwidth(Client *c, int width) {
 	uint32_t value[1] = { width };
-	xcb_configure_window(conn, win, XCB_CONFIG_WINDOW_BORDER_WIDTH, value);
+	xcb_configure_window(conn, c->win, XCB_CONFIG_WINDOW_BORDER_WIDTH, value);
+	c->borderwidth = width;
 }
 
 void
@@ -292,10 +292,8 @@ focus(struct Client *c) {
 		detachstack(c);
 		attachstack(c);
 		grabbuttons(c);
-		if (c->borderwidth) {
-			changeborderwidth(c->win, c->borderwidth);
-			changebordercolor(c->win, FOCUS);
-		}
+		changeborderwidth(c, c->borderwidth);
+		changebordercolor(c->win, FOCUS);
 		long data[] = { XCB_ICCCM_WM_STATE_NORMAL, XCB_NONE };
 		xcb_change_property(conn, XCB_PROP_MODE_REPLACE, c->win,
 				wmatom[WMState], wmatom[WMState], 32, 2, data);
@@ -334,16 +332,18 @@ focusstack(const Arg *arg) {
 	}
 	if (c) {
 		focus(c);
-		restack();
+		raisewindow(sel->win);
 	}
 }
 
 void
 getatoms(xcb_atom_t *atoms, char **names, int count) {
 	xcb_intern_atom_cookie_t cookies[count];
-	for (unsigned int i = 0; i < count; ++i)
+	unsigned int i;
+
+	for (i = 0; i < count; ++i)
 		cookies[i] = xcb_intern_atom(conn, 0, strlen(names[i]), names[i]);
-	for (unsigned int i = 0; i < count; ++i) {
+	for (i = 0; i < count; ++i) {
 		xcb_intern_atom_reply_t *reply = xcb_intern_atom_reply(conn, cookies[i], NULL);
 		if (reply) {
 			atoms[i] = reply->atom;
@@ -445,7 +445,7 @@ manage(xcb_window_t w) {
 	attachstack(c);
 	sel = c;
 	c->borderwidth = BORDER_WIDTH;
-	changeborderwidth(w, c->borderwidth);
+	changeborderwidth(c, c->borderwidth);
 	xcb_map_window(conn, w);
 	/* set its workspace hint */
 	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, c->win, netatom[NetWMDesktop],
@@ -554,8 +554,8 @@ mousemotion(const Arg *arg) {
 					movewin(sel->win, nx, ny);
 				}
 				else {
-					nw = sel->w + e->root_x - pointer->root_x;
-					nh = sel->h + e->root_y - pointer->root_y;
+					nw = MAX(sel->w + e->root_x - pointer->root_x, sel->minw + 40);
+					nh = MAX(sel->h + e->root_y - pointer->root_y, sel->minh + 40);
 					resizewin(sel->win, nw, nh);
 				}
 				break;
@@ -597,7 +597,7 @@ quit(const Arg *arg) {
 void
 raisewindow(xcb_drawable_t win) {
     uint32_t values[] = { XCB_STACK_MODE_ABOVE };
-    if (screen->root == win || 0 == win)
+    if (screen->root == win || !win)
         return;
     xcb_configure_window(conn, win, XCB_CONFIG_WINDOW_STACK_MODE, values);
 }
@@ -628,13 +628,6 @@ resizewin(xcb_window_t win, int w, int h) {
 	unsigned int values[2] = { w, h };
 	xcb_configure_window(conn, win, XCB_CONFIG_WINDOW_WIDTH |
 			XCB_CONFIG_WINDOW_HEIGHT, values);
-}
-
-void
-restack() {
-	if (!sel)
-		return;
-	raisewindow(sel->win);
 }
 
 void
@@ -881,7 +874,7 @@ togglefullscreen(const Arg *arg) {
 		| XCB_CONFIG_WINDOW_STACK_MODE;
 
 	if (!sel->isfullscreen) {
-		/* changeborderwidth(sel->win, 0); */
+		changeborderwidth(sel, 0);
 		sel->oldx = sel->x;
 		sel->oldy = sel->y;
 		sel->oldw = sel->w;
@@ -902,7 +895,7 @@ togglefullscreen(const Arg *arg) {
 		val[1] = sel->oldy;
 		val[2] = sel->oldw;
 		val[3] = sel->oldh;
-		/* changeborderwidth(sel->win, BORDER_WIDTH); */
+		changeborderwidth(sel, BORDER_WIDTH);
 		xcb_configure_window(conn, sel->win, mask, val);
 		sel->x = sel->oldx;
 		sel->y = sel->oldy;
@@ -921,8 +914,7 @@ unfocus(struct Client *c) {
 	if (!c)
 		return;
 	changebordercolor(c->win, UNFOCUS);
-	xcb_set_input_focus(conn, XCB_INPUT_FOCUS_POINTER_ROOT,
-			c->win, XCB_CURRENT_TIME);
+	xcb_set_input_focus(conn, XCB_INPUT_FOCUS_POINTER_ROOT, c->win, XCB_CURRENT_TIME);
 }
 
 void
