@@ -881,6 +881,7 @@ maximize(const Arg *arg) {
 	savegeometry(sel);
 	/* changeborderwidth(sel, BORDER_WIDTH); */
 	sel->ismax = true;
+	sel->isvertmax = sel->ishormax = false;
 	sel->x = 0;
 	sel->y = 0;
 	sel->w = sw;
