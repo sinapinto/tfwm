@@ -44,7 +44,7 @@ struct Client{
 	int16_t x, y;
     uint16_t w, h;
 	int oldx, oldy, oldw, oldh;
-	uint16_t basew, baseh, minw, minh, maxw, maxh;
+	uint16_t basew, baseh, minw, minh;
 	int borderwidth;
 	bool isfullscreen;
 	Client *next;
@@ -100,7 +100,7 @@ static void sigchld();
 static void spawn(const Arg *arg);
 static void testcookie(xcb_void_cookie_t cookie, char *errormsg);
 static void togglefullscreen(const Arg *arg);
-static void unfocus(struct Client *c);
+static void unfocus(Client *c);
 static void unmanage(Client *c);
 static void unmapnotify(xcb_generic_event_t *ev);
 static void updatenumlockmask();
@@ -272,7 +272,7 @@ detachstack(Client *c) {
 void
 enternotify(xcb_generic_event_t *ev) {
 	xcb_enter_notify_event_t *e = (xcb_enter_notify_event_t *)ev;
-	struct Client *c;
+	Client *c;
 	if (e->mode == XCB_NOTIFY_MODE_NORMAL || e->mode == XCB_NOTIFY_MODE_UNGRAB) {
 		if (sel != NULL && e->event == sel->win)
 			return;
@@ -283,7 +283,7 @@ enternotify(xcb_generic_event_t *ev) {
 }
 
 void
-focus(struct Client *c) {
+focus(Client *c) {
 	if (!c || !ISVISIBLE(c))
 		for (c = stack; c && !ISVISIBLE(c); c = c->snext)
 			if (sel && sel != c)
@@ -455,16 +455,19 @@ manage(xcb_window_t w) {
 	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, w, netatom[NetWMState],
 			netatom[NetWMState], 32, 2, data);
 
-	// TODO: check reply
-	xcb_get_property_reply_t *prop_reply;
-	prop_reply = xcb_get_property_reply(conn, xcb_get_property_unchecked(conn, 0, w, netatom[NetWMState], XCB_ATOM_ATOM, 0, 1), NULL);
-	if (prop_reply) {
-		if (prop_reply->format == 32) {
-			xcb_atom_t *v = xcb_get_property_value(prop_reply);
-			if (v[0] == netatom[NetWMFullscreen])
-				togglefullscreen(NULL);
+	xcb_get_property_reply_t *reply;
+	xcb_get_property_cookie_t cookie;
+	cookie = xcb_get_property(conn, 0, w, netatom[NetWMState], XCB_ATOM_ATOM, 0, 1);
+
+	if ((reply = xcb_get_property_reply(conn, cookie, NULL))) {
+		if (xcb_get_property_value_length(reply) != 0) {
+			if (reply->format == 32) {
+				xcb_atom_t *v = xcb_get_property_value(reply);
+				if (v[0] == netatom[NetWMFullscreen])
+					togglefullscreen(NULL);
+			}
 		}
-		free(prop_reply);
+		free(reply);
 	}
 	focus(NULL);
 }
@@ -706,18 +709,19 @@ sendtows(const Arg *arg) {
 void
 sethints(Client *c) {
 	xcb_size_hints_t h;
-	// TODO: check reply
-	xcb_icccm_get_wm_normal_hints_reply(conn,
-			xcb_icccm_get_wm_normal_hints_unchecked(conn, c->win), &h, NULL);
+	xcb_get_property_cookie_t cookie = xcb_icccm_get_wm_normal_hints_unchecked(conn, c->win);
+	xcb_generic_error_t *e;
+	xcb_icccm_get_wm_normal_hints_reply(conn, cookie, &h, &e);
+	if (e) {
+		free(e);
+		return;
+	}
+	free(e);
 
 	if (h.flags & XCB_ICCCM_SIZE_HINT_P_MIN_SIZE) {
 		c->minw = h.min_width;
 		c->minh = h.min_height;
 	}
-	/* if (h.flags & XCB_ICCCM_SIZE_HINT_P_MAX_SIZE) { */
-	/* 	c->maxw = h.max_width; */
-	/* 	c->maxh = h.max_height; */
-	/* } */
 	if (h.flags & XCB_ICCCM_SIZE_HINT_BASE_SIZE) {
 		c->basew = h.base_width;
 		c->baseh = h.base_height;
@@ -731,9 +735,8 @@ sethints(Client *c) {
 		c->w = MAX(c->w, c->minw);
 	if (c->minh < sh)
 		c->h = MAX(c->h, c->minh);
-	uint32_t values[2] = { c->w, c->h };
-	xcb_configure_window(conn, c->win, XCB_CONFIG_WINDOW_WIDTH
-			| XCB_CONFIG_WINDOW_HEIGHT, values);
+
+	resizewin(c->win, c->w, c->h);
 }
 
 void
@@ -779,14 +782,14 @@ setup() {
 	xcb_atom_t net_atoms[] = {
 		ewmh->_NET_SUPPORTED,
 		ewmh->_NET_NUMBER_OF_DESKTOPS,
-        ewmh->_NET_SUPPORTING_WM_CHECK,
 		ewmh->_NET_CURRENT_DESKTOP,
 		ewmh->_NET_ACTIVE_WINDOW,
+		ewmh->_NET_CLOSE_WINDOW,
+		ewmh->_NET_WM_NAME,
 		ewmh->_NET_WM_DESKTOP,
 		ewmh->_NET_WM_STATE,
-		ewmh->_NET_WM_STATE_FULLSCREEN,
-		ewmh->_NET_WM_NAME,
-		ewmh->_NET_WM_PID
+		ewmh->_NET_WM_PID,
+		ewmh->_NET_WM_STATE_FULLSCREEN
 	};
 	xcb_ewmh_set_supported(ewmh, scrno, LENGTH(net_atoms), net_atoms);
     static const uint8_t numworkspaces = 5;
@@ -864,14 +867,16 @@ testcookie(xcb_void_cookie_t cookie, char *errormsg) {
 }
 void
 togglefullscreen(const Arg *arg) {
-	// TODO: split this function up
 	if (!sel)
 		return;
 	uint32_t val[5];
 	val[4] = XCB_STACK_MODE_ABOVE;
-	uint32_t mask = XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y
-		| XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT
-		| XCB_CONFIG_WINDOW_STACK_MODE;
+	uint32_t mask =
+		XCB_CONFIG_WINDOW_X |
+		XCB_CONFIG_WINDOW_Y |
+		XCB_CONFIG_WINDOW_WIDTH |
+		XCB_CONFIG_WINDOW_HEIGHT |
+		XCB_CONFIG_WINDOW_STACK_MODE;
 
 	if (!sel->isfullscreen) {
 		changeborderwidth(sel, 0);
@@ -910,7 +915,7 @@ togglefullscreen(const Arg *arg) {
 }
 
 void
-unfocus(struct Client *c) {
+unfocus(Client *c) {
 	if (!c)
 		return;
 	changebordercolor(c->win, UNFOCUS);
@@ -930,9 +935,10 @@ void
 unmapnotify(xcb_generic_event_t *ev) {
 	xcb_unmap_notify_event_t *e = (xcb_unmap_notify_event_t *)ev;
 	Client *c;
-	if ((c = wintoclient(e->window))) {
+	if (e->window == screen->root)
+		return;
+	if ((c = wintoclient(e->window)))
 		unmanage(c);
-	}
 }
 
 void
