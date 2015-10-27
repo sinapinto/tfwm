@@ -924,7 +924,8 @@ unfocus(Client *c) {
 
 void
 unmanage(Client *c) {
-	xcb_kill_client(conn, c->win);
+	if (!sendevent(sel, wmatom[WMDeleteWindow]))
+		xcb_kill_client(conn, c->win);
 	detach(c);
 	detachstack(c);
 	free(c);
