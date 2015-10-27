@@ -46,7 +46,7 @@ struct Client{
 	int oldx, oldy, oldw, oldh;
 	uint16_t basew, baseh, minw, minh;
 	int borderwidth;
-	bool isfullscreen;
+	bool ismax, isvertmax, ishormax;
 	Client *next;
 	Client *snext;
 	xcb_window_t win;
@@ -83,11 +83,13 @@ static void maprequest(xcb_generic_event_t *ev);
 static void move(const Arg *arg);
 static void mousemotion(const Arg *arg);
 static void movewin(xcb_window_t win, int x, int y);
+static void moveresize(Client *c, int w, int h, int x, int y);
 static void quit(const Arg *arg);
 static void raisewindow(xcb_drawable_t win);
 static void resize(const Arg *arg);
 static void resizewin(xcb_window_t win, int w, int h);
 static void run(void);
+static void savegeometry(Client *c);
 static void selectws(const Arg* arg);
 static void selectprevws(const Arg* arg);
 static bool sendevent(Client *c, xcb_atom_t proto);
@@ -99,17 +101,20 @@ static void sigcatch(int sig);
 static void sigchld();
 static void spawn(const Arg *arg);
 static void testcookie(xcb_void_cookie_t cookie, char *errormsg);
-static void togglefullscreen(const Arg *arg);
+static void maximize(const Arg *arg);
+static void maximizeaxis(const Arg *arg);
 static void unfocus(Client *c);
 static void unmanage(Client *c);
 static void unmapnotify(xcb_generic_event_t *ev);
+static void unmaximize(Client *c);
 static void updatenumlockmask();
 static Client* wintoclient(xcb_window_t w);
 
 /* enums */
-enum { MouseMove, MouseResize };
 enum { MoveDown, MoveRight, MoveUp, MoveLeft };
 enum { ResizeDown, ResizeRight, ResizeUp, ResizeLeft };
+enum { MouseMove, MouseResize };
+enum { MaxVertical, MaxHorizontal };
 enum { WMProtocols, WMDeleteWindow, WMState, WMLast }; /* default atoms */
 enum { NetSupported, NetWMFullscreen, NetWMState, NetActiveWindow,
 	NetWMDesktop, NetCurrentDesktop, NetNumberOfDesktops, NetLast }; /* EWMH atoms */
@@ -214,7 +219,7 @@ clientmessage(xcb_generic_event_t *ev) {
 		if (e->type == netatom[NetWMState] &&
 				(unsigned)e->data.data32[1] == netatom[NetWMFullscreen]) {
 			if (e->data.data32[0] == 0 || e->data.data32[0] == 1)
-				togglefullscreen(NULL);
+				maximize(NULL);
 		}
 		else if (e->type == netatom[NetActiveWindow])
 			focus(c);
@@ -440,7 +445,7 @@ manage(xcb_window_t w) {
 	free(geom);
 	sethints(c);
 	c->ws = selws;
-	c->isfullscreen = false;
+	c->ismax = c->isvertmax = c->ishormax = false;
 	attach(c);
 	attachstack(c);
 	sel = c;
@@ -464,7 +469,7 @@ manage(xcb_window_t w) {
 			if (reply->format == 32) {
 				xcb_atom_t *v = xcb_get_property_value(reply);
 				if (v[0] == netatom[NetWMFullscreen])
-					togglefullscreen(NULL);
+					maximize(NULL);
 			}
 		}
 		free(reply);
@@ -576,7 +581,7 @@ mousemotion(const Arg *arg) {
 		free(ev);
 		xcb_flush(conn);
 	}
-	sel->isfullscreen = false;
+	sel->ismax = false;
 	free(ev);
 	free(pointer);
 	fontcookie = xcb_close_font_checked(conn, font);
@@ -622,8 +627,8 @@ resize(const Arg *arg) {
 	values[1] = sel->h;
 	xcb_configure_window(conn, sel->win, XCB_CONFIG_WINDOW_WIDTH
 			|XCB_CONFIG_WINDOW_HEIGHT, values);
-	if (sel->isfullscreen)
-		sel->isfullscreen = false;
+	if (sel->ismax)
+		sel->ismax = false;
 }
 
 void
@@ -866,52 +871,77 @@ testcookie(xcb_void_cookie_t cookie, char *errormsg) {
 	}
 }
 void
-togglefullscreen(const Arg *arg) {
+maximize(const Arg *arg) {
 	if (!sel)
 		return;
-	uint32_t val[5];
-	val[4] = XCB_STACK_MODE_ABOVE;
-	uint32_t mask =
-		XCB_CONFIG_WINDOW_X |
-		XCB_CONFIG_WINDOW_Y |
-		XCB_CONFIG_WINDOW_WIDTH |
-		XCB_CONFIG_WINDOW_HEIGHT |
-		XCB_CONFIG_WINDOW_STACK_MODE;
+	if (sel->ismax) {
+		unmaximize(sel);
+		return;
+	}
+	savegeometry(sel);
+	/* changeborderwidth(sel, BORDER_WIDTH); */
+	sel->ismax = true;
+	sel->x = 0;
+	sel->y = 0;
+	sel->w = sw;
+	sel->h = sh;
+	moveresize(sel, sel->x, sel->y, sel->w, sel->h);
+	focus(NULL);
 
-	if (!sel->isfullscreen) {
-		changeborderwidth(sel, 0);
-		sel->oldx = sel->x;
-		sel->oldy = sel->y;
-		sel->oldw = sel->w;
-		sel->oldh = sel->h;
-		val[0] = 0;
-		val[1] = 0;
-		val[2] = sw - 2*sel->borderwidth;
-		val[3] = sh - 2*sel->borderwidth;
-		xcb_configure_window(conn, sel->win, mask, val);
-		sel->x = val[0];
-		sel->y = val[1];
-		sel->w = val[2];
-		sel->h = val[3];
-		sel->isfullscreen = true;
-	}
-	else {
-		val[0] = sel->oldx;
-		val[1] = sel->oldy;
-		val[2] = sel->oldw;
-		val[3] = sel->oldh;
-		changeborderwidth(sel, BORDER_WIDTH);
-		xcb_configure_window(conn, sel->win, mask, val);
-		sel->x = sel->oldx;
-		sel->y = sel->oldy;
-		sel->w = sel->oldw;
-		sel->h = sel->oldh;
-		sel->isfullscreen = false;
-		focus(NULL);
-	}
-	long data[] = { sel->isfullscreen ? netatom[NetWMFullscreen] : XCB_ICCCM_WM_STATE_NORMAL };
+	long data[] = { sel->ismax ? netatom[NetWMFullscreen] : XCB_ICCCM_WM_STATE_NORMAL };
 	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, sel->win,
 			netatom[NetWMState], XCB_ATOM_ATOM, 32, 1, data);
+}
+
+void
+maximizeaxis(const Arg *arg) {
+	if (!sel || sel->ismax)
+		return;
+	if (sel->isvertmax || sel->ishormax) {
+		unmaximize(sel);
+		return;
+	}
+	savegeometry(sel);
+	uint32_t values[3];
+	if (arg->i == MaxVertical) {
+		sel->y = 0;
+		sel->h = sh - (BORDER_WIDTH * 2);
+		values[0] = sel->y;
+		values[1] = sel->h;
+
+		xcb_configure_window(conn, sel->win, XCB_CONFIG_WINDOW_Y
+				| XCB_CONFIG_WINDOW_HEIGHT, values);
+		sel->isvertmax = true;
+	}
+	else if (arg->i == MaxHorizontal) {
+		sel->x = 0;
+		sel->w = sw - (BORDER_WIDTH * 2);
+		values[0] = sel->x;
+		values[1] = sel->w;
+		xcb_configure_window(conn, sel->win, XCB_CONFIG_WINDOW_X
+				| XCB_CONFIG_WINDOW_WIDTH, values);
+		sel->ishormax = true;
+	}
+}
+
+void
+moveresize(Client *c, int x, int y, int w, int h) {
+	if (!c || !c->win)
+		return;
+	uint32_t val[5] = { x, y, w, h };
+	uint32_t mask = XCB_CONFIG_WINDOW_X |
+		XCB_CONFIG_WINDOW_Y |
+		XCB_CONFIG_WINDOW_WIDTH |
+		XCB_CONFIG_WINDOW_HEIGHT;
+	xcb_configure_window(conn, c->win, mask, val);
+}
+
+void
+savegeometry(Client *c) {
+	c->oldx = c->x;
+	c->oldy = c->y;
+	c->oldh = c->h;
+	c->oldw = c->w;
 }
 
 void
@@ -940,6 +970,18 @@ unmapnotify(xcb_generic_event_t *ev) {
 		return;
 	if ((c = wintoclient(e->window)))
 		unmanage(c);
+}
+
+void
+unmaximize(Client *c) {
+    if (!c)
+		return;
+	c->x = c->isvertmax ? c->x : c->oldx;
+	c->y = c->ishormax ? c->y : c->oldy;
+	c->w = c->oldw;
+	c->h = c->oldh;
+    c->ismax = c->ishormax = c->isvertmax = 0;
+	moveresize(c, c->x, c->y, c->w, c->h);
 }
 
 void
