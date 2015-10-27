@@ -361,7 +361,7 @@ xcb_keycode_t *
 getkeycodes(xcb_keysym_t keysym) {
 	xcb_key_symbols_t *keysyms;
 	if (!(keysyms = xcb_key_symbols_alloc(conn)))
-		err(EXIT_FAILURE, "ERROR: can't get keycode.");
+		err(EXIT_FAILURE, "can't get keycode.");
 	xcb_keycode_t *keycode = xcb_key_symbols_get_keycode(keysyms, keysym);
 	xcb_key_symbols_free(keysyms);
 	return keycode;
@@ -371,7 +371,7 @@ xcb_keysym_t
 getkeysym(xcb_keycode_t keycode) {
 	xcb_key_symbols_t *keysyms;
 	if (!(keysyms = xcb_key_symbols_alloc(conn)))
-		err(EXIT_FAILURE, "ERROR: can't get keysym.");
+		err(EXIT_FAILURE, "can't get keysym.");
 	xcb_keysym_t keysym = xcb_key_symbols_get_keysym(keysyms, keycode, 0);
 	xcb_key_symbols_free(keysyms);
 	return keysym;
@@ -431,13 +431,13 @@ void
 manage(xcb_window_t w) {
 	Client *c = NULL;
 	if (!(c = malloc(sizeof(Client))))
-		err(EXIT_FAILURE, "ERROR: can't allocate memory");
+		err(EXIT_FAILURE, "can't allocate memory");
 	c->win = w;
 	/* geometry */
 	xcb_get_geometry_reply_t *geom;
 	geom = xcb_get_geometry_reply(conn, xcb_get_geometry(conn, w), NULL);
 	if (!geom)
-		err(EXIT_FAILURE, "ERROR: geometry reply failed");
+		err(EXIT_FAILURE, "geometry reply failed");
 	c->x = c->oldx = geom->x;
 	c->y = c->oldy = geom->y;
 	c->w = c->oldw = geom->width;
@@ -502,7 +502,7 @@ move(const Arg *arg) {
 		case MoveRight: sel->x += steps[0]; break;
 		case MoveUp:    sel->y -= steps[0]; break;
 		case MoveLeft:  sel->x -= steps[0]; break;
-		default:        err(EXIT_FAILURE, "ERROR: bad move argument");
+		default:        err(EXIT_FAILURE, "bad move argument");
 	}
 	movewin(sel->win, sel->x, sel->y);
 }
@@ -620,7 +620,7 @@ resize(const Arg *arg) {
 		case ResizeRight: sel->w = sel->w + step; break;
 		case ResizeUp:    sel->h = SUBTRACTLIM(sel->h, step); break;
 		case ResizeLeft:  sel->w = SUBTRACTLIM(sel->w, step); break;
-		default:          err(EXIT_FAILURE, "ERROR: bad resize argument");
+		default:          err(EXIT_FAILURE, "bad resize argument");
 	}
 	uint32_t values[2];
 	values[0] = sel->w;
@@ -752,7 +752,7 @@ setup() {
 	/* init screen */
 	screen = xcb_setup_roots_iterator(xcb_get_setup(conn)).data;
 	if (!screen)
-		err(EXIT_FAILURE, "ERROR: can't find screen.");
+		err(EXIT_FAILURE, "can't find screen.");
 	sw = screen->width_in_pixels;
 	sh = screen->height_in_pixels;
 	/* subscribe to handler */
@@ -772,7 +772,7 @@ setup() {
 	/* init ewmh */
     ewmh = malloc(sizeof(xcb_ewmh_connection_t));
     if (xcb_ewmh_init_atoms_replies(ewmh, xcb_ewmh_init_atoms(conn, ewmh), NULL) == 0)
-            err(EXIT_FAILURE, "ERROR: can't initialize ewmh.");
+            err(EXIT_FAILURE, "can't initialize ewmh.");
     xcb_drawable_t root = screen->root;
 	uint32_t mask = XCB_CW_EVENT_MASK;
 	uint32_t values[] = { XCB_EVENT_MASK_POINTER_MOTION };
@@ -845,7 +845,7 @@ sigcatch(int sig) {
 void
 sigchld() {
 	if (signal(SIGCHLD, sigchld) == SIG_ERR)
-		err(EXIT_FAILURE, "ERROR: can't install SIGCHLD handler");
+		err(EXIT_FAILURE, "can't install SIGCHLD handler");
 	while (0 < waitpid(-1, NULL, WNOHANG));
 }
 
@@ -864,7 +864,7 @@ void
 testcookie(xcb_void_cookie_t cookie, char *errormsg) {
 	xcb_generic_error_t *error = xcb_request_check(conn, cookie);
 	if (error) {
-		fprintf(stderr, "ERROR: %s : %d\n", errormsg, error->error_code);
+		fprintf(stderr, "%s : %d\n", errormsg, error->error_code);
 		free(error);
 		xcb_disconnect(conn);
 		exit(EXIT_FAILURE);
@@ -994,10 +994,10 @@ updatenumlockmask() {
 
 	reply = xcb_get_modifier_mapping_reply(conn, xcb_get_modifier_mapping_unchecked(conn), NULL);
 	if (!reply)
-		err(EXIT_FAILURE, "ERROR: mod map reply");
+		err(EXIT_FAILURE, "mod map reply");
 	modmap = xcb_get_modifier_mapping_keycodes(reply);
 	if (!modmap)
-		err(EXIT_FAILURE, "ERROR: mod map keycodes");
+		err(EXIT_FAILURE, "mod map keycodes");
 
 	xcb_keycode_t *numlock = getkeycodes(XK_Num_Lock);
 	for (i = 0; i < 8; i++) {
@@ -1030,7 +1030,7 @@ int
 main() {
 	conn = xcb_connect(NULL, &scrno);
 	if (xcb_connection_has_error(conn))
-		err(EXIT_FAILURE, "ERROR: xcb_connect error");
+		err(EXIT_FAILURE, "xcb_connect error");
 	setup();
 	run();
 	cleanup();
