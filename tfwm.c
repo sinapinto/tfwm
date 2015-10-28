@@ -112,7 +112,7 @@ static Client* wintoclient(xcb_window_t w);
 
 /* enums */
 enum { MoveDown, MoveRight, MoveUp, MoveLeft };
-enum { ResizeDown, ResizeRight, ResizeUp, ResizeLeft };
+enum { GrowHeight, GrowWidth, ShrinkHeight, ShrinkWidth, GrowBoth, ShrinkBoth };
 enum { MouseMove, MouseResize };
 enum { MaxVertical, MaxHorizontal };
 enum { WMProtocols, WMDeleteWindow, WMState, WMLast }; /* default atoms */
@@ -615,12 +615,17 @@ resize(const Arg *arg) {
 	if (!sel || sel->win == screen->root)
 		return;
 	int step = steps[1];
-	switch (arg->i) {
-		case ResizeDown:  sel->h = sel->h + step; break;
-		case ResizeRight: sel->w = sel->w + step; break;
-		case ResizeUp:    sel->h = SUBTRACTLIM(sel->h, step); break;
-		case ResizeLeft:  sel->w = SUBTRACTLIM(sel->w, step); break;
-		default:          err(EXIT_FAILURE, "bad resize argument");
+	if (arg->i == GrowHeight || arg->i == GrowBoth) {
+		sel->h = sel->h + step;
+	}
+	if (arg->i == GrowWidth || arg->i == GrowBoth) {
+		sel->w = sel->w + step;
+	}
+	if (arg->i == ShrinkHeight || arg->i == ShrinkBoth) {
+		sel->h = SUBTRACTLIM(sel->h, step);
+	}
+	if (arg->i == ShrinkWidth || arg->i == ShrinkBoth) {
+		sel->w = SUBTRACTLIM(sel->w, step);
 	}
 	uint32_t values[2];
 	values[0] = sel->w;
