@@ -18,7 +18,7 @@
 #define MAX(X, Y)               ((X) > (Y) ? (X) : (Y))
 #define SUBTRACTLIM(X, Y)       ((X - Y > 0) ? (X - Y) : (X))
 #define WIDTH(C)                ((C)->w + 2 * BORDER_WIDTH)
-#define ISVISIBLE(C)            ((C)->ws == selws)
+#define ISVISIBLE(C)            ((C)->ws == selws || (C)->isfixed)
 
 typedef union {
 	const char **com;
@@ -42,11 +42,12 @@ typedef struct {
 typedef struct Client Client;
 struct Client{
 	int16_t x, y;
-    uint16_t w, h;
+	uint16_t w, h;
 	int oldx, oldy, oldw, oldh;
 	uint16_t basew, baseh, minw, minh;
 	int borderwidth;
 	bool ismax, isvertmax, ishormax;
+	bool isfixed;
 	Client *next;
 	Client *snext;
 	xcb_window_t win;
@@ -68,6 +69,7 @@ static void destroynotify(xcb_generic_event_t *ev);
 static void detach(Client *c);
 static void detachstack(Client *c);
 static void enternotify(xcb_generic_event_t *ev);
+static void fix(const Arg *arg);
 static void focus(struct Client *c);
 static void focusstack(const Arg *arg);
 static void getatoms(xcb_atom_t *atoms, char **names, int count);
@@ -80,18 +82,20 @@ static void killclient(const Arg *arg);
 static void manage(xcb_window_t w);
 static void mappingnotify(xcb_generic_event_t *ev);
 static void maprequest(xcb_generic_event_t *ev);
-static void move(const Arg *arg);
+static void maximize(const Arg *arg);
+static void maximizeaxis(const Arg *arg);
 static void mousemotion(const Arg *arg);
-static void movewin(xcb_window_t win, int x, int y);
+static void move(const Arg *arg);
 static void moveresize(Client *c, int w, int h, int x, int y);
+static void movewin(xcb_window_t win, int x, int y);
 static void quit(const Arg *arg);
 static void raisewindow(xcb_drawable_t win);
 static void resize(const Arg *arg);
 static void resizewin(xcb_window_t win, int w, int h);
 static void run(void);
 static void savegeometry(Client *c);
-static void selectws(const Arg* arg);
 static void selectprevws(const Arg* arg);
+static void selectws(const Arg* arg);
 static bool sendevent(Client *c, xcb_atom_t proto);
 static void sendtows(const Arg *arg);
 static void sethints(Client *c);
@@ -101,8 +105,6 @@ static void sigcatch(int sig);
 static void sigchld();
 static void spawn(const Arg *arg);
 static void testcookie(xcb_void_cookie_t cookie, char *errormsg);
-static void maximize(const Arg *arg);
-static void maximizeaxis(const Arg *arg);
 static void unfocus(Client *c);
 static void unmanage(Client *c);
 static void unmapnotify(xcb_generic_event_t *ev);
@@ -202,8 +204,8 @@ cleanup() {
 	while (stack)
 		unmanage(stack);
 
-    xcb_ewmh_connection_wipe(ewmh);
-    if (ewmh)
+	xcb_ewmh_connection_wipe(ewmh);
+	if (ewmh)
 		free(ewmh);
 
 	xcb_set_input_focus(conn, XCB_NONE, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
@@ -288,6 +290,22 @@ enternotify(xcb_generic_event_t *ev) {
 }
 
 void
+fix(const Arg *arg) {
+	if (!sel)
+		return;
+	if (sel->isfixed) {
+		sel->isfixed = false;
+		sel->ws = selws;
+		xcb_change_property(conn, XCB_PROP_MODE_REPLACE, sel->win,
+				netatom[NetWMDesktop], XCB_ATOM_CARDINAL, 32, 1, &selws);
+	}
+	else {
+		sel->isfixed = true;
+		raisewindow(sel->win);
+	}
+}
+
+void
 focus(Client *c) {
 	if (!c || !ISVISIBLE(c))
 		for (c = stack; c && !ISVISIBLE(c); c = c->snext)
@@ -308,7 +326,7 @@ focus(Client *c) {
 				netatom[NetActiveWindow] , XCB_ATOM_WINDOW, 32, 1,&c->win);
 	}
 	else {
-        xcb_delete_property(conn, screen->root, netatom[NetActiveWindow]);
+		xcb_delete_property(conn, screen->root, netatom[NetActiveWindow]);
 		xcb_set_input_focus(conn, XCB_NONE,
 				XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
 	}
@@ -384,8 +402,9 @@ grabbuttons(Client *c) {
 
 	for (i = 0; i < LENGTH(buttons); i++)
 		for (j = 0; j < LENGTH(modifiers); j++)
-			xcb_grab_button(conn, 1, c->win, XCB_EVENT_MASK_BUTTON_PRESS, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC,
-					screen->root, XCB_NONE, buttons[i].button, buttons[i].mask|modifiers[j]);
+			xcb_grab_button(conn, 1, c->win, XCB_EVENT_MASK_BUTTON_PRESS,
+					XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, screen->root,
+					XCB_NONE, buttons[i].button, buttons[i].mask|modifiers[j]);
 }
 
 void
@@ -445,7 +464,7 @@ manage(xcb_window_t w) {
 	free(geom);
 	sethints(c);
 	c->ws = selws;
-	c->ismax = c->isvertmax = c->ishormax = false;
+	c->ismax = c->isvertmax = c->ishormax = c->isfixed = false;
 	attach(c);
 	attachstack(c);
 	sel = c;
@@ -494,17 +513,58 @@ maprequest(xcb_generic_event_t *ev) {
 }
 
 void
-move(const Arg *arg) {
-	if (!sel || sel->win == screen->root)
+maximize(const Arg *arg) {
+	if (!sel)
 		return;
-	switch (arg->i) {
-		case MoveDown:  sel->y += steps[0]; break;
-		case MoveRight: sel->x += steps[0]; break;
-		case MoveUp:    sel->y -= steps[0]; break;
-		case MoveLeft:  sel->x -= steps[0]; break;
-		default:        err(EXIT_FAILURE, "bad move argument");
+	if (sel->ismax) {
+		unmaximize(sel);
+		return;
 	}
-	movewin(sel->win, sel->x, sel->y);
+	savegeometry(sel);
+	/* changeborderwidth(sel, BORDER_WIDTH); */
+	sel->ismax = true;
+	sel->isvertmax = sel->ishormax = false;
+	sel->x = 0;
+	sel->y = 0;
+	sel->w = sw;
+	sel->h = sh;
+	moveresize(sel, sel->x, sel->y, sel->w, sel->h);
+	focus(NULL);
+
+	long data[] = { sel->ismax ? netatom[NetWMFullscreen] : XCB_ICCCM_WM_STATE_NORMAL };
+	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, sel->win,
+			netatom[NetWMState], XCB_ATOM_ATOM, 32, 1, data);
+}
+
+void
+maximizeaxis(const Arg *arg) {
+	if (!sel || sel->ismax)
+		return;
+	if (sel->isvertmax || sel->ishormax) {
+		unmaximize(sel);
+		return;
+	}
+	savegeometry(sel);
+	uint32_t values[3];
+	if (arg->i == MaxVertical) {
+		sel->y = 0;
+		sel->h = sh - (BORDER_WIDTH * 2);
+		values[0] = sel->y;
+		values[1] = sel->h;
+
+		xcb_configure_window(conn, sel->win, XCB_CONFIG_WINDOW_Y
+				| XCB_CONFIG_WINDOW_HEIGHT, values);
+		sel->isvertmax = true;
+	}
+	else if (arg->i == MaxHorizontal) {
+		sel->x = 0;
+		sel->w = sw - (BORDER_WIDTH * 2);
+		values[0] = sel->x;
+		values[1] = sel->w;
+		xcb_configure_window(conn, sel->win, XCB_CONFIG_WINDOW_X
+				| XCB_CONFIG_WINDOW_WIDTH, values);
+		sel->ishormax = true;
+	}
 }
 
 void
@@ -591,6 +651,32 @@ mousemotion(const Arg *arg) {
 }
 
 void
+move(const Arg *arg) {
+	if (!sel || sel->win == screen->root)
+		return;
+	switch (arg->i) {
+		case MoveDown:  sel->y += steps[0]; break;
+		case MoveRight: sel->x += steps[0]; break;
+		case MoveUp:    sel->y -= steps[0]; break;
+		case MoveLeft:  sel->x -= steps[0]; break;
+		default:        err(EXIT_FAILURE, "bad move argument");
+	}
+	movewin(sel->win, sel->x, sel->y);
+}
+
+void
+moveresize(Client *c, int x, int y, int w, int h) {
+	if (!c || !c->win)
+		return;
+	uint32_t val[5] = { x, y, w, h };
+	uint32_t mask = XCB_CONFIG_WINDOW_X |
+		XCB_CONFIG_WINDOW_Y |
+		XCB_CONFIG_WINDOW_WIDTH |
+		XCB_CONFIG_WINDOW_HEIGHT;
+	xcb_configure_window(conn, c->win, mask, val);
+}
+
+void
 movewin(xcb_window_t win, int x, int y) {
 	unsigned int pos[2] = { x, y };
 	xcb_configure_window(conn, win, XCB_CONFIG_WINDOW_X|XCB_CONFIG_WINDOW_Y, pos);
@@ -604,10 +690,10 @@ quit(const Arg *arg) {
 
 void
 raisewindow(xcb_drawable_t win) {
-    uint32_t values[] = { XCB_STACK_MODE_ABOVE };
-    if (screen->root == win || !win)
-        return;
-    xcb_configure_window(conn, win, XCB_CONFIG_WINDOW_STACK_MODE, values);
+	uint32_t values[] = { XCB_STACK_MODE_ABOVE };
+	if (screen->root == win || !win)
+		return;
+	xcb_configure_window(conn, win, XCB_CONFIG_WINDOW_STACK_MODE, values);
 }
 
 void
@@ -661,6 +747,12 @@ run(void) {
 }
 
 void
+selectprevws(const Arg* arg) {
+	const Arg a = { .i = prevws };
+	selectws(&a);
+}
+
+void
 selectws(const Arg* arg) {
 	if (selws == arg->i)
 		return;
@@ -671,12 +763,6 @@ selectws(const Arg* arg) {
 	selws = arg->i;
 	focus(NULL);
 	showhide(stack);
-}
-
-void
-selectprevws(const Arg* arg) {
-	const Arg a = { .i = prevws };
-	selectws(&a);
 }
 
 bool
@@ -699,7 +785,7 @@ sendevent(Client *c, xcb_atom_t proto) {
 		ev.window = c->win;
 		ev.type = wmatom[WMProtocols];
 		ev.data.data32[0] = proto,
-		ev.data.data32[1] = XCB_CURRENT_TIME;
+			ev.data.data32[1] = XCB_CURRENT_TIME;
 		xcb_send_event(conn, true, c->win, XCB_EVENT_MASK_NO_EVENT, (char*)&ev);
 	}
 	return exists;
@@ -752,8 +838,8 @@ sethints(Client *c) {
 void
 setup() {
 	sigchld();
-    signal(SIGINT, sigcatch);
-    signal(SIGTERM, sigcatch);
+	signal(SIGINT, sigcatch);
+	signal(SIGTERM, sigcatch);
 	/* init screen */
 	screen = xcb_setup_roots_iterator(xcb_get_setup(conn)).data;
 	if (!screen)
@@ -763,8 +849,8 @@ setup() {
 	/* subscribe to handler */
 	unsigned int value[1] = {
 		XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY |
-		XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT |
-		XCB_EVENT_MASK_BUTTON_PRESS
+			XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT |
+			XCB_EVENT_MASK_BUTTON_PRESS
 	};
 	xcb_void_cookie_t cookie;
 	cookie = xcb_change_window_attributes_checked(conn, screen->root,
@@ -775,20 +861,20 @@ setup() {
 	getatoms(wmatom, wmatomnames, WMLast);
 	getatoms(netatom, netatomnames, NetLast);
 	/* init ewmh */
-    ewmh = malloc(sizeof(xcb_ewmh_connection_t));
-    if (xcb_ewmh_init_atoms_replies(ewmh, xcb_ewmh_init_atoms(conn, ewmh), NULL) == 0)
-            err(EXIT_FAILURE, "can't initialize ewmh.");
-    xcb_drawable_t root = screen->root;
+	ewmh = malloc(sizeof(xcb_ewmh_connection_t));
+	if (xcb_ewmh_init_atoms_replies(ewmh, xcb_ewmh_init_atoms(conn, ewmh), NULL) == 0)
+		err(EXIT_FAILURE, "can't initialize ewmh.");
+	xcb_drawable_t root = screen->root;
 	uint32_t mask = XCB_CW_EVENT_MASK;
 	uint32_t values[] = { XCB_EVENT_MASK_POINTER_MOTION };
 	xcb_window_t recorder = xcb_generate_id(conn);
 	xcb_create_window(conn, XCB_COPY_FROM_PARENT, recorder, root, 0, 0,
 			screen->width_in_pixels, screen->height_in_pixels, 0,
 			XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT, mask, values);
-    xcb_ewmh_set_wm_pid(ewmh, recorder, getpid());
-    xcb_ewmh_set_wm_name(ewmh, screen->root, 4, "tfwm");
-    xcb_ewmh_set_supporting_wm_check(ewmh, recorder, recorder);
-    xcb_ewmh_set_supporting_wm_check(ewmh, screen->root, recorder);
+	xcb_ewmh_set_wm_pid(ewmh, recorder, getpid());
+	xcb_ewmh_set_wm_name(ewmh, screen->root, 4, "tfwm");
+	xcb_ewmh_set_supporting_wm_check(ewmh, recorder, recorder);
+	xcb_ewmh_set_supporting_wm_check(ewmh, screen->root, recorder);
 	xcb_atom_t net_atoms[] = {
 		ewmh->_NET_SUPPORTED,
 		ewmh->_NET_NUMBER_OF_DESKTOPS,
@@ -802,15 +888,15 @@ setup() {
 		ewmh->_NET_WM_STATE_FULLSCREEN
 	};
 	xcb_ewmh_set_supported(ewmh, scrno, LENGTH(net_atoms), net_atoms);
-    static const uint8_t numworkspaces = 5;
-    xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root,
-                        netatom[NetCurrentDesktop], XCB_ATOM_CARDINAL,
-                        32, 1, &selws);
-    xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root,
-                        netatom[NetNumberOfDesktops], XCB_ATOM_CARDINAL,
-                        32, 1, &numworkspaces);
-    xcb_ewmh_set_number_of_desktops(ewmh, scrno, numworkspaces);
-    xcb_ewmh_set_current_desktop(ewmh, scrno, 0);
+	static const uint8_t numworkspaces = 5;
+	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root,
+			netatom[NetCurrentDesktop], XCB_ATOM_CARDINAL,
+			32, 1, &selws);
+	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root,
+			netatom[NetNumberOfDesktops], XCB_ATOM_CARDINAL,
+			32, 1, &numworkspaces);
+	xcb_ewmh_set_number_of_desktops(ewmh, scrno, numworkspaces);
+	xcb_ewmh_set_current_desktop(ewmh, scrno, 0);
 	/* set handlers */
 	handler[XCB_CONFIGURE_REQUEST] = configurerequest;
 	handler[XCB_DESTROY_NOTIFY]    = destroynotify;
@@ -820,8 +906,8 @@ setup() {
 	handler[XCB_CLIENT_MESSAGE]    = clientmessage;
 	handler[XCB_KEY_PRESS]         = keypress;
 	handler[XCB_BUTTON_PRESS]      = buttonpress;
-    handler[XCB_ENTER_NOTIFY]      = enternotify;
-    handler[XCB_CIRCULATE_REQUEST] = circulaterequest;
+	handler[XCB_ENTER_NOTIFY]      = enternotify;
+	handler[XCB_CIRCULATE_REQUEST] = circulaterequest;
 	/* init keys */
 	updatenumlockmask();
 	grabkeys();
@@ -866,6 +952,14 @@ spawn(const Arg *arg) {
 }
 
 void
+savegeometry(Client *c) {
+	c->oldx = c->x;
+	c->oldy = c->y;
+	c->oldh = c->h;
+	c->oldw = c->w;
+}
+
+void
 testcookie(xcb_void_cookie_t cookie, char *errormsg) {
 	xcb_generic_error_t *error = xcb_request_check(conn, cookie);
 	if (error) {
@@ -874,80 +968,6 @@ testcookie(xcb_void_cookie_t cookie, char *errormsg) {
 		xcb_disconnect(conn);
 		exit(EXIT_FAILURE);
 	}
-}
-void
-maximize(const Arg *arg) {
-	if (!sel)
-		return;
-	if (sel->ismax) {
-		unmaximize(sel);
-		return;
-	}
-	savegeometry(sel);
-	/* changeborderwidth(sel, BORDER_WIDTH); */
-	sel->ismax = true;
-	sel->isvertmax = sel->ishormax = false;
-	sel->x = 0;
-	sel->y = 0;
-	sel->w = sw;
-	sel->h = sh;
-	moveresize(sel, sel->x, sel->y, sel->w, sel->h);
-	focus(NULL);
-
-	long data[] = { sel->ismax ? netatom[NetWMFullscreen] : XCB_ICCCM_WM_STATE_NORMAL };
-	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, sel->win,
-			netatom[NetWMState], XCB_ATOM_ATOM, 32, 1, data);
-}
-
-void
-maximizeaxis(const Arg *arg) {
-	if (!sel || sel->ismax)
-		return;
-	if (sel->isvertmax || sel->ishormax) {
-		unmaximize(sel);
-		return;
-	}
-	savegeometry(sel);
-	uint32_t values[3];
-	if (arg->i == MaxVertical) {
-		sel->y = 0;
-		sel->h = sh - (BORDER_WIDTH * 2);
-		values[0] = sel->y;
-		values[1] = sel->h;
-
-		xcb_configure_window(conn, sel->win, XCB_CONFIG_WINDOW_Y
-				| XCB_CONFIG_WINDOW_HEIGHT, values);
-		sel->isvertmax = true;
-	}
-	else if (arg->i == MaxHorizontal) {
-		sel->x = 0;
-		sel->w = sw - (BORDER_WIDTH * 2);
-		values[0] = sel->x;
-		values[1] = sel->w;
-		xcb_configure_window(conn, sel->win, XCB_CONFIG_WINDOW_X
-				| XCB_CONFIG_WINDOW_WIDTH, values);
-		sel->ishormax = true;
-	}
-}
-
-void
-moveresize(Client *c, int x, int y, int w, int h) {
-	if (!c || !c->win)
-		return;
-	uint32_t val[5] = { x, y, w, h };
-	uint32_t mask = XCB_CONFIG_WINDOW_X |
-		XCB_CONFIG_WINDOW_Y |
-		XCB_CONFIG_WINDOW_WIDTH |
-		XCB_CONFIG_WINDOW_HEIGHT;
-	xcb_configure_window(conn, c->win, mask, val);
-}
-
-void
-savegeometry(Client *c) {
-	c->oldx = c->x;
-	c->oldy = c->y;
-	c->oldh = c->h;
-	c->oldw = c->w;
 }
 
 void
@@ -960,7 +980,7 @@ unfocus(Client *c) {
 
 void
 unmanage(Client *c) {
-	if (!sendevent(sel, wmatom[WMDeleteWindow]))
+	if (!sendevent(c, wmatom[WMDeleteWindow]))
 		xcb_kill_client(conn, c->win);
 	detach(c);
 	detachstack(c);
@@ -980,13 +1000,13 @@ unmapnotify(xcb_generic_event_t *ev) {
 
 void
 unmaximize(Client *c) {
-    if (!c)
+	if (!c)
 		return;
 	c->x = c->isvertmax ? c->x : c->oldx;
 	c->y = c->ishormax ? c->y : c->oldy;
 	c->w = c->oldw;
 	c->h = c->oldh;
-    c->ismax = c->ishormax = c->isvertmax = 0;
+	c->ismax = c->ishormax = c->isvertmax = 0;
 	moveresize(c, c->x, c->y, c->w, c->h);
 }
 

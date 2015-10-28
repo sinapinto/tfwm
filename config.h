@@ -31,6 +31,7 @@ static Key keys[] = {
 	{ MOD,              XK_a,        maximize,              {.i=NULL}          },
 	{ MOD,              XK_m,        maximizeaxis,          {.i=MaxVertical}   },
 	{ MOD,              XK_n,        maximizeaxis,          {.i=MaxHorizontal} },
+	{ MOD,              XK_x,        fix,                   {.i=NULL}          },
 	{ MOD,              XK_q,        killclient,            {.i=NULL}          },
 	{ MOD,              XK_grave,    selectprevws,          {.i=NULL}          },
 	WORKSPACE(          XK_1,                               0 )
