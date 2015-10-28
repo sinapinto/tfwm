@@ -237,18 +237,41 @@ void
 configurerequest(xcb_generic_event_t *ev) {
 	xcb_configure_request_event_t *e = (xcb_configure_request_event_t *)ev;
 	Client *c;
-	if (!(c = wintoclient(e->window)))
-		return;
 	unsigned int v[7];
 	int i = 0;
-	if (e->value_mask & XCB_CONFIG_WINDOW_X)            v[i++] = c->x = e->x;
-	if (e->value_mask & XCB_CONFIG_WINDOW_Y)            v[i++] = c->y = e->y;
-	if (e->value_mask & XCB_CONFIG_WINDOW_WIDTH)        v[i++] = c->w = e->width;
-	if (e->value_mask & XCB_CONFIG_WINDOW_HEIGHT)       v[i++] = c->h = e->height;
-	if (e->value_mask & XCB_CONFIG_WINDOW_SIBLING)      v[i++] = e->sibling;
-	if (e->value_mask & XCB_CONFIG_WINDOW_STACK_MODE)   v[i++] = e->stack_mode;
-	if (e->value_mask & XCB_CONFIG_WINDOW_BORDER_WIDTH) v[i++] = e->border_width;
-	xcb_configure_window(conn, e->window, e->value_mask, v);
+
+	if ((c = wintoclient(e->window))) {
+		if (e->value_mask & XCB_CONFIG_WINDOW_X)
+			v[i++] = c->x = e->x;
+		if (e->value_mask & XCB_CONFIG_WINDOW_Y)
+			v[i++] = c->y = e->y;
+		if (e->value_mask & XCB_CONFIG_WINDOW_WIDTH)
+			v[i++] = c->w = e->width;
+		if (e->value_mask & XCB_CONFIG_WINDOW_HEIGHT)
+			v[i++] = c->h = e->height;
+		if (e->value_mask & XCB_CONFIG_WINDOW_SIBLING)
+			v[i++] = e->sibling;
+		if (e->value_mask & XCB_CONFIG_WINDOW_STACK_MODE)
+			v[i++] = e->stack_mode;
+		if (e->value_mask & XCB_CONFIG_WINDOW_BORDER_WIDTH)
+			v[i++] = e->border_width;
+		xcb_configure_window(conn, e->window, e->value_mask, v);
+	}
+	else {
+		if (e->value_mask & XCB_CONFIG_WINDOW_X)
+			v[i++] = e->x;
+		if (e->value_mask & XCB_CONFIG_WINDOW_Y)
+			v[i++] = e->y;
+		if (e->value_mask & XCB_CONFIG_WINDOW_WIDTH)
+			v[i++] = e->width;
+		if (e->value_mask & XCB_CONFIG_WINDOW_HEIGHT)
+			v[i++] = e->height;
+		if (e->value_mask & XCB_CONFIG_WINDOW_SIBLING)
+			v[i++] = e->sibling;
+		if (e->value_mask & XCB_CONFIG_WINDOW_STACK_MODE)
+			v[i++] = e->stack_mode;
+		xcb_configure_window(conn, e->window, e->value_mask, v);
+	}
 }
 
 void
@@ -502,7 +525,7 @@ manage(xcb_window_t w) {
 	free(geom);
 	gethints(c);
 	c->ws = selws;
-	c->ismax = c->isvertmax = c->ishormax = c->isfixed = false;
+	c->ismax = c->isvertmax = c->ishormax = c->isfixed = c->noborder = false;
 	attach(c);
 	attachstack(c);
 	sel = c;
@@ -763,6 +786,8 @@ resize(const Arg *arg) {
 		sel->ismax = false;
 		setborderwidth(sel, BORDER_WIDTH);
 	}
+	sel->ishormax = false;
+	sel->isvertmax = false;
 }
 
 void
