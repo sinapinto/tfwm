@@ -1,10 +1,11 @@
 #define MOD                           XCB_MOD_MASK_1
 #define SHIFT                         XCB_MOD_MASK_SHIFT
 #define CTRL                          XCB_MOD_MASK_CONTROL
-#define UNFOCUS                       0xFF0000
-#define FOCUS                         0x00FF00
-#define BORDER_WIDTH                  0
-static const int steps[2] =           { 30, 40 }; /* move step, resize step */
+#define UNFOCUS                       0x111111
+#define FOCUS                         0xeeeeee
+#define BORDER_WIDTH                  2
+static const int steps[2] =           { 30, 30 }; /* move step, resize step */
+static const char *noborder[] =       { "chromium", "firefox" };
 
 #define WORKSPACE(K,N) \
 	{ MOD,              K,           selectws,               {.i=N} }, \
