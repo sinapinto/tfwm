@@ -13,6 +13,13 @@
 #include <xcb/xcb_ewmh.h>
 #include <X11/keysym.h>
 
+#if 0
+#   define DEBUG(...) \
+		do { fprintf(stderr, "tfwm: ");fprintf(stderr, __VA_ARGS__); } while(0)
+#else
+#   define DEBUG(...)
+#endif
+
 #define CLEANMASK(mask)         (mask & ~(numlockmask|XCB_MOD_MASK_LOCK))
 #define LENGTH(X)               (sizeof(X)/sizeof(*X))
 #define MAX(X, Y)               ((X) > (Y) ? (X) : (Y))
@@ -221,6 +228,7 @@ center(Client *c) {
 
 void
 circulaterequest(xcb_generic_event_t *ev) {
+	DEBUG("circulate request\n");
 	xcb_circulate_request_event_t *e = (xcb_circulate_request_event_t *)ev;
 	xcb_circulate_window(conn, e->window, e->place);
 }
@@ -243,6 +251,7 @@ void
 clientmessage(xcb_generic_event_t *ev) {
 	xcb_client_message_event_t *e = (xcb_client_message_event_t*)ev;
 	Client *c;
+	DEBUG("client message\n");
 	if ((c = wintoclient(e->window))) {
 		if (e->type == netatom[NetWMState] &&
 				(unsigned)e->data.data32[1] == netatom[NetWMFullscreen]) {
@@ -261,6 +270,7 @@ configurerequest(xcb_generic_event_t *ev) {
 	unsigned int v[7];
 	int i = 0;
 
+	DEBUG("configure request x %d y %d w %d h %d\n", e->x, e->y, e->width, e->height);
 	if ((c = wintoclient(e->window))) {
 		if (e->value_mask & XCB_CONFIG_WINDOW_X)
 			v[i++] = c->x = e->x;
@@ -299,6 +309,7 @@ void
 destroynotify(xcb_generic_event_t *ev) {
 	xcb_destroy_notify_event_t *e = (xcb_destroy_notify_event_t *)ev;
 	Client *c;
+	DEBUG("destroy notify\n");
 
 	if ((c = wintoclient(e->window)))
 		unmanage(c);
@@ -329,6 +340,7 @@ void
 enternotify(xcb_generic_event_t *ev) {
 	xcb_enter_notify_event_t *e = (xcb_enter_notify_event_t *)ev;
 	Client *c;
+	DEBUG("enter notify\n");
 	if (e->mode == XCB_NOTIFY_MODE_NORMAL || e->mode == XCB_NOTIFY_MODE_UNGRAB) {
 		if (sel != NULL && e->event == sel->win)
 			return;
@@ -451,23 +463,25 @@ gethints(Client *c) {
 	free(e);
 
 	// TODO
-	/* if (h.flags & XCB_ICCCM_SIZE_HINT_US_POSITION) */
-	/* 	printf("US_POSITION\n"); */
-	/* if (h.flags & XCB_ICCCM_SIZE_HINT_US_SIZE) */
-	/* 	printf("US_SIZE: width %d height %d\n", h.width, h.height); */
-	/* if (h.flags & XCB_ICCCM_SIZE_HINT_P_POSITION) */
-	/* 	printf("POSITION\n"); */
-	/* if (h.flags & XCB_ICCCM_SIZE_HINT_P_SIZE) */
-	/* 	printf("SIZE\n"); */
-	/* if (h.flags & XCB_ICCCM_SIZE_HINT_P_MAX_SIZE) */
-	/* 	printf("MAX_SIZE max_width %d max_height %d\n", h.max_width, h.max_width); */
-	/* if (h.flags & XCB_ICCCM_SIZE_HINT_P_ASPECT) */
-	/* 	printf("ASPECT: min_aspect_num %d min_aspect_den %d max_aspect_num %d max_aspect_den %d\n", */
-	/* 			h.min_aspect_num, h.min_aspect_den, h.max_aspect_num, h.max_aspect_den); */
+	if (h.flags & XCB_ICCCM_SIZE_HINT_US_POSITION)
+		DEBUG("US_POSITION\n");
+	if (h.flags & XCB_ICCCM_SIZE_HINT_US_SIZE)
+		DEBUG("US_SIZE: width %d height %d\n", h.width, h.height);
+	if (h.flags & XCB_ICCCM_SIZE_HINT_P_POSITION)
+		DEBUG("POSITION\n");
+	if (h.flags & XCB_ICCCM_SIZE_HINT_P_SIZE)
+		DEBUG("SIZE\n");
+	if (h.flags & XCB_ICCCM_SIZE_HINT_P_MAX_SIZE)
+		DEBUG("MAX_SIZE max_width %d max_height %d\n", h.max_width, h.max_width);
+	if (h.flags & XCB_ICCCM_SIZE_HINT_P_ASPECT)
+		DEBUG("ASPECT: min_aspect_num %d min_aspect_den %d max_aspect_num %d max_aspect_den %d\n",
+				h.min_aspect_num, h.min_aspect_den, h.max_aspect_num, h.max_aspect_den);
 
 	if (h.flags & XCB_ICCCM_SIZE_HINT_P_MIN_SIZE) {
-		c->minw = h.min_width;
-		c->minh = h.min_height;
+		if (h.min_width > 0 && h.min_width < sw)
+			c->minw = h.min_width;
+		if (h.min_height > 0 && h.min_height < sh)
+			c->minh = h.min_height;
 	}
 	if (h.flags & XCB_ICCCM_SIZE_HINT_BASE_SIZE) {
 		c->basew = h.base_width;
@@ -618,6 +632,7 @@ manage(xcb_window_t w) {
 void
 mappingnotify(xcb_generic_event_t *ev) {
 	xcb_mapping_notify_event_t *e = (xcb_mapping_notify_event_t *)ev;
+	DEBUG("mapping notify\n");
 	if (e->request != XCB_MAPPING_MODIFIER && e->request != XCB_MAPPING_KEYBOARD)
 		return;
 	xcb_ungrab_key(conn, XCB_GRAB_ANY, screen->root, XCB_MOD_MASK_ANY);
@@ -627,6 +642,7 @@ mappingnotify(xcb_generic_event_t *ev) {
 void
 maprequest(xcb_generic_event_t *ev) {
 	xcb_map_request_event_t *e = (xcb_map_request_event_t *)ev;
+	DEBUG("map request\n");
 	if (sel && sel->win != e->window)
 		setborder(sel, false);
 	if (!wintoclient(e->window))
@@ -964,6 +980,7 @@ setborder(Client *c, bool focus) {
 			c->w+BORDER_WIDTH*2, c->h+BORDER_WIDTH*2);
 	xcb_create_gc(conn, gc, pmap, 0, NULL);
 
+	/* See: https://github.com/venam/2bwm */
 	values[0] = outercol;
 	xcb_change_gc(conn, gc, XCB_GC_FOREGROUND, &values[0]);
 	xcb_rectangle_t rect_outer[] = {
@@ -1171,6 +1188,7 @@ unmanage(Client *c) {
 void
 unmapnotify(xcb_generic_event_t *ev) {
 	xcb_unmap_notify_event_t *e = (xcb_unmap_notify_event_t *)ev;
+	DEBUG("unmap notify\n");
 	Client *c;
 	if (e->window == screen->root)
 		return;

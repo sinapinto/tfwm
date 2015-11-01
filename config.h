@@ -11,7 +11,7 @@
 #define RESIZE_STEP                   30
 static const Rule rules[] = {
 	/* class         instance      workspace     border */
-	{ "Chromium",    NULL,         1,            false  },
+	{ "chromium",    NULL,         1,            false  },
 	{ "Firefox",     NULL,         0,            false  },
 };
 
