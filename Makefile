@@ -1,14 +1,26 @@
-WMNAME = tfwm
-VERSION = 2015-10
-DIST = $(WMNAME)-$(VERSION)
-CC ?= gcc
-RM = /bin/rm
-PREFIX ?= /usr/local
+WMNAME   = tfwm
+VERSION  = 2015-10
+DIST     = $(WMNAME)-$(VERSION)
+
+CC      ?= gcc
+RM       = /bin/rm
+PREFIX  ?= /usr/local
 XCB_INC ?= /usr/include/xcb
-SRC = $(WMNAME).c
-OBJ = $(WMNAME).o
-CFLAGS += -std=c99 -Os -Wall -pedantic -I. -I$(XCB_INC)
-LDFLAGS += `pkg-config --libs xcb xcb-keysyms xcb-icccm xcb-ewmh`
+
+SRC      = $(WMNAME).c
+OBJ      = ${SRC:.c=.o}
+CFLAGS  += -std=c99 \
+           -Os \
+           -Wall \
+           -pedantic \
+           -I. \
+           -I$(XCB_INC)
+
+LDFLAGS += `pkg-config --libs \
+            xcb \
+            xcb-keysyms \
+            xcb-icccm \
+            xcb-ewmh`
 
 all: options $(WMNAME)
 
