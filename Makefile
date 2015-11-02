@@ -1,5 +1,5 @@
 WMNAME   = tfwm
-VERSION  = 2015-10
+VERSION  = 2015-11
 DIST     = $(WMNAME)-$(VERSION)
 
 CC      ?= gcc

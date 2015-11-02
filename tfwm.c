@@ -14,10 +14,10 @@
 #include <X11/keysym.h>
 
 #if 0
-#   define DEBUG(...) \
-		do { fprintf(stderr, "tfwm: ");fprintf(stderr, __VA_ARGS__); } while(0)
+#define DEBUG(...) \
+	do { fprintf(stderr, "tfwm: ");fprintf(stderr, __VA_ARGS__); } while(0)
 #else
-#   define DEBUG(...)
+#define DEBUG(...)
 #endif
 
 #define CLEANMASK(mask)         (mask & ~(numlockmask|XCB_MOD_MASK_LOCK))
@@ -157,7 +157,7 @@ static char *wmatomnames[] = { "WM_PROTOCOLS", "WM_DELETE_WINDOW", "WM_STATE" };
 static char *netatomnames[] = { "_NET_SUPPORTED", "_NET_WM_STATE_FULLSCREEN", "_NET_WM_STATE",
 	"_NET_ACTIVE_WINDOW", "_NET_WM_DESKTOP", "_NET_CURRENT_DESKTOP", "_NET_NUMBER_OF_DESKTOPS" };
 static uint32_t focuscol, unfocuscol, outercol;
-static char **tfwm_argv;
+static bool dorestart = false;
 
 #include "config.h"
 
@@ -879,10 +879,8 @@ resizewin(xcb_window_t win, int w, int h) {
 
 void
 restart(const Arg *arg) {
-	cleanup();
-
-	execvp(tfwm_argv[0], tfwm_argv);
-	err(EXIT_FAILURE, "execvp: %s", tfwm_argv[0]);
+	dorestart = true;
+	sigcode = 1;
 }
 
 void
@@ -1253,13 +1251,14 @@ wintoclient(xcb_window_t w) {
 
 int
 main(int argc, char **argv) {
-	tfwm_argv = argv;
 	conn = xcb_connect(NULL, &scrno);
 	if (xcb_connection_has_error(conn))
 		err(EXIT_FAILURE, "xcb_connect error");
 	setup();
 	run();
 	cleanup();
+	if (dorestart)
+		execvp(argv[0], argv);
 	return EXIT_SUCCESS;
 }
 
