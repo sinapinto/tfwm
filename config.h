@@ -4,9 +4,9 @@
 #define CTRL                          XCB_MOD_MASK_CONTROL
 #define BORDER_WIDTH                  7
 #define OUTER_BORDER_WIDTH            5
-#define FOCUSCOL                      "dark orange"
-#define UNFOCUSCOL                    "slate gray"
-#define OUTERCOL                      "black"
+#define FOCUS_COLOR                   "dark orange"
+#define UNFOCUS_COLOR                 "slate gray"
+#define OUTER_COLOR                   "black"
 #define MOVE_STEP                     30
 #define RESIZE_STEP                   30
 static const Rule rules[] = {
@@ -38,7 +38,11 @@ static Key keys[] = {
 	{ MOD | CTRL,       XK_k,           resize,             {.i=ShrinkBoth}    },
 	{ MOD,              XK_Tab,         focusstack,         {.i=+1}            },
 	{ MOD | SHIFT,      XK_Tab,         focusstack,         {.i=-1}            },
-	{ MOD,              XK_s,           teleport,           {.i=Center}        },
+	{ MOD,              XK_s,           teleport,           {.i=ToCenter}      },
+	{ MOD | SHIFT,      XK_p,           teleport,           {.i=ToTop}         },
+	{ MOD | SHIFT,      XK_n,           teleport,           {.i=ToBottom}      },
+	{ MOD | SHIFT,      XK_y,           teleport,           {.i=ToLeft}        },
+	{ MOD | SHIFT,      XK_u,           teleport,           {.i=ToRight}       },
 	{ MOD,              XK_a,           maximize,           {.i=NULL}          },
 	{ MOD,              XK_m,           maximizeaxis,       {.i=MaxVertical}   },
 	{ MOD,              XK_n,           maximizeaxis,       {.i=MaxHorizontal} },

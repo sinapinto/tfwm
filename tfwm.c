@@ -15,7 +15,7 @@
 
 #if 0
 #define DEBUG(...) \
-	do { fprintf(stderr, "tfwm: ");fprintf(stderr, __VA_ARGS__); } while(0)
+	do { fprintf(stderr, "tfwm: "); fprintf(stderr, __VA_ARGS__); } while(0)
 #else
 #define DEBUG(...)
 #endif
@@ -71,7 +71,6 @@ static void applyrules(Client *c);
 static void attach(Client *c);
 static void attachstack(Client *c);
 static void buttonpress(xcb_generic_event_t *ev);
-static void center(Client *c);
 static void circulaterequest(xcb_generic_event_t *ev);
 static void cleanup();
 static void clientmessage(xcb_generic_event_t *ev);
@@ -130,7 +129,7 @@ static Client *wintoclient(xcb_window_t w);
 /* enums */
 enum { MoveDown, MoveRight, MoveUp, MoveLeft };
 enum { GrowHeight, GrowWidth, ShrinkHeight, ShrinkWidth, GrowBoth, ShrinkBoth };
-enum { Center, TopLeft, TopRight, BottomLeft, BottomRight };
+enum { ToCenter, ToTop, ToLeft, ToBottom, ToRight };
 enum { MouseMove, MouseResize };
 enum { MaxVertical, MaxHorizontal };
 enum { WMProtocols, WMDeleteWindow, WMState, WMLast }; /* default atoms */
@@ -218,15 +217,6 @@ buttonpress(xcb_generic_event_t *ev) {
 }
 
 void
-center(Client *c) {
-	c->x = sw - (c->w + BORDER_WIDTH*2);
-	c->x /= 2;
-	c->y = sh - (c->h + BORDER_WIDTH*2);
-	c->y /= 2;
-	movewin(sel->win, sel->x, sel->y);
-}
-
-void
 circulaterequest(xcb_generic_event_t *ev) {
 	DEBUG("circulate request\n");
 	xcb_circulate_request_event_t *e = (xcb_circulate_request_event_t *)ev;
@@ -251,12 +241,16 @@ void
 clientmessage(xcb_generic_event_t *ev) {
 	xcb_client_message_event_t *e = (xcb_client_message_event_t*)ev;
 	Client *c;
-	DEBUG("client message\n");
+
 	if ((c = wintoclient(e->window))) {
 		if (e->type == netatom[NetWMState] &&
 				(unsigned)e->data.data32[1] == netatom[NetWMFullscreen]) {
-			if (e->data.data32[0] == 0 || e->data.data32[0] == 1)
+			/* data32[0]=1 -> maximize; data32[0]=0 -> minimize */
+			if ((e->data.data32[0] == 0  && c->ismax) ||
+				(e->data.data32[0] == 1 && !c->ismax)) {
+				DEBUG("client message - maximizing\n");
 				maximize(NULL);
+			}
 		}
 		else if (e->type == netatom[NetActiveWindow])
 			focus(c);
@@ -309,10 +303,11 @@ void
 destroynotify(xcb_generic_event_t *ev) {
 	xcb_destroy_notify_event_t *e = (xcb_destroy_notify_event_t *)ev;
 	Client *c;
-	DEBUG("destroy notify\n");
 
-	if ((c = wintoclient(e->window)))
+	if ((c = wintoclient(e->window))) {
+		DEBUG("destroy notify\n");
 		unmanage(c);
+	}
 }
 
 void
@@ -601,7 +596,7 @@ manage(xcb_window_t w) {
 	attachstack(c);
 	sel = c;
 	applyrules(c);
-	center(c);
+	/* center(c); */
 	if (c->ws == selws)
 		xcb_map_window(conn, w);
 	/* set its workspace hint */
@@ -1081,9 +1076,9 @@ setup() {
 	updatenumlockmask();
 	grabkeys();
 	/* init colors */
-	focuscol = getcolor(FOCUSCOL);
-	unfocuscol = getcolor(UNFOCUSCOL);
-	outercol = getcolor(OUTERCOL);
+	focuscol = getcolor(FOCUS_COLOR);
+	unfocuscol = getcolor(UNFOCUS_COLOR);
+	outercol = getcolor(OUTER_COLOR);
 	/* set handlers */
 	handler[XCB_CONFIGURE_REQUEST] = configurerequest;
 	handler[XCB_DESTROY_NOTIFY]    = destroynotify;
@@ -1163,14 +1158,42 @@ testcookie(xcb_void_cookie_t cookie, char *errormsg) {
 	}
 }
 
-// TODO
 void
 teleport(const Arg *arg) {
+	xcb_get_geometry_reply_t *geom;
+	uint16_t twidth, theight;
+
 	if (!sel || sel->win == screen->root)
 		return;
-	if (arg->i == Center) {
-		center(sel);
+	geom = xcb_get_geometry_reply(conn, xcb_get_geometry(conn, sel->win), NULL);
+	if (!geom)
+		err(EXIT_FAILURE, "geometry reply failed");
+	twidth = sel->w;
+	theight = sel->h;
+	if (sel->noborder || geom->border_width > 0) {
+		twidth +=  BORDER_WIDTH * 2;
+		theight +=  BORDER_WIDTH * 2;
 	}
+	switch (arg->i) {
+		case ToCenter:
+			sel->x = (sw - twidth) / 2;
+			sel->y = (sh - theight) / 2;
+			break;
+		case ToTop:
+			sel->y = 0;
+			break;
+		case ToBottom:
+			sel->y = sh - theight;
+			break;
+		case ToLeft:
+			sel->x = 0;
+			break;
+		case ToRight:
+			sel->x = sw - twidth;
+			break;
+	}
+	free(geom);
+	movewin(sel->win, sel->x, sel->y);
 }
 
 void
