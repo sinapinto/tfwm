@@ -13,7 +13,7 @@
 #include <xcb/xcb_ewmh.h>
 #include <X11/keysym.h>
 
-#if 0
+#if 1
 #define DEBUG(...) \
 	do { fprintf(stderr, "tfwm: "); fprintf(stderr, __VA_ARGS__); } while(0)
 #else
@@ -54,9 +54,8 @@ typedef struct {
 
 typedef struct Client Client;
 struct Client{
-	int16_t x, y;
-	uint16_t w, h;
-	int32_t oldx, oldy, oldw, oldh;
+	int16_t x, y, oldx, oldy;
+	uint16_t w, h, oldw, oldh;
 	int32_t basew, baseh, minw, minh, incw, inch;
 	bool ismax, isvertmax, ishormax;
 	bool isfixed, noborder;
@@ -218,8 +217,8 @@ buttonpress(xcb_generic_event_t *ev) {
 
 void
 circulaterequest(xcb_generic_event_t *ev) {
-	DEBUG("circulate request\n");
 	xcb_circulate_request_event_t *e = (xcb_circulate_request_event_t *)ev;
+	DEBUG("Event: circulate request: %d\n", e->window);
 	xcb_circulate_window(conn, e->window, e->place);
 }
 
@@ -248,7 +247,7 @@ clientmessage(xcb_generic_event_t *ev) {
 			/* data32[0]=1 -> maximize; data32[0]=0 -> minimize */
 			if ((e->data.data32[0] == 0  && c->ismax) ||
 				(e->data.data32[0] == 1 && !c->ismax)) {
-				DEBUG("client message - maximizing\n");
+				DEBUG("Event: client message - maximizing: %d\n", e->window);
 				maximize(NULL);
 			}
 		}
@@ -264,7 +263,8 @@ configurerequest(xcb_generic_event_t *ev) {
 	unsigned int v[7];
 	int i = 0;
 
-	DEBUG("configure request x %d y %d w %d h %d\n", e->x, e->y, e->width, e->height);
+	DEBUG("Event: configure request x %d y %d w %d h %d: %d\n",
+			e->x, e->y, e->width, e->height, e->window);
 	if ((c = wintoclient(e->window))) {
 		if (e->value_mask & XCB_CONFIG_WINDOW_X)
 			v[i++] = c->x = e->x;
@@ -305,7 +305,7 @@ destroynotify(xcb_generic_event_t *ev) {
 	Client *c;
 
 	if ((c = wintoclient(e->window))) {
-		DEBUG("destroy notify\n");
+		DEBUG("Event: destroy notify: %d\n", e->window);
 		unmanage(c);
 	}
 }
@@ -335,7 +335,7 @@ void
 enternotify(xcb_generic_event_t *ev) {
 	xcb_enter_notify_event_t *e = (xcb_enter_notify_event_t *)ev;
 	Client *c;
-	DEBUG("enter notify\n");
+	DEBUG("Event: enter notify: %d\n", e->event);
 	if (e->mode == XCB_NOTIFY_MODE_NORMAL || e->mode == XCB_NOTIFY_MODE_UNGRAB) {
 		if (sel != NULL && e->event == sel->win)
 			return;
@@ -459,17 +459,17 @@ gethints(Client *c) {
 
 	// TODO
 	if (h.flags & XCB_ICCCM_SIZE_HINT_US_POSITION)
-		DEBUG("US_POSITION\n");
+		DEBUG("Hint: US_POSITION: x: %d y: %d\n", h.x, h.y);
 	if (h.flags & XCB_ICCCM_SIZE_HINT_US_SIZE)
-		DEBUG("US_SIZE: width %d height %d\n", h.width, h.height);
+		DEBUG("Hint: US_SIZE: width %d height %d\n", h.width, h.height);
 	if (h.flags & XCB_ICCCM_SIZE_HINT_P_POSITION)
-		DEBUG("POSITION\n");
+		DEBUG("Hint: P_POSITION: x: %d y: %d\n", h.x, h.y);
 	if (h.flags & XCB_ICCCM_SIZE_HINT_P_SIZE)
-		DEBUG("SIZE\n");
+		DEBUG("Hint: P_SIZE: width %d height %d\n", h.width, h.height);
 	if (h.flags & XCB_ICCCM_SIZE_HINT_P_MAX_SIZE)
-		DEBUG("MAX_SIZE max_width %d max_height %d\n", h.max_width, h.max_width);
+		DEBUG("Hint: P_MAX_SIZE max_width %d max_height %d\n", h.max_width, h.max_width);
 	if (h.flags & XCB_ICCCM_SIZE_HINT_P_ASPECT)
-		DEBUG("ASPECT: min_aspect_num %d min_aspect_den %d max_aspect_num %d max_aspect_den %d\n",
+		DEBUG("Hint: P_ASPECT: min_aspect_num %d min_aspect_den %d max_aspect_num %d max_aspect_den %d\n",
 				h.min_aspect_num, h.min_aspect_den, h.max_aspect_num, h.max_aspect_den);
 
 	if (h.flags & XCB_ICCCM_SIZE_HINT_P_MIN_SIZE) {
@@ -627,7 +627,7 @@ manage(xcb_window_t w) {
 void
 mappingnotify(xcb_generic_event_t *ev) {
 	xcb_mapping_notify_event_t *e = (xcb_mapping_notify_event_t *)ev;
-	DEBUG("mapping notify\n");
+	DEBUG("Event: mapping notify\n");
 	if (e->request != XCB_MAPPING_MODIFIER && e->request != XCB_MAPPING_KEYBOARD)
 		return;
 	xcb_ungrab_key(conn, XCB_GRAB_ANY, screen->root, XCB_MOD_MASK_ANY);
@@ -637,7 +637,7 @@ mappingnotify(xcb_generic_event_t *ev) {
 void
 maprequest(xcb_generic_event_t *ev) {
 	xcb_map_request_event_t *e = (xcb_map_request_event_t *)ev;
-	DEBUG("map request\n");
+	DEBUG("Event: map request: %d\n", e->window);
 	if (sel && sel->win != e->window)
 		setborder(sel, false);
 	if (!wintoclient(e->window))
@@ -793,7 +793,6 @@ move(const Arg *arg) {
 		case MoveRight: sel->x += MOVE_STEP; break;
 		case MoveUp:    sel->y -= MOVE_STEP; break;
 		case MoveLeft:  sel->x -= MOVE_STEP; break;
-		default:        err(EXIT_FAILURE, "bad move argument");
 	}
 	movewin(sel->win, sel->x, sel->y);
 }
@@ -1209,7 +1208,7 @@ unmanage(Client *c) {
 void
 unmapnotify(xcb_generic_event_t *ev) {
 	xcb_unmap_notify_event_t *e = (xcb_unmap_notify_event_t *)ev;
-	DEBUG("unmap notify\n");
+	DEBUG("Event: unmap notify: %d\n", e->window);
 	Client *c;
 	if (e->window == screen->root)
 		return;

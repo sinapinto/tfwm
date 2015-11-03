@@ -4,7 +4,7 @@
 #define CTRL                          XCB_MOD_MASK_CONTROL
 #define BORDER_WIDTH                  7
 #define OUTER_BORDER_WIDTH            5
-#define FOCUS_COLOR                   "dark orange"
+#define FOCUS_COLOR                   "medium violet red"
 #define UNFOCUS_COLOR                 "slate gray"
 #define OUTER_COLOR                   "black"
 #define MOVE_STEP                     30
@@ -54,6 +54,11 @@ static Key keys[] = {
 	WORKSPACE(          XK_3,                               2 )
 	WORKSPACE(          XK_4,                               3 )
 	WORKSPACE(          XK_5,                               4 )
+	WORKSPACE(          XK_6,                               5 )
+	WORKSPACE(          XK_7,                               6 )
+	WORKSPACE(          XK_8,                               7 )
+	WORKSPACE(          XK_9,                               8 )
+	WORKSPACE(          XK_0,                               9 )
 	{ MOD | SHIFT,      XK_r,           restart,            {.i=NULL}          },
 	{ MOD | SHIFT,      XK_e,           quit,               {.i=NULL}          },
 };
