@@ -13,7 +13,7 @@
 #include <xcb/xcb_ewmh.h>
 #include <X11/keysym.h>
 
-#if 1
+#if 0
 #define DEBUG(...) \
 	do { fprintf(stderr, "tfwm: "); fprintf(stderr, __VA_ARGS__); } while(0)
 #else
@@ -280,6 +280,7 @@ configurerequest(xcb_generic_event_t *ev) {
 			v[i++] = e->stack_mode;
 		if (e->value_mask & XCB_CONFIG_WINDOW_BORDER_WIDTH)
 			v[i++] = e->border_width;
+		setborder(c, true);
 		xcb_configure_window(conn, e->window, e->value_mask, v);
 	}
 	else {
@@ -468,9 +469,6 @@ gethints(Client *c) {
 		DEBUG("Hint: P_SIZE: width %d height %d\n", h.width, h.height);
 	if (h.flags & XCB_ICCCM_SIZE_HINT_P_MAX_SIZE)
 		DEBUG("Hint: P_MAX_SIZE max_width %d max_height %d\n", h.max_width, h.max_width);
-	if (h.flags & XCB_ICCCM_SIZE_HINT_P_ASPECT)
-		DEBUG("Hint: P_ASPECT: min_aspect_num %d min_aspect_den %d max_aspect_num %d max_aspect_den %d\n",
-				h.min_aspect_num, h.min_aspect_den, h.max_aspect_num, h.max_aspect_den);
 
 	if (h.flags & XCB_ICCCM_SIZE_HINT_P_MIN_SIZE) {
 		if (h.min_width > 0 && h.min_width < sw)
