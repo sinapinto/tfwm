@@ -351,6 +351,8 @@ void
 fitclient(Client *c) {
 	bool update = false;
 
+	if (c->noborder)
+		return;
 	if (c->w >= sw-2*BORDER_WIDTH) {
 		c->w = sw - BORDER_WIDTH * 2;
 		update = true;
@@ -359,8 +361,10 @@ fitclient(Client *c) {
 		c->h = sh - BORDER_WIDTH * 2;
 		update = true;
 	}
-	if (update)
-		resizewin(c->win, c->w, c->h);
+	if (update) {
+		c->x = c->y = 0;
+		moveresize(c, c->x, c->y, c->w, c->h);
+	}
 }
 
 void
