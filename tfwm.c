@@ -78,6 +78,7 @@ static void destroynotify(xcb_generic_event_t *ev);
 static void detach(Client *c);
 static void detachstack(Client *c);
 static void enternotify(xcb_generic_event_t *ev);
+static void fitclient(Client *c);
 static void focus(struct Client *c);
 static void focusstack(const Arg *arg);
 static void getatoms(xcb_atom_t *atoms, char **names, int count);
@@ -347,6 +348,22 @@ enternotify(xcb_generic_event_t *ev) {
 }
 
 void
+fitclient(Client *c) {
+	bool update = false;
+
+	if (c->w >= sw-2*BORDER_WIDTH) {
+		c->w = sw - BORDER_WIDTH * 2;
+		update = true;
+	}
+	if (c->h >= sh-2*BORDER_WIDTH) {
+		c->h = sh - BORDER_WIDTH * 2;
+		update = true;
+	}
+	if (update)
+		resizewin(c->win, c->w, c->h);
+}
+
+void
 focus(Client *c) {
 	if (!c || !ISVISIBLE(c))
 		for (c = stack; c && !ISVISIBLE(c); c = c->snext)
@@ -594,6 +611,7 @@ manage(xcb_window_t w) {
 	attachstack(c);
 	sel = c;
 	applyrules(c);
+	fitclient(c);
 	/* center(c); */
 	if (c->ws == selws)
 		xcb_map_window(conn, w);
