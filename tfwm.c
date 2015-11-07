@@ -698,9 +698,15 @@ maximizeaxis(const Arg *arg) {
 	}
 	savegeometry(sel);
 	uint32_t values[3];
+	uint16_t tw = sw;
+	uint16_t th = sh;
+	if (!sel->noborder) {
+		tw -= BORDER_WIDTH * 2;
+		th -= BORDER_WIDTH * 2;
+	}
 	if (arg->i == MaxVertical) {
 		sel->y = 0;
-		sel->h = sh - (BORDER_WIDTH * 2);
+		sel->h = th;
 		values[0] = sel->y;
 		values[1] = sel->h;
 
@@ -710,7 +716,7 @@ maximizeaxis(const Arg *arg) {
 	}
 	else if (arg->i == MaxHorizontal) {
 		sel->x = 0;
-		sel->w = sw - (BORDER_WIDTH * 2);
+		sel->w = tw;
 		values[0] = sel->x;
 		values[1] = sel->w;
 		xcb_configure_window(conn, sel->win, XCB_CONFIG_WINDOW_X
@@ -1179,39 +1185,32 @@ testcookie(xcb_void_cookie_t cookie, char *errormsg) {
 
 void
 teleport(const Arg *arg) {
-	xcb_get_geometry_reply_t *geom;
-	uint16_t twidth, theight;
-
 	if (!sel || sel->win == screen->root)
 		return;
-	geom = xcb_get_geometry_reply(conn, xcb_get_geometry(conn, sel->win), NULL);
-	if (!geom)
-		err(EXIT_FAILURE, "geometry reply failed");
-	twidth = sel->w;
-	theight = sel->h;
-	if (sel->noborder || geom->border_width > 0) {
-		twidth +=  BORDER_WIDTH * 2;
-		theight +=  BORDER_WIDTH * 2;
+	uint16_t tw = sel->w;
+	uint16_t th = sel->h;
+	if (!sel->noborder) {
+		tw +=  BORDER_WIDTH * 2;
+		th +=  BORDER_WIDTH * 2;
 	}
 	switch (arg->i) {
 		case ToCenter:
-			sel->x = (sw - twidth) / 2;
-			sel->y = (sh - theight) / 2;
+			sel->x = (sw - tw) / 2;
+			sel->y = (sh - th) / 2;
 			break;
 		case ToTop:
 			sel->y = 0;
 			break;
 		case ToBottom:
-			sel->y = sh - theight;
+			sel->y = sh - th;
 			break;
 		case ToLeft:
 			sel->x = 0;
 			break;
 		case ToRight:
-			sel->x = sw - twidth;
+			sel->x = sw - tw;
 			break;
 	}
-	free(geom);
 	movewin(sel->win, sel->x, sel->y);
 }
 
