@@ -106,7 +106,7 @@ static void resizewin(xcb_window_t win, int w, int h);
 static void restart(const Arg *arg);
 static void run(void);
 static void savegeometry(Client *c);
-static void selectprevws(const Arg* arg);
+static void selectrws(const Arg* arg);
 static void selectws(const Arg* arg);
 static bool sendevent(Client *c, xcb_atom_t proto);
 static void sendtows(const Arg *arg);
@@ -132,6 +132,7 @@ enum { GrowHeight, GrowWidth, ShrinkHeight, ShrinkWidth, GrowBoth, ShrinkBoth };
 enum { ToCenter, ToTop, ToLeft, ToBottom, ToRight };
 enum { MouseMove, MouseResize };
 enum { MaxVertical, MaxHorizontal };
+enum { LastWorkspace, PrevWorkspace, NextWorkspace };
 enum { WMProtocols, WMDeleteWindow, WMState, WMLast }; /* default atoms */
 enum { NetSupported, NetWMFullscreen, NetWMState, NetActiveWindow,
 	NetWMDesktop, NetCurrentDesktop, NetNumberOfDesktops, NetLast }; /* EWMH atoms */
@@ -219,7 +220,7 @@ buttonpress(xcb_generic_event_t *ev) {
 void
 circulaterequest(xcb_generic_event_t *ev) {
 	xcb_circulate_request_event_t *e = (xcb_circulate_request_event_t *)ev;
-	DEBUG("Event: circulate request: %d\n", e->window);
+	DEBUG("Event: circulate request: %X\n", e->window);
 	xcb_circulate_window(conn, e->window, e->place);
 }
 
@@ -248,7 +249,7 @@ clientmessage(xcb_generic_event_t *ev) {
 			/* data32[0]=1 -> maximize; data32[0]=0 -> minimize */
 			if ((e->data.data32[0] == 0  && c->ismax) ||
 				(e->data.data32[0] == 1 && !c->ismax)) {
-				DEBUG("Event: client message - maximizing: %d\n", e->window);
+				DEBUG("Event: client message - maximizing: %X\n", e->window);
 				maximize(NULL);
 			}
 		}
@@ -264,17 +265,15 @@ configurerequest(xcb_generic_event_t *ev) {
 	unsigned int v[7];
 	int i = 0;
 
-	DEBUG("Event: configure request x %d y %d w %d h %d: %d\n",
+	DEBUG("Event: configure request x %d y %d w %d h %d: %X\n",
 			e->x, e->y, e->width, e->height, e->window);
 	if ((c = wintoclient(e->window))) {
-		if (e->value_mask & XCB_CONFIG_WINDOW_X)
-			v[i++] = c->x = e->x;
-		if (e->value_mask & XCB_CONFIG_WINDOW_Y)
-			v[i++] = c->y = e->y;
 		if (e->value_mask & XCB_CONFIG_WINDOW_WIDTH)
-			v[i++] = c->w = e->width;
+			if (!c->ismax && !c->ishormax)
+				v[i++] = c->w = e->width;
 		if (e->value_mask & XCB_CONFIG_WINDOW_HEIGHT)
-			v[i++] = c->h = e->height;
+			if (!c->ismax && !c->isvertmax)
+				v[i++] = c->h = e->height;
 		if (e->value_mask & XCB_CONFIG_WINDOW_SIBLING)
 			v[i++] = e->sibling;
 		if (e->value_mask & XCB_CONFIG_WINDOW_STACK_MODE)
@@ -282,7 +281,8 @@ configurerequest(xcb_generic_event_t *ev) {
 		if (e->value_mask & XCB_CONFIG_WINDOW_BORDER_WIDTH)
 			v[i++] = e->border_width;
 		setborder(c, true);
-		xcb_configure_window(conn, e->window, e->value_mask, v);
+		if (!c->ismax)
+			xcb_configure_window(conn, e->window, e->value_mask, v);
 	}
 	else {
 		if (e->value_mask & XCB_CONFIG_WINDOW_X)
@@ -307,7 +307,7 @@ destroynotify(xcb_generic_event_t *ev) {
 	Client *c;
 
 	if ((c = wintoclient(e->window))) {
-		DEBUG("Event: destroy notify: %d\n", e->window);
+		DEBUG("Event: destroy notify: %X\n", e->window);
 		unmanage(c);
 	}
 }
@@ -657,7 +657,7 @@ mappingnotify(xcb_generic_event_t *ev) {
 void
 maprequest(xcb_generic_event_t *ev) {
 	xcb_map_request_event_t *e = (xcb_map_request_event_t *)ev;
-	DEBUG("Event: map request: %d\n", e->window);
+	DEBUG("Event: map request: %X\n", e->window);
 	if (sel && sel->win != e->window)
 		setborder(sel, false);
 	if (!wintoclient(e->window))
@@ -728,6 +728,7 @@ maximizeaxis(const Arg *arg) {
 
 void
 mousemotion(const Arg *arg) {
+	// TODO: throttle
 	if (!sel || sel->win == screen->root)
 		return;
 	raisewindow(sel->win);
@@ -929,8 +930,17 @@ savegeometry(Client *c) {
 }
 
 void
-selectprevws(const Arg* arg) {
-	const Arg a = { .i = prevws };
+selectrws(const Arg* arg) {
+	int i;
+	if (arg->i == LastWorkspace)
+		i = prevws;
+	else if (arg->i == PrevWorkspace && selws > 0)
+		i = selws - 1;
+	else if (arg->i == NextWorkspace && selws < 9)
+		i = selws + 1;
+	else
+		return;
+	const Arg a = { .i = i };
 	selectws(&a);
 }
 
@@ -1227,7 +1237,7 @@ unmanage(Client *c) {
 void
 unmapnotify(xcb_generic_event_t *ev) {
 	xcb_unmap_notify_event_t *e = (xcb_unmap_notify_event_t *)ev;
-	DEBUG("Event: unmap notify: %d\n", e->window);
+	DEBUG("Event: unmap notify: %X\n", e->window);
 	Client *c;
 	if (e->window == screen->root)
 		return;
