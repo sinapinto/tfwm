@@ -728,9 +728,9 @@ maximizeaxis(const Arg *arg) {
 
 void
 mousemotion(const Arg *arg) {
-	// TODO: throttle
 	if (!sel || sel->win == screen->root)
 		return;
+	xcb_time_t lasttime = 0;
 	raisewindow(sel->win);
 	xcb_query_pointer_reply_t *pointer;
 	pointer = xcb_query_pointer_reply(conn, xcb_query_pointer(conn, screen->root), 0);
@@ -776,6 +776,10 @@ mousemotion(const Arg *arg) {
 				break;
 			case XCB_MOTION_NOTIFY:
 				e = (xcb_motion_notify_event_t*)ev;
+				if ((e->time - lasttime) <= (1000 / 60))
+					continue;
+				lasttime = e->time;
+
 				if (arg->i == MouseMove) {
 					nx = sel->x + e->root_x - pointer->root_x;
 					ny = sel->y + e->root_y - pointer->root_y;
@@ -934,10 +938,10 @@ selectrws(const Arg* arg) {
 	int i;
 	if (arg->i == LastWorkspace)
 		i = prevws;
-	else if (arg->i == PrevWorkspace && selws > 0)
-		i = selws - 1;
-	else if (arg->i == NextWorkspace && selws < 9)
-		i = selws + 1;
+	else if (arg->i == PrevWorkspace)
+		i = selws == 0 ? 9 : selws - 1;
+	else if (arg->i == NextWorkspace)
+		i = selws == 9 ? 0 : selws + 1;
 	else
 		return;
 	const Arg a = { .i = i };
