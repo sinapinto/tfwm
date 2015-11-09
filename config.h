@@ -2,8 +2,9 @@
 #define MOD                           XCB_MOD_MASK_1
 #define SHIFT                         XCB_MOD_MASK_SHIFT
 #define CTRL                          XCB_MOD_MASK_CONTROL
+#define SINGLE_BORDER                 true
 #define BORDER_WIDTH                  6
-#define OUTER_BORDER_WIDTH            5
+#define OUTER_BORDER_WIDTH            4
 #define FOCUS_COLOR                   "tomato"
 #define OUTER_COLOR                   "black"
 #define UNFOCUS_COLOR                 "slate gray"

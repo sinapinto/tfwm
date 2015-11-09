@@ -1006,6 +1006,11 @@ setborder(Client *c, bool focus) {
 	int half = OUTER_BORDER_WIDTH;
 	values[0] = BORDER_WIDTH;
 	xcb_configure_window(conn, c->win, XCB_CONFIG_WINDOW_BORDER_WIDTH, values);
+	if (SINGLE_BORDER) {
+		values[0] = focus ? focuscol : unfocuscol;
+		xcb_change_window_attributes(conn, c->win, XCB_CW_BORDER_PIXEL, values);
+		return;
+	}
 	xcb_pixmap_t pmap = xcb_generate_id(conn);
 	xcb_gcontext_t gc = xcb_generate_id(conn);
 	xcb_create_pixmap(conn, screen->root_depth, pmap, screen->root,
