@@ -2,18 +2,19 @@
 #define MOD                           XCB_MOD_MASK_1
 #define SHIFT                         XCB_MOD_MASK_SHIFT
 #define CTRL                          XCB_MOD_MASK_CONTROL
-#define SINGLE_BORDER                 true
-#define BORDER_WIDTH                  6
-#define OUTER_BORDER_WIDTH            4
+#define DOUBLE_BORDER                 false
+#define BORDER_WIDTH                  5
+#define OUTER_BORDER_WIDTH            3
 #define FOCUS_COLOR                   "tomato"
 #define OUTER_COLOR                   "black"
 #define UNFOCUS_COLOR                 "slate gray"
 #define MOVE_STEP                     30
 #define RESIZE_STEP                   30
 static const Rule rules[] = {
-	/* class         instance      workspace     border */
-	{ "chromium",    NULL,         1,            false  },
-	{ "Firefox",     NULL,         0,            false  },
+	/* class           workspace       fullscreen       border */
+	{ "chromium",      1,              false,           false  },
+	{ "Firefox",       0,              false,           false  },
+	{ "emacs",         0,              true,            false  },
 };
 
 #define WORKSPACE(K,N) \
@@ -47,7 +48,7 @@ static Key keys[] = {
 	{ MOD,              XK_a,             maximize,         {.i=NULL}          },
 	{ MOD,              XK_m,             maximizeaxis,     {.i=MaxVertical}   },
 	{ MOD,              XK_n,             maximizeaxis,     {.i=MaxHorizontal} },
-	{ MOD,              XK_x,             sticky,           {.i=NULL}          },
+	{ MOD | CTRL,       XK_s,             sticky,           {.i=NULL}          },
 	{ MOD,              XK_q,             killclient,       {.i=NULL}          },
 	{ MOD,              XK_grave,         selectrws,        {.i=LastWorkspace} },
 	{ MOD,              XK_bracketleft,   selectrws,        {.i=PrevWorkspace} },
@@ -64,8 +65,8 @@ static Key keys[] = {
 	WORKSPACE(          XK_0,                               9 )
 	{ MOD | SHIFT,      XK_r,             restart,          {.i=NULL}          },
 	{ MOD | SHIFT,      XK_e,             quit,             {.i=NULL}          },
-};                                     
-static Button buttons[] = {            
+};
+static Button buttons[] = {
 	{  MOD,     XCB_BUTTON_INDEX_1,       mousemotion,      {.i=MouseMove}     },
 	{  MOD,     XCB_BUTTON_INDEX_3,       mousemotion,      {.i=MouseResize}   }
 };

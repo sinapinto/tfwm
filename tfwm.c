@@ -14,15 +14,16 @@
 #include <X11/keysym.h>
 
 #if 0
-#define DEBUG(...) \
+# define DEBUG(...) \
 	do { fprintf(stderr, "tfwm: "); fprintf(stderr, __VA_ARGS__); } while(0)
 #else
-#define DEBUG(...)
+# define DEBUG(...)
 #endif
 
 #define CLEANMASK(mask)         (mask & ~(numlockmask|XCB_MOD_MASK_LOCK))
 #define LENGTH(X)               (sizeof(X)/sizeof(*X))
 #define MAX(X, Y)               ((X) > (Y) ? (X) : (Y))
+#define MIN(X, Y)               ((X) < (Y) ? (X) : (Y))
 #define WIDTH(C)                ((C)->w + 2 * BORDER_WIDTH)
 #define ISVISIBLE(C)            ((C)->ws == selws || (C)->isfixed)
 
@@ -33,8 +34,8 @@ typedef union {
 
 typedef struct {
 	const char *class;
-	const char *instance;
 	unsigned int workspace;
+	bool *fullscreen;
 	bool border;
 } Rule;
 
@@ -173,12 +174,10 @@ applyrules(Client *c) {
 	}
 	for (i = 0; i < LENGTH(rules); i++) {
 		r = &rules[i];
-		if ((r->class && strstr(ch.class_name, r->class))
-				|| (r->instance && strstr(ch.instance_name, r->instance)))
-		{
-			if (!r->border) {
+		if ((r->class && strstr(ch.class_name, r->class))) {
+			if (!r->border)
 				c->noborder = true;
-			}
+			/* if (r->fullscreen) */
 			// TODO
 			/* const Arg a = { .i = r->workspace }; */
 			/* sendtows(&a); */
@@ -270,10 +269,10 @@ configurerequest(xcb_generic_event_t *ev) {
 	if ((c = wintoclient(e->window))) {
 		if (e->value_mask & XCB_CONFIG_WINDOW_WIDTH)
 			if (!c->ismax && !c->ishormax)
-				v[i++] = c->w = e->width;
+				v[i++] = c->w = MIN(e->width, sw-2*BORDER_WIDTH);
 		if (e->value_mask & XCB_CONFIG_WINDOW_HEIGHT)
 			if (!c->ismax && !c->isvertmax)
-				v[i++] = c->h = e->height;
+				v[i++] = c->h = MIN(e->height, sh-2*BORDER_WIDTH);
 		if (e->value_mask & XCB_CONFIG_WINDOW_SIBLING)
 			v[i++] = e->sibling;
 		if (e->value_mask & XCB_CONFIG_WINDOW_STACK_MODE)
@@ -281,7 +280,7 @@ configurerequest(xcb_generic_event_t *ev) {
 		if (e->value_mask & XCB_CONFIG_WINDOW_BORDER_WIDTH)
 			v[i++] = e->border_width;
 		setborder(c, true);
-		if (!c->ismax)
+		if (!c->ismax && !c->isvertmax && !c->ishormax)
 			xcb_configure_window(conn, e->window, e->value_mask, v);
 	}
 	else {
@@ -1006,7 +1005,7 @@ setborder(Client *c, bool focus) {
 	int half = OUTER_BORDER_WIDTH;
 	values[0] = BORDER_WIDTH;
 	xcb_configure_window(conn, c->win, XCB_CONFIG_WINDOW_BORDER_WIDTH, values);
-	if (SINGLE_BORDER) {
+	if (! DOUBLE_BORDER) {
 		values[0] = focus ? focuscol : unfocuscol;
 		xcb_change_window_attributes(conn, c->win, XCB_CW_BORDER_PIXEL, values);
 		return;
