@@ -13,7 +13,7 @@
 #include <xcb/xcb_ewmh.h>
 #include <X11/keysym.h>
 
-#if 0
+#if 1
 # define DEBUG(...) \
 	do { fprintf(stderr, "tfwm: "); fprintf(stderr, __VA_ARGS__); } while(0)
 #else
@@ -168,10 +168,9 @@ applyrules(Client *c) {
 	const Rule *r;
 	xcb_icccm_get_wm_class_reply_t ch;
 
-	if (!xcb_icccm_get_wm_class_reply(conn, xcb_icccm_get_wm_class(conn, c->win), &ch, NULL)) {
-		xcb_icccm_get_wm_class_reply_wipe(&ch);
+	if (!xcb_icccm_get_wm_class_reply(conn, xcb_icccm_get_wm_class(conn, c->win), &ch, NULL))
 		return;
-	}
+
 	for (i = 0; i < LENGTH(rules); i++) {
 		r = &rules[i];
 		if ((r->class && strstr(ch.class_name, r->class))) {
