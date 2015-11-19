@@ -96,6 +96,7 @@ static void mappingnotify(xcb_generic_event_t *ev);
 static void maprequest(xcb_generic_event_t *ev);
 static void maximize(const Arg *arg);
 static void maximizeaxis(const Arg *arg);
+static void maximizeclient(Client *c, bool add);
 static void mousemotion(const Arg *arg);
 static void move(const Arg *arg);
 static void moveresize(Client *c, int w, int h, int x, int y);
@@ -123,7 +124,6 @@ static void testcookie(xcb_void_cookie_t cookie, char *errormsg);
 static void teleport(const Arg *arg);
 static void unmanage(Client *c);
 static void unmapnotify(xcb_generic_event_t *ev);
-static void unmaximize(Client *c);
 static void updatenumlockmask();
 static Client *wintoclient(xcb_window_t w);
 
@@ -242,18 +242,23 @@ clientmessage(xcb_generic_event_t *ev) {
 	xcb_client_message_event_t *e = (xcb_client_message_event_t*)ev;
 	Client *c;
 
-	if ((c = wintoclient(e->window))) {
-		if (e->type == netatom[NetWMState] &&
-				(unsigned)e->data.data32[1] == netatom[NetWMFullscreen]) {
-			/* data32[0]=1 -> maximize; data32[0]=0 -> minimize */
-			if ((e->data.data32[0] == 0  && c->ismax) ||
-				(e->data.data32[0] == 1 && !c->ismax)) {
-				DEBUG("Event: client message - maximizing: %X\n", e->window);
-				maximize(NULL);
-			}
+	DEBUG("Event: client message %u: %X\n", e->type, e->window);
+
+	if (!(c = wintoclient(e->window)))
+		return;
+
+	if (e->type == netatom[NetWMState]) {
+		if (e->data.data32[1] == netatom[NetWMFullscreen] ||
+				e->data.data32[2] == netatom[NetWMFullscreen]) {
+			if (e->data.data32[0] == XCB_EWMH_WM_STATE_ADD)
+				maximizeclient(c, true);
+			else if (e->data.data32[0] == XCB_EWMH_WM_STATE_REMOVE)
+				maximizeclient(c, false);
+			else if (e->data.data32[0] == XCB_EWMH_WM_STATE_TOGGLE)
+				maximizeclient(c, !c->ismax);
 		}
-		else if (e->type == netatom[NetActiveWindow])
-			focus(c);
+	} else if (e->type == netatom[NetActiveWindow]) {
+		focus(c);
 	}
 }
 
@@ -667,24 +672,7 @@ void
 maximize(const Arg *arg) {
 	if (!sel)
 		return;
-	if (sel->ismax) {
-		unmaximize(sel);
-		return;
-	}
-	savegeometry(sel);
-	sel->ismax = true;
-	sel->isvertmax = sel->ishormax = false;
-	sel->x = 0;
-	sel->y = 0;
-	sel->w = sw;
-	sel->h = sh;
-	moveresize(sel, sel->x, sel->y, sel->w, sel->h);
-	focus(NULL);
-	setborderwidth(sel, 0);
-
-	long data[] = { sel->ismax ? netatom[NetWMFullscreen] : XCB_ICCCM_WM_STATE_NORMAL };
-	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, sel->win,
-			netatom[NetWMState], XCB_ATOM_ATOM, 32, 1, data);
+	maximizeclient(sel, !sel->ismax);
 }
 
 void
@@ -692,7 +680,7 @@ maximizeaxis(const Arg *arg) {
 	if (!sel || sel->ismax)
 		return;
 	if (sel->isvertmax || sel->ishormax) {
-		unmaximize(sel);
+		maximizeclient(sel, false);
 		return;
 	}
 	savegeometry(sel);
@@ -723,6 +711,37 @@ maximizeaxis(const Arg *arg) {
 		sel->ishormax = true;
 	}
 	setborder(sel, true);
+}
+
+void
+maximizeclient(Client *c, bool add) {
+	if (!c)
+		return;
+	if (!add) {
+		c->x = c->isvertmax ? c->x : c->oldx;
+		c->y = c->ishormax ? c->y : c->oldy;
+		c->w = c->oldw;
+		c->h = c->oldh;
+		c->ismax = c->ishormax = c->isvertmax = 0;
+		moveresize(c, c->x, c->y, c->w, c->h);
+		setborderwidth(sel, BORDER_WIDTH);
+		setborder(sel, true);
+	}
+	else {
+		savegeometry(c);
+		c->ismax = true;
+		c->isvertmax = c->ishormax = false;
+		c->x = 0;
+		c->y = 0;
+		c->w = sw;
+		c->h = sh;
+		moveresize(c, c->x, c->y, c->w, c->h);
+		focus(NULL);
+		setborderwidth(c, 0);
+		long data[] = { c->ismax ? netatom[NetWMFullscreen] : XCB_ICCCM_WM_STATE_NORMAL };
+		xcb_change_property(conn, XCB_PROP_MODE_REPLACE, c->win,
+				netatom[NetWMState], XCB_ATOM_ATOM, 32, 1, data);
+	}
 }
 
 void
@@ -1251,20 +1270,6 @@ unmapnotify(xcb_generic_event_t *ev) {
 		return;
 	if ((c = wintoclient(e->window)))
 		unmanage(c);
-}
-
-void
-unmaximize(Client *c) {
-	if (!c)
-		return;
-	c->x = c->isvertmax ? c->x : c->oldx;
-	c->y = c->ishormax ? c->y : c->oldy;
-	c->w = c->oldw;
-	c->h = c->oldh;
-	c->ismax = c->ishormax = c->isvertmax = 0;
-	moveresize(c, c->x, c->y, c->w, c->h);
-	setborderwidth(sel, BORDER_WIDTH);
-	setborder(sel, true);
 }
 
 void
