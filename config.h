@@ -2,7 +2,7 @@
 #define MOD                           XCB_MOD_MASK_1
 #define SHIFT                         XCB_MOD_MASK_SHIFT
 #define CTRL                          XCB_MOD_MASK_CONTROL
-#define DOUBLE_BORDER                 true
+#define DOUBLE_BORDER                 false
 #define BORDER_WIDTH                  6
 #define OUTER_BORDER_WIDTH            4
 #define FOCUS_COLOR                   "tomato"
@@ -10,11 +10,11 @@
 #define UNFOCUS_COLOR                 "slate gray"
 #define MOVE_STEP                     30
 #define RESIZE_STEP                   30
+
 static const Rule rules[] = {
 	/* class           workspace       fullscreen       border */
 	{ "chromium",      1,              false,           false  },
-	{ "Firefox",       0,              false,           false  },
-	{ "emacs",         0,              true,            false  },
+	{ "firefox",       0,              false,           false  },
 };
 
 #define WORKSPACE(K,N) \
@@ -22,7 +22,7 @@ static const Rule rules[] = {
 	{ MOD | SHIFT,      K,           sendtows,               {.i=N} },
 
 static const char *terminal[] = { "urxvt", NULL };
-static const char *browser[] = { "firefox", NULL };
+static const char *browser[]  = { "firefox", NULL };
 
 static Key keys[] = {
 	/* modifier         key               function          argument */

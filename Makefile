@@ -1,65 +1,38 @@
-WMNAME   = tfwm
-VERSION  = 2015-11
-DIST     = $(WMNAME)-$(VERSION)
+WMNAME = tfwm
 
-CC      ?= gcc
-RM       = /bin/rm
-PREFIX  ?= /usr/local
-XCB_INC ?= /usr/include/xcb
+# the directory where the executable will be installed
+BINDIR ?= /usr/local/bin
 
-SRC      = $(WMNAME).c
-OBJ      = ${SRC:.c=.o}
-CFLAGS  += -std=c99 \
-           -Os \
-           -Wall \
-           -pedantic \
-           -I. \
-           -I$(XCB_INC)
+CC ?= gcc
+CFLAGS += -std=c99 -Wall -pedantic -I/usr/include
+LIBS = -lxcb-keysyms -lxcb-icccm -lxcb-ewmh -lxcb-shape -lxcb-image -lxcb-shm -lxcb-util -lxcb
 
-LDFLAGS += `pkg-config --libs \
-            xcb \
-            xcb-keysyms \
-            xcb-icccm \
-            xcb-ewmh`
+SRC = $(WMNAME).c
+OBJ = ${SRC:.c=.o}
 
-all: options $(WMNAME)
+all: CFLAGS += -Os
+all: $(WMNAME)
 
-options:
-	@echo $(WMNAME) build options:
-	@echo "CFLAGS   = $(CFLAGS)"
-	@echo "LDFLAGS  = $(LDFLAGS)"
-	@echo "CC       = $(CC)"
+debug: CFLAGS += -O0 -g -DDEBUG
+debug: $(WMNAME)
 
-$(OBJ): config.h
+$(OBJ): config.h util.c
 
 %.o: %.c
-	@echo CC $<
-	@$(CC) -c $(CFLAGS) -o $@ $<
+	$(CC) -c $(CFLAGS) -o $@ $<
 
 $(WMNAME): $(OBJ)
-	@echo CC -o $@
-	@$(CC) $(LDFLAGS) $(CFLAGS) -o $@ $@.c
-
-clean:
-	@echo cleaning
-	@$(RM) -f *.o $(WMNAME) *.tar.gz
+	$(CC) $(LIBS) $(CFLAGS) -o $@ $@.c
 
 install: all
-	@echo installing binary to $(PREFIX)/bin
-	@mkdir -p $(PREFIX)/bin
-	@cp -f $(WMNAME) $(PREFIX)/bin
-	@chmod 755 $(PREFIX)/bin/$(WMNAME)
+	mkdir -p $(BINDIR)
+	cp -f $(WMNAME) $(BINDIR)
+	chmod 755 $(BINDIR)/$(WMNAME)
 
 uninstall:
-	@echo removing binary from $(PREFIX)/bin
-	@$(RM) -f $(PREFIX)/bin/$(WMNAME)
+	rm -f $(BINDIR)/$(WMNAME)
 
-dist: clean
-	@echo creating dist tarball
-	@mkdir -p $(DIST)
-	@cp -R Makefile LICENSE README.md config.h $(SRC) $(DIST)
-	@tar -cf $(DIST).tar --exclude .git $(DIST)
-	@gzip $(DIST).tar
-	@$(RM) -rf $(DIST)
+clean:
+	rm -f *.o $(WMNAME)
 
-.PHONY: all clean options install uninstall dist
+.PHONY: all debug install uninstall clean

@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <unistd.h>
-#include <err.h>
 #include <signal.h>
 #include <string.h>
 #include <sys/wait.h>
@@ -11,21 +10,13 @@
 #include <xcb/xcb_keysyms.h>
 #include <xcb/xcb_icccm.h>
 #include <xcb/xcb_ewmh.h>
+#include <xcb/xcb_image.h>
+#include <xcb/shape.h>
+#include <xcb/xcb_event.h>
 #include <X11/keysym.h>
 
-#if 0
-# define DEBUG(...) \
-	do { fprintf(stderr, "tfwm: "); fprintf(stderr, __VA_ARGS__); } while(0)
-#else
-# define DEBUG(...)
-#endif
-
-#define CLEANMASK(mask)         (mask & ~(numlockmask|XCB_MOD_MASK_LOCK))
-#define LENGTH(X)               (sizeof(X)/sizeof(*X))
-#define MAX(X, Y)               ((X) > (Y) ? (X) : (Y))
-#define MIN(X, Y)               ((X) < (Y) ? (X) : (Y))
-#define WIDTH(C)                ((C)->w + 2 * BORDER_WIDTH)
-#define ISVISIBLE(C)            ((C)->ws == selws || (C)->isfixed)
+#include "util.h"
+#include "corner"
 
 typedef union {
 	const char **com;
@@ -82,7 +73,7 @@ static void enternotify(xcb_generic_event_t *ev);
 static void fitclient(Client *c);
 static void focus(struct Client *c);
 static void focusstack(const Arg *arg);
-static void getatoms(xcb_atom_t *atoms, char **names, int count);
+static void getatoms(xcb_atom_t *atoms, char **names, unsigned int count);
 static uint32_t getcolor(char *color);
 static void gethints(Client *c);
 static xcb_keycode_t *getkeycodes(xcb_keysym_t keysym);
@@ -103,9 +94,11 @@ static void moveresize(Client *c, int w, int h, int x, int y);
 static void movewin(xcb_window_t win, int x, int y);
 static void quit(const Arg *arg);
 static void raisewindow(xcb_drawable_t win);
+static void requesterror(xcb_generic_event_t *ev);
 static void resize(const Arg *arg);
 static void resizewin(xcb_window_t win, int w, int h);
 static void restart(const Arg *arg);
+static void roundcorners(Client *c);
 static void run(void);
 static void savegeometry(Client *c);
 static void selectrws(const Arg* arg);
@@ -139,13 +132,13 @@ enum { NetSupported, NetWMFullscreen, NetWMState, NetActiveWindow,
 	NetWMDesktop, NetCurrentDesktop, NetNumberOfDesktops, NetLast }; /* EWMH atoms */
 
 /* variables */
-static xcb_connection_t *conn;
-static xcb_screen_t *screen;
+static xcb_connection_t *conn = 0;
+static xcb_screen_t *screen = 0;
 static unsigned int sw, sh;
 static unsigned int selws = 0;
 static unsigned int prevws = 0;
 static unsigned int numlockmask = 0;
-static int scrno;
+static int scrno = 0;
 static Client *clients;
 static Client *sel;
 static Client *stack;
@@ -218,7 +211,7 @@ buttonpress(xcb_generic_event_t *ev) {
 void
 circulaterequest(xcb_generic_event_t *ev) {
 	xcb_circulate_request_event_t *e = (xcb_circulate_request_event_t *)ev;
-	DEBUG("Event: circulate request: %X\n", e->window);
+	PRINTF("Event: circulate request: %X\n", e->window);
 	xcb_circulate_window(conn, e->window, e->place);
 }
 
@@ -241,7 +234,7 @@ clientmessage(xcb_generic_event_t *ev) {
 	xcb_client_message_event_t *e = (xcb_client_message_event_t*)ev;
 	Client *c;
 
-	DEBUG("Event: client message %u: %X\n", e->type, e->window);
+	PRINTF("Event: client message %u: %X\n", e->type, e->window);
 
 	if (!(c = wintoclient(e->window)))
 		return;
@@ -268,7 +261,7 @@ configurerequest(xcb_generic_event_t *ev) {
 	unsigned int v[7];
 	int i = 0;
 
-	DEBUG("Event: configure request x %d y %d w %d h %d: %X\n",
+	PRINTF("Event: configure request x %d y %d w %d h %d: %X\n",
 			e->x, e->y, e->width, e->height, e->window);
 	if ((c = wintoclient(e->window))) {
 		if (e->value_mask & XCB_CONFIG_WINDOW_WIDTH)
@@ -310,7 +303,7 @@ destroynotify(xcb_generic_event_t *ev) {
 	Client *c;
 
 	if ((c = wintoclient(e->window))) {
-		DEBUG("Event: destroy notify: %X\n", e->window);
+		PRINTF("Event: destroy notify: %X\n", e->window);
 		unmanage(c);
 	}
 }
@@ -340,7 +333,7 @@ void
 enternotify(xcb_generic_event_t *ev) {
 	xcb_enter_notify_event_t *e = (xcb_enter_notify_event_t *)ev;
 	Client *c;
-	DEBUG("Event: enter notify: %d\n", e->event);
+	PRINTF("Event: enter notify: %d\n", e->event);
 	if (e->mode == XCB_NOTIFY_MODE_NORMAL || e->mode == XCB_NOTIFY_MODE_UNGRAB) {
 		if (sel != NULL && e->event == sel->win)
 			return;
@@ -425,7 +418,7 @@ focusstack(const Arg *arg) {
 }
 
 void
-getatoms(xcb_atom_t *atoms, char **names, int count) {
+getatoms(xcb_atom_t *atoms, char **names, unsigned int count) {
 	xcb_intern_atom_cookie_t cookies[count];
 	unsigned int i;
 
@@ -448,7 +441,7 @@ getcolor(char *color) {
 	if (color[0] == '#') {
 		unsigned int r, g, b;
 		if (sscanf(color + 1, "%02x%02x%02x", &r, &g, &b) != 3)
-			err(EXIT_FAILURE, "bad color: %s", color);
+			err("bad color: %s.", color);
 		/* convert from 8-bit to 16-bit */
 		r = r << 8 | r;
 		g = g << 8 | g;
@@ -456,7 +449,7 @@ getcolor(char *color) {
 		xcb_alloc_color_cookie_t cookie = xcb_alloc_color(conn, map, r, g, b);
 		xcb_alloc_color_reply_t *reply = xcb_alloc_color_reply(conn, cookie, NULL);
 		if (!reply)
-			err(EXIT_FAILURE, "can't alloc color.");
+			err("can't alloc color.");
 		pixel = reply->pixel;
 		free(reply);
 		return pixel;
@@ -464,7 +457,7 @@ getcolor(char *color) {
 	xcb_alloc_named_color_cookie_t cookie = xcb_alloc_named_color(conn, map, strlen(color), color);
 	xcb_alloc_named_color_reply_t *reply = xcb_alloc_named_color_reply(conn, cookie, NULL);
 	if (!reply)
-		err(EXIT_FAILURE, "can't alloc named color.");
+		err("can't alloc named color.");
 	pixel = reply->pixel;
 	free(reply);
 	return pixel;
@@ -483,16 +476,16 @@ gethints(Client *c) {
 	free(e);
 
 	// TODO
-	if (h.flags & XCB_ICCCM_SIZE_HINT_US_POSITION)
-		DEBUG("Hint: US_POSITION: x: %d y: %d\n", h.x, h.y);
-	if (h.flags & XCB_ICCCM_SIZE_HINT_US_SIZE)
-		DEBUG("Hint: US_SIZE: width %d height %d\n", h.width, h.height);
-	if (h.flags & XCB_ICCCM_SIZE_HINT_P_POSITION)
-		DEBUG("Hint: P_POSITION: x: %d y: %d\n", h.x, h.y);
-	if (h.flags & XCB_ICCCM_SIZE_HINT_P_SIZE)
-		DEBUG("Hint: P_SIZE: width %d height %d\n", h.width, h.height);
-	if (h.flags & XCB_ICCCM_SIZE_HINT_P_MAX_SIZE)
-		DEBUG("Hint: P_MAX_SIZE max_width %d max_height %d\n", h.max_width, h.max_width);
+	/* if (h.flags & XCB_ICCCM_SIZE_HINT_US_POSITION) */
+	/* 	PRINTF("Hint: US_POSITION: x: %d y: %d\n", h.x, h.y); */
+	/* if (h.flags & XCB_ICCCM_SIZE_HINT_US_SIZE) */
+	/* 	PRINTF("Hint: US_SIZE: width %d height %d\n", h.width, h.height); */
+	/* if (h.flags & XCB_ICCCM_SIZE_HINT_P_POSITION) */
+	/* 	PRINTF("Hint: P_POSITION: x: %d y: %d\n", h.x, h.y); */
+	/* if (h.flags & XCB_ICCCM_SIZE_HINT_P_SIZE) */
+	/* 	PRINTF("Hint: P_SIZE: width %d height %d\n", h.width, h.height); */
+	/* if (h.flags & XCB_ICCCM_SIZE_HINT_P_MAX_SIZE) */
+	/* 	PRINTF("Hint: P_MAX_SIZE max_width %d max_height %d\n", h.max_width, h.max_width); */
 
 	if (h.flags & XCB_ICCCM_SIZE_HINT_P_MIN_SIZE) {
 		if (h.min_width > 0 && h.min_width < sw)
@@ -525,7 +518,7 @@ xcb_keycode_t *
 getkeycodes(xcb_keysym_t keysym) {
 	xcb_key_symbols_t *keysyms;
 	if (!(keysyms = xcb_key_symbols_alloc(conn)))
-		err(EXIT_FAILURE, "can't get keycode.");
+		err("can't get keycode.");
 	xcb_keycode_t *keycode = xcb_key_symbols_get_keycode(keysyms, keysym);
 	xcb_key_symbols_free(keysyms);
 	return keycode;
@@ -535,7 +528,7 @@ xcb_keysym_t
 getkeysym(xcb_keycode_t keycode) {
 	xcb_key_symbols_t *keysyms;
 	if (!(keysyms = xcb_key_symbols_alloc(conn)))
-		err(EXIT_FAILURE, "can't get keysym.");
+		err("can't get keysym.");
 	xcb_keysym_t keysym = xcb_key_symbols_get_keysym(keysyms, keycode, 0);
 	xcb_key_symbols_free(keysyms);
 	return keysym;
@@ -568,6 +561,7 @@ grabkeys() {
 			for (k = 0; k < LENGTH(modifiers); k++)
 				xcb_grab_key(conn, 1, screen->root, keys[i].mod | modifiers[k],
 						keycode[j], XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
+		free(keycode);
 	}
 }
 
@@ -575,7 +569,7 @@ void
 keypress(xcb_generic_event_t *ev) {
 	xcb_key_press_event_t *e = (xcb_key_press_event_t *)ev;
 	xcb_keysym_t keysym = getkeysym(e->detail);
-	for (int i=0; i < LENGTH(keys); i++) {
+	for (unsigned int i = 0; i < LENGTH(keys); i++) {
 		if (keysym == keys[i].keysym &&
 				CLEANMASK(keys[i].mod) == CLEANMASK(e->state) &&
 				keys[i].func) {
@@ -587,6 +581,7 @@ keypress(xcb_generic_event_t *ev) {
 
 void
 killselected(const Arg *arg) {
+	(void)arg;
 	if (!sel)
 		return;
 	if (!sendevent(sel, wmatom[WMDeleteWindow]))
@@ -597,13 +592,13 @@ void
 manage(xcb_window_t w) {
 	Client *c = NULL;
 	if (!(c = malloc(sizeof(Client))))
-		err(EXIT_FAILURE, "can't allocate memory");
+		err("can't allocate memory.");
 	c->win = w;
 	/* geometry */
 	xcb_get_geometry_reply_t *geom;
 	geom = xcb_get_geometry_reply(conn, xcb_get_geometry(conn, w), NULL);
 	if (!geom)
-		err(EXIT_FAILURE, "geometry reply failed");
+		err("geometry reply failed.");
 	c->x = c->oldx = geom->x;
 	c->y = c->oldy = geom->y;
 	c->w = c->oldw = geom->width;
@@ -618,7 +613,7 @@ manage(xcb_window_t w) {
 	sel = c;
 	applyrules(c);
 	fitclient(c);
-	/* center(c); */
+	/* roundcorners(c); */
 	if (c->ws == selws)
 		xcb_map_window(conn, w);
 	/* set its workspace hint */
@@ -649,7 +644,7 @@ manage(xcb_window_t w) {
 void
 mappingnotify(xcb_generic_event_t *ev) {
 	xcb_mapping_notify_event_t *e = (xcb_mapping_notify_event_t *)ev;
-	DEBUG("Event: mapping notify\n");
+	PRINTF("Event: mapping notify\n");
 	if (e->request != XCB_MAPPING_MODIFIER && e->request != XCB_MAPPING_KEYBOARD)
 		return;
 	xcb_ungrab_key(conn, XCB_GRAB_ANY, screen->root, XCB_MOD_MASK_ANY);
@@ -659,7 +654,7 @@ mappingnotify(xcb_generic_event_t *ev) {
 void
 maprequest(xcb_generic_event_t *ev) {
 	xcb_map_request_event_t *e = (xcb_map_request_event_t *)ev;
-	DEBUG("Event: map request: %X\n", e->window);
+	PRINTF("Event: map request: %X\n", e->window);
 	if (sel && sel->win != e->window)
 		setborder(sel, false);
 	if (!wintoclient(e->window))
@@ -668,6 +663,7 @@ maprequest(xcb_generic_event_t *ev) {
 
 void
 maximize(const Arg *arg) {
+	(void)arg;
 	if (!sel)
 		return;
 	maximizeclient(sel, !sel->ismax);
@@ -754,7 +750,7 @@ mousemotion(const Arg *arg) {
 	xcb_font_t font = xcb_generate_id(conn);
 	xcb_void_cookie_t fontcookie =
 		xcb_open_font_checked(conn, font, strlen("cursor"), "cursor");
-	testcookie(fontcookie, "can't open font");
+	testcookie(fontcookie, "can't open font.");
 	xcb_cursor_t cursor = xcb_generate_id(conn);
 	int cursorid;
 	if (arg->i == MouseMove)
@@ -826,7 +822,7 @@ mousemotion(const Arg *arg) {
 	free(ev);
 	free(pointer);
 	fontcookie = xcb_close_font_checked(conn, font);
-	testcookie(fontcookie, "can't close font");
+	testcookie(fontcookie, "can't close font.");
 	xcb_free_cursor(conn, cursor);
 	xcb_ungrab_pointer(conn, XCB_CURRENT_TIME);
 }
@@ -864,6 +860,7 @@ movewin(xcb_window_t win, int x, int y) {
 
 void
 quit(const Arg *arg) {
+	(void)arg;
 	cleanup();
 	exit(sigcode);
 }
@@ -874,6 +871,15 @@ raisewindow(xcb_drawable_t win) {
 	if (screen->root == win || !win)
 		return;
 	xcb_configure_window(conn, win, XCB_CONFIG_WINDOW_STACK_MODE, values);
+}
+
+void
+requesterror(xcb_generic_event_t *ev) {
+	xcb_request_error_t *e = (xcb_request_error_t *)ev;
+	fprintf(stderr, "Event: failed request: %s, %s: %d\n",
+			xcb_event_get_request_label(e->major_opcode),
+			xcb_event_get_error_label(e->error_code),
+			e->bad_value);
 }
 
 void
@@ -920,8 +926,31 @@ resizewin(xcb_window_t win, int w, int h) {
 
 void
 restart(const Arg *arg) {
+	(void) arg;
 	dorestart = true;
 	sigcode = 1;
+}
+
+void
+roundcorners(Client *c) {
+	xcb_pixmap_t pmap = xcb_create_pixmap_from_bitmap_data(conn,
+			screen->root,
+			corner_bits,
+			corner_width, corner_height,
+			1, // depth
+			0, // fg
+			1, // bg
+			NULL); // gc
+	if (pmap == XCB_NONE)
+		err("xcb_create_pixmap_from_bitmap_data() failed.");
+
+	xcb_shape_mask(conn,
+			XCB_SHAPE_SO_SUBTRACT,
+			XCB_SHAPE_SK_BOUNDING,
+			c->win,
+			0, 0,
+			pmap);
+	xcb_free_pixmap(conn, pmap);
 }
 
 void
@@ -985,7 +1014,7 @@ sendevent(Client *c, xcb_atom_t proto) {
 	bool exists = false;
 	cookie = xcb_icccm_get_wm_protocols(conn, c->win, wmatom[WMProtocols]);
 	if (xcb_icccm_get_wm_protocols_reply(conn, cookie, &reply, NULL) == 1) {
-		for (int i = 0; i < reply.atoms_len && !exists; i++)
+		for (unsigned int i = 0; i < reply.atoms_len && !exists; i++)
 			if (reply.atoms[i] == proto)
 				exists = true;
 		xcb_icccm_get_wm_protocols_reply_wipe(&reply);
@@ -1078,7 +1107,7 @@ setup() {
 	/* init screen */
 	screen = xcb_setup_roots_iterator(xcb_get_setup(conn)).data;
 	if (!screen)
-		err(EXIT_FAILURE, "can't find screen.");
+		err("can't find screen.");
 	sw = screen->width_in_pixels;
 	sh = screen->height_in_pixels;
 	/* subscribe to handler */
@@ -1092,13 +1121,24 @@ setup() {
 			XCB_CW_EVENT_MASK, value);
 	testcookie(cookie, "another window manager is running.");
 	xcb_flush(conn);
+	/* check shape extension */
+	xcb_query_extension_reply_t const* ereply = xcb_get_extension_data(conn, &xcb_shape_id);
+	if (!ereply)
+		err("can't get shape extension data.");
+	if (!ereply->present)
+		fprintf(stderr, "SHAPE extension isn't available");
+	xcb_shape_query_version_cookie_t vcookie = xcb_shape_query_version_unchecked(conn);
+	xcb_shape_query_version_reply_t* vreply = xcb_shape_query_version_reply(conn, vcookie, 0);
+	if (!vreply)
+		err("can't get shape extension version.");
+	free(vreply);
 	/* init atoms */
 	getatoms(wmatom, wmatomnames, WMLast);
 	getatoms(netatom, netatomnames, NetLast);
 	/* init ewmh */
 	ewmh = malloc(sizeof(xcb_ewmh_connection_t));
 	if (xcb_ewmh_init_atoms_replies(ewmh, xcb_ewmh_init_atoms(conn, ewmh), NULL) == 0)
-		err(EXIT_FAILURE, "can't initialize ewmh.");
+		err("can't initialize ewmh.");
 	xcb_drawable_t root = screen->root;
 	uint32_t mask = XCB_CW_EVENT_MASK;
 	uint32_t values[] = { XCB_EVENT_MASK_POINTER_MOTION };
@@ -1140,6 +1180,7 @@ setup() {
 	unfocuscol = getcolor(UNFOCUS_COLOR);
 	outercol = getcolor(OUTER_COLOR);
 	/* set handlers */
+	handler[0]                     = requesterror;
 	handler[XCB_CONFIGURE_REQUEST] = configurerequest;
 	handler[XCB_DESTROY_NOTIFY]    = destroynotify;
 	handler[XCB_UNMAP_NOTIFY]      = unmapnotify;
@@ -1175,24 +1216,26 @@ sigcatch(int sig) {
 void
 sigchld() {
 	if (signal(SIGCHLD, sigchld) == SIG_ERR)
-		err(EXIT_FAILURE, "can't install SIGCHLD handler");
+		err("can't install SIGCHLD handler.");
 	while (0 < waitpid(-1, NULL, WNOHANG));
 }
 
 void
 spawn(const Arg *arg) {
+	(void)arg;
 	if (fork() == 0) {
 		if (conn)
 			close(screen->root);
 		setsid();
 		execvp((char*)arg->com[0], (char**)arg->com);
-		err(EXIT_FAILURE, "execvp %s", ((char **)arg->com)[0]);
+		err("execvp %s", ((char **)arg->com)[0]);
 	}
 }
 
 // TODO
 void
 sticky(const Arg *arg) {
+	(void)arg;
 	if (!sel)
 		return;
 	if (sel->isfixed) {
@@ -1261,7 +1304,7 @@ unmanage(Client *c) {
 void
 unmapnotify(xcb_generic_event_t *ev) {
 	xcb_unmap_notify_event_t *e = (xcb_unmap_notify_event_t *)ev;
-	DEBUG("Event: unmap notify: %X\n", e->window);
+	PRINTF("Event: unmap notify: %X\n", e->window);
 	Client *c;
 	if (e->window == screen->root)
 		return;
@@ -1278,10 +1321,10 @@ updatenumlockmask() {
 
 	reply = xcb_get_modifier_mapping_reply(conn, xcb_get_modifier_mapping_unchecked(conn), NULL);
 	if (!reply)
-		err(EXIT_FAILURE, "mod map reply");
+		err("mod map reply");
 	modmap = xcb_get_modifier_mapping_keycodes(reply);
 	if (!modmap)
-		err(EXIT_FAILURE, "mod map keycodes");
+		err("mod map keycodes");
 
 	xcb_keycode_t *numlock = getkeycodes(XK_Num_Lock);
 	for (i = 0; i < 8; i++) {
@@ -1314,7 +1357,7 @@ int
 main(int argc, char **argv) {
 	conn = xcb_connect(NULL, &scrno);
 	if (xcb_connection_has_error(conn))
-		err(EXIT_FAILURE, "xcb_connect error");
+		err("xcb_connect error");
 	setup();
 	run();
 	cleanup();
