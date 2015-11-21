@@ -2,9 +2,9 @@
 #define MOD                           XCB_MOD_MASK_1
 #define SHIFT                         XCB_MOD_MASK_SHIFT
 #define CTRL                          XCB_MOD_MASK_CONTROL
-#define DOUBLE_BORDER                 false
-#define BORDER_WIDTH                  5
-#define OUTER_BORDER_WIDTH            3
+#define DOUBLE_BORDER                 true
+#define BORDER_WIDTH                  6
+#define OUTER_BORDER_WIDTH            4
 #define FOCUS_COLOR                   "tomato"
 #define OUTER_COLOR                   "black"
 #define UNFOCUS_COLOR                 "slate gray"
@@ -49,7 +49,7 @@ static Key keys[] = {
 	{ MOD,              XK_m,             maximizeaxis,     {.i=MaxVertical}   },
 	{ MOD,              XK_n,             maximizeaxis,     {.i=MaxHorizontal} },
 	{ MOD | CTRL,       XK_s,             sticky,           {.i=NULL}          },
-	{ MOD,              XK_q,             killclient,       {.i=NULL}          },
+	{ MOD,              XK_q,             killselected,     {.i=NULL}          },
 	{ MOD,              XK_grave,         selectrws,        {.i=LastWorkspace} },
 	{ MOD,              XK_bracketleft,   selectrws,        {.i=PrevWorkspace} },
 	{ MOD,              XK_bracketright,  selectrws,        {.i=NextWorkspace} },

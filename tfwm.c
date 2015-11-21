@@ -13,7 +13,7 @@
 #include <xcb/xcb_ewmh.h>
 #include <X11/keysym.h>
 
-#if 1
+#if 0
 # define DEBUG(...) \
 	do { fprintf(stderr, "tfwm: "); fprintf(stderr, __VA_ARGS__); } while(0)
 #else
@@ -90,7 +90,7 @@ static xcb_keysym_t getkeysym(xcb_keycode_t keycode);
 static void grabbuttons(Client *c);
 static void grabkeys();
 static void keypress(xcb_generic_event_t *ev);
-static void killclient(const Arg *arg);
+static void killselected(const Arg *arg);
 static void manage(xcb_window_t w);
 static void mappingnotify(xcb_generic_event_t *ev);
 static void maprequest(xcb_generic_event_t *ev);
@@ -586,12 +586,11 @@ keypress(xcb_generic_event_t *ev) {
 }
 
 void
-killclient(const Arg *arg) {
+killselected(const Arg *arg) {
 	if (!sel)
 		return;
-	if (!sendevent(sel, wmatom[WMDeleteWindow])) {
+	if (!sendevent(sel, wmatom[WMDeleteWindow]))
 		xcb_kill_client(conn, sel->win);
-	}
 }
 
 void
@@ -1252,8 +1251,7 @@ teleport(const Arg *arg) {
 
 void
 unmanage(Client *c) {
-	if (!sendevent(c, wmatom[WMDeleteWindow]))
-		xcb_kill_client(conn, c->win);
+	sendevent(c, wmatom[WMDeleteWindow]);
 	detach(c);
 	detachstack(c);
 	free(c);
