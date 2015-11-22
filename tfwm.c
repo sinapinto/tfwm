@@ -142,7 +142,7 @@ static int scrno = 0;
 static Client *clients;
 static Client *sel;
 static Client *stack;
-static int sigcode;
+static int sigcode = 0;
 static void (*handler[XCB_NO_OPERATION])(xcb_generic_event_t *ev);
 static xcb_ewmh_connection_t *ewmh;
 static xcb_atom_t wmatom[WMLast];
@@ -613,7 +613,7 @@ manage(xcb_window_t w) {
 	sel = c;
 	applyrules(c);
 	fitclient(c);
-	/* roundcorners(c); */
+	if (0) roundcorners(c);
 	if (c->ws == selws)
 		xcb_map_window(conn, w);
 	/* set its workspace hint */
@@ -876,7 +876,7 @@ raisewindow(xcb_drawable_t win) {
 void
 requesterror(xcb_generic_event_t *ev) {
 	xcb_request_error_t *e = (xcb_request_error_t *)ev;
-	fprintf(stderr, "Event: failed request: %s, %s: %d\n",
+	warn("Event: failed request: %s, %s: %d\n",
 			xcb_event_get_request_label(e->major_opcode),
 			xcb_event_get_error_label(e->error_code),
 			e->bad_value);
@@ -956,7 +956,6 @@ roundcorners(Client *c) {
 void
 run(void) {
 	xcb_generic_event_t *ev;
-	sigcode = 0;
 	while (sigcode == 0) {
 		xcb_flush(conn);
 		ev = xcb_wait_for_event(conn);
@@ -1126,7 +1125,7 @@ setup() {
 	if (!ereply)
 		err("can't get shape extension data.");
 	if (!ereply->present)
-		fprintf(stderr, "SHAPE extension isn't available");
+		warn("SHAPE extension isn't available");
 	xcb_shape_query_version_cookie_t vcookie = xcb_shape_query_version_unchecked(conn);
 	xcb_shape_query_version_reply_t* vreply = xcb_shape_query_version_reply(conn, vcookie, 0);
 	if (!vreply)
@@ -1254,7 +1253,7 @@ void
 testcookie(xcb_void_cookie_t cookie, char *errormsg) {
 	xcb_generic_error_t *error = xcb_request_check(conn, cookie);
 	if (error) {
-		fprintf(stderr, "%s : %d\n", errormsg, error->error_code);
+		warn("%s : %d\n", errormsg, error->error_code);
 		free(error);
 		xcb_disconnect(conn);
 		exit(EXIT_FAILURE);
@@ -1355,6 +1354,11 @@ wintoclient(xcb_window_t w) {
 
 int
 main(int argc, char **argv) {
+	if ((argc == 2) && !strcmp("-v", argv[1]))
+		err("tfwm-%s\n", VERSION);
+	else if (argc != 1)
+		err("usage: tfwm [-v]\n");
+
 	conn = xcb_connect(NULL, &scrno);
 	if (xcb_connection_has_error(conn))
 		err("xcb_connect error");

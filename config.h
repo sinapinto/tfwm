@@ -22,7 +22,7 @@ static const Rule rules[] = {
 	{ MOD | SHIFT,      K,           sendtows,               {.i=N} },
 
 static const char *terminal[] = { "urxvt", NULL };
-static const char *browser[]  = { "firefox", NULL };
+static const char *browser[]  = { "chromium", NULL };
 
 static Key keys[] = {
 	/* modifier         key               function          argument */

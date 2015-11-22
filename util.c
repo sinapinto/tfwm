@@ -14,7 +14,7 @@ warn(const char *fmt, ...) {
 }
 
  __attribute__ ((noreturn))
-void err(const char *fmt, ...){
+void err(const char *fmt, ...) {
 	va_list ap;
 	va_start(ap, fmt);
 	vfprintf(stderr, fmt, ap);
