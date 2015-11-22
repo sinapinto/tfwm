@@ -250,6 +250,7 @@ clientmessage(xcb_generic_event_t *ev) {
 				maximizeclient(c, !c->ismax);
 		}
 	} else if (e->type == netatom[NetActiveWindow]) {
+		setborder(sel, false);
 		focus(c);
 	}
 }
