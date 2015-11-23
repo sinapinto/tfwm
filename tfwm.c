@@ -428,8 +428,12 @@ getatoms(xcb_atom_t *atoms, char **names, unsigned int count) {
 	for (i = 0; i < count; ++i) {
 		xcb_intern_atom_reply_t *reply = xcb_intern_atom_reply(conn, cookies[i], NULL);
 		if (reply) {
+			PRINTF("%s: %d\n", names[i], reply->atom);
 			atoms[i] = reply->atom;
 			free(reply);
+		} else {
+			atoms[i] = XCB_NONE;
+			warn("couldn't register an atom.\n");
 		}
 	}
 }
