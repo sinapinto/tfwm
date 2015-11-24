@@ -1,6 +1,6 @@
 include config.mk
 
-SRC = tfwm.c util.c
+SRC = tfwm.c util.c shape.c
 OBJ = ${SRC:.c=.o}
 
 all: CFLAGS += -Os
@@ -8,6 +8,9 @@ all: tfwm
 
 debug: CFLAGS += -O0 -g -DDEBUG
 debug: tfwm
+
+tfwm.o: tfwm.c tfwm.h types.h util.h
+shape.o: shape.c types.h util.h tfwm.h
 
 $(OBJ): config.h config.mk
 

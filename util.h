@@ -1,4 +1,7 @@
 /* See LICENSE file for copyright and license details. */
+#ifndef UTIL_H
+#define UTIL_H
+
 #ifdef DEBUG
 # define PRINTF(...)    do { printf(__VA_ARGS__); } while(0)
 #else
@@ -14,3 +17,6 @@
 
 void warn(const char *fmt, ...);
 void err(const char *fmt, ...);
+
+#endif
+

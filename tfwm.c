@@ -10,54 +10,12 @@
 #include <xcb/xcb_keysyms.h>
 #include <xcb/xcb_icccm.h>
 #include <xcb/xcb_ewmh.h>
-#include <xcb/xcb_image.h>
-#include <xcb/shape.h>
 #include <xcb/xcb_event.h>
 #include <X11/keysym.h>
+#include "types.h"
+#include "shape.h"
+#include "tfwm.h"
 
-#include "util.h"
-#include "corner"
-
-typedef union {
-	const char **com;
-	const int i;
-} Arg;
-
-typedef struct {
-	const char *class;
-	unsigned int workspace;
-	bool *fullscreen;
-	bool border;
-} Rule;
-
-typedef struct Key {
-	unsigned int mod;
-	xcb_keysym_t keysym;
-	void (*func)(const Arg *);
-	const Arg arg;
-} Key;
-
-typedef struct {
-	unsigned int mask;
-	unsigned int button;
-	void (*func)(const Arg *);
-	const Arg arg;
-} Button;
-
-typedef struct Client Client;
-struct Client{
-	int16_t x, y, oldx, oldy;
-	uint16_t w, h, oldw, oldh;
-	int32_t basew, baseh, minw, minh, incw, inch;
-	bool ismax, isvertmax, ishormax;
-	bool isfixed, noborder;
-	Client *next;
-	Client *snext;
-	xcb_window_t win;
-	unsigned int ws;
-};
-
-/* function declarations */
 static void applyrules(Client *c);
 static void attach(Client *c);
 static void attachstack(Client *c);
@@ -73,7 +31,7 @@ static void enternotify(xcb_generic_event_t *ev);
 static void fitclient(Client *c);
 static void focus(struct Client *c);
 static void focusstack(const Arg *arg);
-static void getatoms(xcb_atom_t *atoms, char **names, unsigned int count);
+static void getatom(xcb_atom_t *atom, char *name);
 static uint32_t getcolor(char *color);
 static void gethints(Client *c);
 static xcb_keycode_t *getkeycodes(xcb_keysym_t keysym);
@@ -98,7 +56,6 @@ static void requesterror(xcb_generic_event_t *ev);
 static void resize(const Arg *arg);
 static void resizewin(xcb_window_t win, int w, int h);
 static void restart(const Arg *arg);
-static void roundcorners(Client *c);
 static void run(void);
 static void savegeometry(Client *c);
 static void selectrws(const Arg* arg);
@@ -113,45 +70,12 @@ static void sigcatch(int sig);
 static void sigchld();
 static void spawn(const Arg *arg);
 static void sticky(const Arg *arg);
-static void testcookie(xcb_void_cookie_t cookie, char *errormsg);
 static void teleport(const Arg *arg);
+static void testcookie(xcb_void_cookie_t cookie, char *errormsg);
 static void unmanage(Client *c);
 static void unmapnotify(xcb_generic_event_t *ev);
 static void updatenumlockmask();
 static Client *wintoclient(xcb_window_t w);
-
-/* enums */
-enum { MoveDown, MoveRight, MoveUp, MoveLeft };
-enum { GrowHeight, GrowWidth, ShrinkHeight, ShrinkWidth, GrowBoth, ShrinkBoth };
-enum { ToCenter, ToTop, ToLeft, ToBottom, ToRight };
-enum { MouseMove, MouseResize };
-enum { MaxVertical, MaxHorizontal };
-enum { LastWorkspace, PrevWorkspace, NextWorkspace };
-enum { WMProtocols, WMDeleteWindow, WMState, WMLast }; /* default atoms */
-enum { NetSupported, NetWMFullscreen, NetWMState, NetActiveWindow,
-	NetWMDesktop, NetCurrentDesktop, NetNumberOfDesktops, NetLast }; /* EWMH atoms */
-
-/* variables */
-static xcb_connection_t *conn = 0;
-static xcb_screen_t *screen = 0;
-static unsigned int sw, sh;
-static unsigned int selws = 0;
-static unsigned int prevws = 0;
-static unsigned int numlockmask = 0;
-static int scrno = 0;
-static Client *clients;
-static Client *sel;
-static Client *stack;
-static int sigcode = 0;
-static void (*handler[XCB_NO_OPERATION])(xcb_generic_event_t *ev);
-static xcb_ewmh_connection_t *ewmh;
-static xcb_atom_t wmatom[WMLast];
-static xcb_atom_t netatom[NetLast];
-static char *wmatomnames[] = { "WM_PROTOCOLS", "WM_DELETE_WINDOW", "WM_STATE" };
-static char *netatomnames[] = { "_NET_SUPPORTED", "_NET_WM_STATE_FULLSCREEN", "_NET_WM_STATE",
-	"_NET_ACTIVE_WINDOW", "_NET_WM_DESKTOP", "_NET_CURRENT_DESKTOP", "_NET_NUMBER_OF_DESKTOPS" };
-static uint32_t focuscol, unfocuscol, outercol;
-static bool dorestart = false;
 
 #include "config.h"
 
@@ -239,9 +163,9 @@ clientmessage(xcb_generic_event_t *ev) {
 	if (!(c = wintoclient(e->window)))
 		return;
 
-	if (e->type == netatom[NetWMState]) {
-		if (e->data.data32[1] == netatom[NetWMFullscreen] ||
-				e->data.data32[2] == netatom[NetWMFullscreen]) {
+	if (e->type == ewmh->_NET_WM_STATE) {
+		if (e->data.data32[1] == ewmh->_NET_WM_STATE_FULLSCREEN ||
+				e->data.data32[2] == ewmh->_NET_WM_STATE_FULLSCREEN) {
 			if (e->data.data32[0] == XCB_EWMH_WM_STATE_ADD)
 				maximizeclient(c, true);
 			else if (e->data.data32[0] == XCB_EWMH_WM_STATE_REMOVE)
@@ -249,9 +173,11 @@ clientmessage(xcb_generic_event_t *ev) {
 			else if (e->data.data32[0] == XCB_EWMH_WM_STATE_TOGGLE)
 				maximizeclient(c, !c->ismax);
 		}
-	} else if (e->type == netatom[NetActiveWindow]) {
+	} else if (e->type == ewmh->_NET_ACTIVE_WINDOW) {
 		setborder(sel, false);
 		focus(c);
+	} else if (e->type == ewmh->_NET_CLOSE_WINDOW) {
+		unmanage(c);
 	}
 }
 
@@ -262,8 +188,8 @@ configurerequest(xcb_generic_event_t *ev) {
 	unsigned int v[7];
 	int i = 0;
 
-	PRINTF("Event: configure request x %d y %d w %d h %d: %X\n",
-			e->x, e->y, e->width, e->height, e->window);
+	PRINTF("Event: configure request x %d y %d w %d h %d bw %d: %X\n",
+			e->x, e->y, e->width, e->height, e->border_width, e->window);
 	if ((c = wintoclient(e->window))) {
 		if (e->value_mask & XCB_CONFIG_WINDOW_WIDTH)
 			if (!c->ismax && !c->ishormax)
@@ -294,6 +220,8 @@ configurerequest(xcb_generic_event_t *ev) {
 			v[i++] = e->sibling;
 		if (e->value_mask & XCB_CONFIG_WINDOW_STACK_MODE)
 			v[i++] = e->stack_mode;
+		if (e->value_mask & XCB_CONFIG_WINDOW_BORDER_WIDTH)
+			v[i++] = e->border_width;
 		xcb_configure_window(conn, e->window, e->value_mask, v);
 	}
 }
@@ -375,16 +303,13 @@ focus(Client *c) {
 		attachstack(c);
 		grabbuttons(c);
 		setborder(c, true);
-		long data[] = { XCB_ICCCM_WM_STATE_NORMAL, XCB_NONE };
-		xcb_change_property(conn, XCB_PROP_MODE_REPLACE, c->win,
-				wmatom[WMState], wmatom[WMState], 32, 2, data);
 		xcb_set_input_focus(conn, XCB_INPUT_FOCUS_POINTER_ROOT,
 				c->win, XCB_CURRENT_TIME);
 		xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root,
-				netatom[NetActiveWindow] , XCB_ATOM_WINDOW, 32, 1,&c->win);
+				ewmh->_NET_ACTIVE_WINDOW, XCB_ATOM_WINDOW, 32, 1,&c->win);
 	}
 	else {
-		xcb_delete_property(conn, screen->root, netatom[NetActiveWindow]);
+		xcb_delete_property(conn, screen->root, ewmh->_NET_ACTIVE_WINDOW);
 		xcb_set_input_focus(conn, XCB_NONE,
 				XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
 	}
@@ -398,12 +323,12 @@ focusstack(const Arg *arg) {
 	if (!sel)
 		return;
 	setborder(sel, false);
-	if (arg->i > 0) {
+	if (arg->i == NextWindow) {
 		for (c = sel->next; c && !ISVISIBLE(c); c = c->next);
 		if (!c)
 			for (c = clients; c && !ISVISIBLE(c); c = c->next);
 	}
-	else {
+	else if (arg->i == PrevWindow) {
 		for (i = clients; i != sel; i = i->next)
 			if (ISVISIBLE(i))
 				c = i;
@@ -419,23 +344,14 @@ focusstack(const Arg *arg) {
 }
 
 void
-getatoms(xcb_atom_t *atoms, char **names, unsigned int count) {
-	xcb_intern_atom_cookie_t cookies[count];
-	unsigned int i;
+getatom(xcb_atom_t *atom, char *name) {
+	xcb_intern_atom_reply_t *reply = xcb_intern_atom_reply(conn, xcb_intern_atom(conn, 0, strlen(name), name), NULL);
 
-	for (i = 0; i < count; ++i)
-		cookies[i] = xcb_intern_atom(conn, 0, strlen(names[i]), names[i]);
-	for (i = 0; i < count; ++i) {
-		xcb_intern_atom_reply_t *reply = xcb_intern_atom_reply(conn, cookies[i], NULL);
-		if (reply) {
-			PRINTF("%s: %d\n", names[i], reply->atom);
-			atoms[i] = reply->atom;
-			free(reply);
-		} else {
-			atoms[i] = XCB_NONE;
-			warn("couldn't register an atom.\n");
-		}
-	}
+	if (reply) {
+		*atom = reply->atom;
+		free(reply);
+	} else
+		*atom = XCB_NONE;
 }
 
 uint32_t
@@ -589,7 +505,7 @@ killselected(const Arg *arg) {
 	(void)arg;
 	if (!sel)
 		return;
-	if (!sendevent(sel, wmatom[WMDeleteWindow]))
+	if (!sendevent(sel, WM_DELETE_WINDOW))
 		xcb_kill_client(conn, sel->win);
 }
 
@@ -618,26 +534,25 @@ manage(xcb_window_t w) {
 	sel = c;
 	applyrules(c);
 	fitclient(c);
-	if (0) roundcorners(c);
 	if (c->ws == selws)
 		xcb_map_window(conn, w);
 	/* set its workspace hint */
-	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, c->win, netatom[NetWMDesktop],
+	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, c->win, ewmh->_NET_WM_DESKTOP,
 			XCB_ATOM_CARDINAL, 32, 1, &selws);
 	/* set normal state */
 	long data[] = { XCB_ICCCM_WM_STATE_NORMAL, XCB_NONE };
-	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, w, netatom[NetWMState],
-			netatom[NetWMState], 32, 2, data);
+	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, w, ewmh->_NET_WM_STATE,
+			ewmh->_NET_WM_STATE, 32, 2, data);
 
 	xcb_get_property_reply_t *reply;
 	xcb_get_property_cookie_t cookie;
-	cookie = xcb_get_property(conn, 0, w, netatom[NetWMState], XCB_ATOM_ATOM, 0, 1);
+	cookie = xcb_get_property(conn, 0, w, ewmh->_NET_WM_STATE, XCB_ATOM_ATOM, 0, 1);
 
 	if ((reply = xcb_get_property_reply(conn, cookie, NULL))) {
 		if (xcb_get_property_value_length(reply) != 0) {
 			if (reply->format == 32) {
 				xcb_atom_t *v = xcb_get_property_value(reply);
-				if (v[0] == netatom[NetWMFullscreen])
+				if (v[0] == ewmh->_NET_WM_STATE_FULLSCREEN)
 					maximize(NULL);
 			}
 		}
@@ -737,9 +652,9 @@ maximizeclient(Client *c, bool add) {
 		moveresize(c, c->x, c->y, c->w, c->h);
 		focus(NULL);
 		setborderwidth(c, 0);
-		long data[] = { c->ismax ? netatom[NetWMFullscreen] : XCB_ICCCM_WM_STATE_NORMAL };
+		long data[] = { c->ismax ? ewmh->_NET_WM_STATE_FULLSCREEN : XCB_ICCCM_WM_STATE_NORMAL };
 		xcb_change_property(conn, XCB_PROP_MODE_REPLACE, c->win,
-				netatom[NetWMState], XCB_ATOM_ATOM, 32, 1, data);
+				ewmh->_NET_WM_STATE, XCB_ATOM_ATOM, 32, 1, data);
 	}
 }
 
@@ -937,28 +852,6 @@ restart(const Arg *arg) {
 }
 
 void
-roundcorners(Client *c) {
-	xcb_pixmap_t pmap = xcb_create_pixmap_from_bitmap_data(conn,
-			screen->root,
-			corner_bits,
-			corner_width, corner_height,
-			1, // depth
-			0, // fg
-			1, // bg
-			NULL); // gc
-	if (pmap == XCB_NONE)
-		err("xcb_create_pixmap_from_bitmap_data() failed.");
-
-	xcb_shape_mask(conn,
-			XCB_SHAPE_SO_SUBTRACT,
-			XCB_SHAPE_SK_BOUNDING,
-			c->win,
-			0, 0,
-			pmap);
-	xcb_free_pixmap(conn, pmap);
-}
-
-void
 run(void) {
 	xcb_generic_event_t *ev;
 	while (sigcode == 0) {
@@ -1002,7 +895,7 @@ selectws(const Arg* arg) {
 	if (selws == arg->i)
 		return;
 	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root,
-			netatom[NetCurrentDesktop], XCB_ATOM_CARDINAL, 32, 1, &arg->i);
+			ewmh->_NET_CURRENT_DESKTOP, XCB_ATOM_CARDINAL, 32, 1, &arg->i);
 	xcb_ewmh_set_current_desktop(ewmh, scrno, arg->i);
 	prevws = selws;
 	selws = arg->i;
@@ -1016,7 +909,7 @@ sendevent(Client *c, xcb_atom_t proto) {
 	xcb_get_property_cookie_t cookie;
 	xcb_icccm_get_wm_protocols_reply_t reply;
 	bool exists = false;
-	cookie = xcb_icccm_get_wm_protocols(conn, c->win, wmatom[WMProtocols]);
+	cookie = xcb_icccm_get_wm_protocols(conn, c->win, ewmh->WM_PROTOCOLS);
 	if (xcb_icccm_get_wm_protocols_reply(conn, cookie, &reply, NULL) == 1) {
 		for (unsigned int i = 0; i < reply.atoms_len && !exists; i++)
 			if (reply.atoms[i] == proto)
@@ -1028,7 +921,7 @@ sendevent(Client *c, xcb_atom_t proto) {
 		ev.format = 32;
 		ev.sequence = 0;
 		ev.window = c->win;
-		ev.type = wmatom[WMProtocols];
+		ev.type = ewmh->WM_PROTOCOLS;
 		ev.data.data32[0] = proto;
 		ev.data.data32[1] = XCB_CURRENT_TIME;
 		xcb_send_event(conn, true, c->win, XCB_EVENT_MASK_NO_EVENT, (char*)&ev);
@@ -1042,7 +935,7 @@ sendtows(const Arg *arg) {
 		return;
 	sel->ws = arg->i;
 	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, sel->win,
-			netatom[NetWMDesktop], XCB_ATOM_CARDINAL, 32, 1, &arg->i);
+			ewmh->_NET_WM_DESKTOP, XCB_ATOM_CARDINAL, 32, 1, &arg->i);
 	showhide(stack);
 	focus(NULL);
 }
@@ -1125,20 +1018,8 @@ setup() {
 			XCB_CW_EVENT_MASK, value);
 	testcookie(cookie, "another window manager is running.");
 	xcb_flush(conn);
-	/* check shape extension */
-	xcb_query_extension_reply_t const* ereply = xcb_get_extension_data(conn, &xcb_shape_id);
-	if (!ereply)
-		err("can't get shape extension data.");
-	if (!ereply->present)
-		warn("SHAPE extension isn't available");
-	xcb_shape_query_version_cookie_t vcookie = xcb_shape_query_version_unchecked(conn);
-	xcb_shape_query_version_reply_t* vreply = xcb_shape_query_version_reply(conn, vcookie, 0);
-	if (!vreply)
-		err("can't get shape extension version.");
-	free(vreply);
 	/* init atoms */
-	getatoms(wmatom, wmatomnames, WMLast);
-	getatoms(netatom, netatomnames, NetLast);
+	getatom(&WM_DELETE_WINDOW, "WM_DELETE_WINDOW");
 	/* init ewmh */
 	ewmh = malloc(sizeof(xcb_ewmh_connection_t));
 	if (xcb_ewmh_init_atoms_replies(ewmh, xcb_ewmh_init_atoms(conn, ewmh), NULL) == 0)
@@ -1155,26 +1036,34 @@ setup() {
 	xcb_ewmh_set_supporting_wm_check(ewmh, recorder, recorder);
 	xcb_ewmh_set_supporting_wm_check(ewmh, screen->root, recorder);
 	xcb_atom_t net_atoms[] = {
+		ewmh->_NET_WM_NAME,
+		ewmh->_NET_WM_PID,
 		ewmh->_NET_SUPPORTED,
 		ewmh->_NET_NUMBER_OF_DESKTOPS,
 		ewmh->_NET_CURRENT_DESKTOP,
+		ewmh->_NET_WM_DESKTOP,
 		ewmh->_NET_ACTIVE_WINDOW,
 		ewmh->_NET_CLOSE_WINDOW,
-		ewmh->_NET_WM_NAME,
-		ewmh->_NET_WM_DESKTOP,
 		ewmh->_NET_WM_STATE,
-		ewmh->_NET_WM_PID,
-		ewmh->_NET_WM_STATE_FULLSCREEN
+		ewmh->_NET_WM_STATE_FULLSCREEN,
+		/* ewmh->_NET_WM_STATE_MAXIMIZED_VERT, */
+		/* ewmh->_NET_WM_STATE_MAXIMIZED_HORZ, */
+		/* ewmh->_NET_WM_STATE_BELOW, */
+		/* ewmh->_NET_WM_STATE_ABOVE, */
+		/* ewmh->_NET_WM_STATE_STICKY, */
+		/* ewmh->_NET_WM_STATE_DEMANDS_ATTENTION, */
+		/* ewmh->_NET_WM_WINDOW_TYPE, */
+		/* ewmh->_NET_WM_WINDOW_TYPE_DOCK, */
+		/* ewmh->_NET_WM_WINDOW_TYPE_DESKTOP, */
+		/* ewmh->_NET_WM_WINDOW_TYPE_NOTIFICATION, */
+		/* ewmh->_NET_WM_WINDOW_TYPE_DIALOG, */
+		/* ewmh->_NET_WM_WINDOW_TYPE_UTILITY, */
+		/* ewmh->_NET_WM_WINDOW_TYPE_TOOLBAR, */
+		/* ewmh->_NET_SUPPORTING_WM_CHECK, */
 	};
 	xcb_ewmh_set_supported(ewmh, scrno, LENGTH(net_atoms), net_atoms);
-	static const uint8_t numworkspaces = 5;
-	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root,
-			netatom[NetCurrentDesktop], XCB_ATOM_CARDINAL,
-			32, 1, &selws);
-	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root,
-			netatom[NetNumberOfDesktops], XCB_ATOM_CARDINAL,
-			32, 1, &numworkspaces);
-	xcb_ewmh_set_number_of_desktops(ewmh, scrno, numworkspaces);
+	static const uint8_t numdesktops = 10;
+	xcb_ewmh_set_number_of_desktops(ewmh, scrno, numdesktops);
 	xcb_ewmh_set_current_desktop(ewmh, scrno, 0);
 	/* init keys */
 	updatenumlockmask();
@@ -1246,22 +1135,11 @@ sticky(const Arg *arg) {
 		sel->isfixed = false;
 		sel->ws = selws;
 		xcb_change_property(conn, XCB_PROP_MODE_REPLACE, sel->win,
-				netatom[NetWMDesktop], XCB_ATOM_CARDINAL, 32, 1, &selws);
+				ewmh->_NET_WM_DESKTOP, XCB_ATOM_CARDINAL, 32, 1, &selws);
 	}
 	else {
 		sel->isfixed = true;
 		raisewindow(sel->win);
-	}
-}
-
-void
-testcookie(xcb_void_cookie_t cookie, char *errormsg) {
-	xcb_generic_error_t *error = xcb_request_check(conn, cookie);
-	if (error) {
-		warn("%s : %d\n", errormsg, error->error_code);
-		free(error);
-		xcb_disconnect(conn);
-		exit(EXIT_FAILURE);
 	}
 }
 
@@ -1297,8 +1175,19 @@ teleport(const Arg *arg) {
 }
 
 void
+testcookie(xcb_void_cookie_t cookie, char *errormsg) {
+	xcb_generic_error_t *error = xcb_request_check(conn, cookie);
+	if (error) {
+		warn("%s : %d\n", errormsg, error->error_code);
+		free(error);
+		xcb_disconnect(conn);
+		exit(EXIT_FAILURE);
+	}
+}
+
+void
 unmanage(Client *c) {
-	sendevent(c, wmatom[WMDeleteWindow]);
+	sendevent(c, WM_DELETE_WINDOW);
 	detach(c);
 	detachstack(c);
 	free(c);
@@ -1374,5 +1263,3 @@ main(int argc, char **argv) {
 		execvp(argv[0], argv);
 	return EXIT_SUCCESS;
 }
-
-/* vi: set noet noai : */
