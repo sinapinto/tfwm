@@ -1,6 +1,6 @@
 include config.mk
 
-SRC = tfwm.c util.c shape.c
+SRC = tfwm.c util.c shape.c events.c window.c list.c
 OBJ = ${SRC:.c=.o}
 
 all: CFLAGS += -Os
@@ -9,8 +9,11 @@ all: tfwm
 debug: CFLAGS += -O0 -g -DDEBUG
 debug: tfwm
 
-tfwm.o: tfwm.c tfwm.h types.h util.h
+tfwm.o: tfwm.c types.h list.h events.h window.h shape.h
 shape.o: shape.c types.h util.h tfwm.h
+events.o: events.c types.h window.h list.h util.h config.h tfwm.h
+window.o: window.c types.h tfwm.h config.h list.h
+list.o: list.c types.h window.h tfwm.h config.h
 
 $(OBJ): config.h config.mk
 

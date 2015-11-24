@@ -3,6 +3,7 @@
 #define TYPES_H
 
 #include <stdbool.h>
+#include <xcb/xcb_keysyms.h>
 #include "util.h"
 
 typedef union {

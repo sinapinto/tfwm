@@ -1,4 +1,11 @@
 /* See LICENSE file for copyright and license details. */
+#ifndef CONFIG_H
+#define CONFIG_H
+
+#include <X11/keysym.h>
+#include "list.h"
+#include "events.h"
+
 #define MOD                           XCB_MOD_MASK_1
 #define SHIFT                         XCB_MOD_MASK_SHIFT
 #define CTRL                          XCB_MOD_MASK_CONTROL
@@ -70,3 +77,6 @@ static Button buttons[] = {
 	{  MOD,     XCB_BUTTON_INDEX_1,       mousemotion,      {.i=MouseMove}     },
 	{  MOD,     XCB_BUTTON_INDEX_3,       mousemotion,      {.i=MouseResize}   }
 };
+
+#endif
+

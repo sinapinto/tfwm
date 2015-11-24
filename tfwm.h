@@ -5,6 +5,25 @@
 #include <xcb/xcb_ewmh.h>
 #include "types.h"
 
+void cleanup();
+void getatom(xcb_atom_t *atom, char *name);
+uint32_t getcolor(char *color);
+xcb_keycode_t *getkeycodes(xcb_keysym_t keysym);
+xcb_keysym_t getkeysym(xcb_keycode_t keycode);
+void grabbuttons(Client *c);
+void grabkeys();
+void quit(const Arg *arg);
+void restart(const Arg *arg);
+void run(void);
+void selectrws(const Arg* arg);
+void selectws(const Arg* arg);
+void setup();
+void sigcatch(int sig);
+void sigchld();
+void spawn(const Arg *arg);
+void testcookie(xcb_void_cookie_t cookie, char *errormsg);
+void updatenumlockmask();
+
 xcb_connection_t *conn;
 xcb_screen_t *screen;
 unsigned int sw, sh;
