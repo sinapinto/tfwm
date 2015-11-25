@@ -2,7 +2,6 @@
 #include "window.h"
 #include "tfwm.h"
 #include "list.h"
-#include "config.h"
 
 void
 attach(Client *c) {

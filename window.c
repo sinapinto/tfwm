@@ -1,3 +1,4 @@
+/* See LICENSE file for copyright and license details. */
 #include <string.h>
 #include <xcb/xcb_icccm.h>
 #include "types.h"
@@ -190,7 +191,6 @@ maximizeaxis(const Arg *arg) {
 		sel->h = th;
 		values[0] = sel->y;
 		values[1] = sel->h;
-
 		xcb_configure_window(conn, sel->win, XCB_CONFIG_WINDOW_Y
 				| XCB_CONFIG_WINDOW_HEIGHT, values);
 		sel->isvertmax = true;
