@@ -15,8 +15,6 @@ void grabkeys();
 void quit(const Arg *arg);
 void restart(const Arg *arg);
 void run(void);
-void selectrws(const Arg* arg);
-void selectws(const Arg* arg);
 void setup();
 void sigcatch(int sig);
 void sigchld();

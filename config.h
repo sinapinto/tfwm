@@ -5,6 +5,7 @@
 #include <X11/keysym.h>
 #include <X11/XF86keysym.h>
 #include "list.h"
+#include "workspace.h"
 #include "events.h"
 
 #define MOD                           XCB_MOD_MASK_1
