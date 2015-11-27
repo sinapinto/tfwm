@@ -10,10 +10,9 @@
 #include <xcb/xcb_keysyms.h>
 #include <xcb/xcb_ewmh.h>
 #include "types.h"
-#include "list.h"
 #include "events.h"
-#include "window.h"
-#include "shape.h"
+#include "list.h"
+#include "client.h"
 #include "tfwm.h"
 #include "config.h"
 

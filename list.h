@@ -1,7 +1,6 @@
 #ifndef LIST_H
 #define LIST_H
 
-#include "types.h"
 
 void attach(Client *c);
 void attachstack(Client *c);

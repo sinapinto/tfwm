@@ -1,6 +1,5 @@
-#include "types.h"
-#include "window.h"
 #include "tfwm.h"
+#include "client.h"
 #include "list.h"
 
 void

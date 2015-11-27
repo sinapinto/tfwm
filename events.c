@@ -1,8 +1,7 @@
 #include <string.h>
 #include <xcb/xcb_event.h>
 #include "tfwm.h"
-#include "types.h"
-#include "window.h"
+#include "client.h"
 #include "list.h"
 #include "util.h"
 #include "events.h"

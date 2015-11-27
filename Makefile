@@ -1,7 +1,22 @@
-include config.mk
+VERSION = $(shell git describe --tags 2>/dev/null)
+ifeq ($(VERSION),)
+  VERSION = 0.1
+endif
 
-SRC = tfwm.c util.c shape.c events.c window.c list.c workspace.c
-OBJ = ${SRC:.c=.o}
+PREFIX ?= /usr/local
+BINPREFIX ?= $(PREFIX)/bin
+
+CC ?= gcc
+
+CFLAGS = -std=c99 -Wall -pedantic -I$(PREFIX)/include
+CFLAGS += -DVERSION=\"$(VERSION)\"
+
+LIBS = -lxcb-keysyms -lxcb-icccm -lxcb-ewmh -lxcb-util -lxcb
+
+CFLAGS += -DSHAPE
+LIBS += -lxcb-shape -lxcb-image -lxcb-shm
+
+OBJ = tfwm.o util.o events.o client.o list.o workspace.o
 
 all: CFLAGS += -Os
 all: tfwm
@@ -9,16 +24,9 @@ all: tfwm
 debug: CFLAGS += -O0 -g -DDEBUG
 debug: tfwm
 
-tfwm.o: tfwm.c types.h list.h events.h window.h shape.h
-shape.o: shape.c types.h util.h tfwm.h
-events.o: events.c types.h window.h list.h util.h config.h tfwm.h
-window.o: window.c types.h tfwm.h config.h list.h
-list.o: list.c types.h window.h tfwm.h config.h
-workspace.o: workspace.c types.h tfwm.h list.h window.h
+$(OBJ): config.h
 
-$(OBJ): config.h config.mk
-
-.c.o:
+%.o: %.c
 	$(CC) -c $(CFLAGS) -o $@ $<
 
 tfwm: $(OBJ)

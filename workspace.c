@@ -1,8 +1,6 @@
-#include "types.h"
 #include "tfwm.h"
 #include "list.h"
-#include "window.h"
-#include "workspace.h"
+#include "client.h"
 
 void
 selectrws(const Arg* arg) {

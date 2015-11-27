@@ -22,6 +22,9 @@ void spawn(const Arg *arg);
 void testcookie(xcb_void_cookie_t cookie, char *errormsg);
 void updatenumlockmask();
 
+void selectrws(const Arg* arg);
+void selectws(const Arg* arg);
+
 xcb_connection_t *conn;
 xcb_screen_t *screen;
 unsigned int sw, sh;

@@ -1,8 +1,6 @@
 #ifndef EVENTS_H
 #define EVENTS_H
 
-#include <xcb/xcb.h>
-
 void buttonpress(xcb_generic_event_t *ev);
 void circulaterequest(xcb_generic_event_t *ev);
 void clientmessage(xcb_generic_event_t *ev);
