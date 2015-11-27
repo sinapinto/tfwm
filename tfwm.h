@@ -1,23 +1,22 @@
 /* See LICENSE file for copyright and license details. */
 #ifndef TFWM_H
 #define TFWM_H
-
 #include <xcb/xcb_ewmh.h>
 #include <xcb/xcb_keysyms.h>
 #include <stdbool.h>
 
 #ifdef DEBUG
-#include <stdio.h>
-#define PRINTF(...)     do { printf(__VA_ARGS__); } while(0)
+# include <stdio.h>
+# define PRINTF(...)     do { printf(__VA_ARGS__); } while(0)
 #else
-#define PRINTF(...)
+# define PRINTF(...)
 #endif
 
 #define CLEANMASK(mask)  (mask & ~(numlockmask|XCB_MOD_MASK_LOCK))
 #define LENGTH(X)        (sizeof(X)/sizeof(*X))
 #define MAX(X, Y)        ((X) > (Y) ? (X) : (Y))
 #define MIN(X, Y)        ((X) < (Y) ? (X) : (Y))
-#define WIDTH(C)         ((C)->w + 2 * BORDER_WIDTH)
+#define WIDTH(C)         ((C)->geom.width + 2 * BORDER_WIDTH)
 #define ISVISIBLE(C)     ((C)->ws == selws || (C)->isfixed)
 
 #define MOD                  XCB_MOD_MASK_1
@@ -60,12 +59,12 @@ typedef struct {
 
 typedef struct Client Client;
 struct Client{
-	// TODO use xcb_rectangle_t
-	int16_t x, y, oldx, oldy;
-	uint16_t w, h, oldw, oldh;
+	xcb_rectangle_t geom;
+	xcb_rectangle_t oldgeom;
 	int32_t basew, baseh, minw, minh, incw, inch;
 	bool ismax, isvertmax, ishormax;
 	bool isfixed, noborder;
+	// TODO Client *parent;
 	Client *next;
 	Client *snext;
 	xcb_window_t win;
@@ -122,9 +121,11 @@ void sigchld();
 void spawn(const Arg *arg);
 void testcookie(xcb_void_cookie_t cookie, char *errormsg);
 
+extern const Rule rules[2];
+extern Key keys[100];
+extern Button buttons[2];
 extern xcb_connection_t *conn;
 extern xcb_screen_t *screen;
-extern unsigned int sw, sh;
 extern unsigned int numlockmask;
 extern int scrno;
 extern Client *stack;
@@ -166,7 +167,4 @@ extern unsigned int prevws;
 extern Client *clients;
 extern Client *sel;
 
-extern const Rule rules[2];
-extern Key keys[100];
-extern Button buttons[2];
 #endif

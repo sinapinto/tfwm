@@ -69,10 +69,10 @@ configurerequest(xcb_generic_event_t *ev) {
 	if ((c = wintoclient(e->window))) {
 		if (e->value_mask & XCB_CONFIG_WINDOW_WIDTH)
 			if (!c->ismax && !c->ishormax)
-				v[i++] = c->w = MIN(e->width, sw-2*BORDER_WIDTH);
+				v[i++] = c->geom.width = MIN(e->width, screen->width_in_pixels-2*BORDER_WIDTH);
 		if (e->value_mask & XCB_CONFIG_WINDOW_HEIGHT)
 			if (!c->ismax && !c->isvertmax)
-				v[i++] = c->h = MIN(e->height, sh-2*BORDER_WIDTH);
+				v[i++] = c->geom.height = MIN(e->height, screen->height_in_pixels-2*BORDER_WIDTH);
 		if (e->value_mask & XCB_CONFIG_WINDOW_SIBLING)
 			v[i++] = e->sibling;
 		if (e->value_mask & XCB_CONFIG_WINDOW_STACK_MODE)
@@ -199,10 +199,10 @@ mousemotion(const Arg *arg) {
 	xcb_generic_event_t *ev;
 	xcb_motion_notify_event_t *e;
 	bool ungrab = false;
-	int nx = sel->x;
-	int ny = sel->y;
-	int nw = sel->w;
-	int nh = sel->h;
+	int nx = sel->geom.x;
+	int ny = sel->geom.y;
+	int nw = sel->geom.width;
+	int nh = sel->geom.height;
 	while ((ev = xcb_wait_for_event(conn)) && !ungrab) {
 		switch (ev->response_type & ~0x80) {
 			case XCB_CONFIGURE_REQUEST:
@@ -216,24 +216,24 @@ mousemotion(const Arg *arg) {
 				lasttime = e->time;
 
 				if (arg->i == MouseMove) {
-					nx = sel->x + e->root_x - pointer->root_x;
-					ny = sel->y + e->root_y - pointer->root_y;
+					nx = sel->geom.x + e->root_x - pointer->root_x;
+					ny = sel->geom.y + e->root_y - pointer->root_y;
 					movewin(sel->win, nx, ny);
 				}
 				else {
-					nw = MAX(sel->w + e->root_x - pointer->root_x, sel->minw + 40);
-					nh = MAX(sel->h + e->root_y - pointer->root_y, sel->minh + 40);
+					nw = MAX(sel->geom.width + e->root_x - pointer->root_x, sel->minw + 40);
+					nh = MAX(sel->geom.height + e->root_y - pointer->root_y, sel->minh + 40);
 					resizewin(sel->win, nw, nh);
 				}
 				break;
 			case XCB_BUTTON_RELEASE:
 				if (arg->i == MouseMove) {
-					sel->x = nx;
-					sel->y = ny;
+					sel->geom.x = nx;
+					sel->geom.y = ny;
 				}
 				else {
-					sel->w = nw;
-					sel->h = nh;
+					sel->geom.width = nw;
+					sel->geom.height = nh;
 				}
 				ungrab = true;
 				setborder(sel, true);

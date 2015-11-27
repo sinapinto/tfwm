@@ -23,7 +23,6 @@ static void updatenumlockmask();
 
 xcb_connection_t *conn;
 xcb_screen_t *screen;
-unsigned int sw, sh;
 unsigned int numlockmask;
 int scrno;
 Client *stack;
@@ -266,8 +265,6 @@ setup() {
 	screen = xcb_setup_roots_iterator(xcb_get_setup(conn)).data;
 	if (!screen)
 		err("can't find screen.");
-	sw = screen->width_in_pixels;
-	sh = screen->height_in_pixels;
 	/* subscribe to handler */
 	unsigned int value[1] = {
 		XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY |
