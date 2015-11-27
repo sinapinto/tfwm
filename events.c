@@ -14,7 +14,7 @@ buttonpress(xcb_generic_event_t *ev) {
 			focus(c);
 		}
 	}
-	for (int i = 0; i < LENGTH(buttons); i++)
+	for (unsigned int i = 0; i < LENGTH(buttons); i++)
 		if (buttons[i].button == e->detail &&
 				CLEANMASK(buttons[i].mask) == CLEANMASK(e->state) &&
 				buttons[i].func)

@@ -33,7 +33,7 @@
 
 typedef union {
 	const char **com;
-	const int i;
+	const unsigned int i;
 } Arg;
 
 typedef struct {
