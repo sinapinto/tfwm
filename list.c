@@ -2,6 +2,8 @@
 #include "client.h"
 #include "list.h"
 
+Client *clients;
+
 void
 attach(Client *c) {
 	c->next = clients;

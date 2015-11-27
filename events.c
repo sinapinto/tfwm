@@ -3,9 +3,6 @@
 #include "tfwm.h"
 #include "client.h"
 #include "list.h"
-#include "util.h"
-#include "events.h"
-#include "config.h"
 
 void
 buttonpress(xcb_generic_event_t *ev) {

@@ -1,18 +1,18 @@
 /* See LICENSE file for copyright and license details. */
 #include <string.h>
 #include <xcb/xcb_icccm.h>
-#include "types.h"
+#ifdef SHAPE
+#include <xcb/shape.h>
+#include <xcb/xcb_image.h>
+#include "corner"
+#endif
 #include "tfwm.h"
 #include "list.h"
 #include "client.h"
 
-#ifdef SHAPE
-# include <xcb/shape.h>
-# include <xcb/xcb_image.h>
-# include "corner"
-#endif
-
-#include "config.h"
+unsigned int selws = 0;
+unsigned int prevws = 0;
+Client *sel;
 
 void
 applyrules(Client *c) {
@@ -547,5 +547,5 @@ roundcorners(Client *c) {
 			pmap);
 	xcb_free_pixmap(conn, pmap);
 }
-
 #endif
+
