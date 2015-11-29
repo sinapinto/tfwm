@@ -1,10 +1,13 @@
 #include "tfwm.h"
 #include "list.h"
 #include "client.h"
+#include "workspace.h"
+
+static void gotows(unsigned int i);
 
 void
 selectrws(const Arg* arg) {
-	int i;
+	unsigned int i;
 	if (arg->i == LastWorkspace)
 		i = prevws;
 	else if (arg->i == PrevWorkspace)
@@ -13,19 +16,23 @@ selectrws(const Arg* arg) {
 		i = selws == 9 ? 0 : selws + 1;
 	else
 		return;
-	const Arg a = { .i = i };
-	selectws(&a);
+	gotows(i);
 }
 
 void
 selectws(const Arg* arg) {
-	if (selws == arg->i)
+	gotows(arg->i);
+}
+
+void
+gotows(unsigned int i) {
+	if (selws == i)
 		return;
 	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root,
-			ewmh->_NET_CURRENT_DESKTOP, XCB_ATOM_CARDINAL, 32, 1, &arg->i);
-	xcb_ewmh_set_current_desktop(ewmh, scrno, arg->i);
+			ewmh->_NET_CURRENT_DESKTOP, XCB_ATOM_CARDINAL, 32, 1, &i);
+	xcb_ewmh_set_current_desktop(ewmh, scrno, i);
 	prevws = selws;
-	selws = arg->i;
+	selws = i;
 	focus(NULL);
 	showhide(stack);
 }

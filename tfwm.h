@@ -23,7 +23,7 @@
 #define SHIFT                XCB_MOD_MASK_SHIFT
 #define CTRL                 XCB_MOD_MASK_CONTROL
 #define DOUBLE_BORDER        false
-#define BORDER_WIDTH         3
+#define BORDER_WIDTH         2
 #define OUTER_BORDER_WIDTH   4
 #define FOCUS_COLOR          "tomato"
 #define OUTER_COLOR          "black"
@@ -64,7 +64,7 @@ struct Client{
 	int32_t basew, baseh, minw, minh, incw, inch;
 	bool ismax, isvertmax, ishormax;
 	bool isfixed, noborder;
-	// TODO Client *parent;
+	// TODO xcb_window_t *frame;
 	Client *next;
 	Client *snext;
 	xcb_window_t win;
@@ -83,20 +83,6 @@ enum { PrevWindow, NextWindow };
 void warn(const char *fmt, ...);
 void err(const char *fmt, ...);
 
-/* events.c */
-void buttonpress(xcb_generic_event_t *ev);
-void circulaterequest(xcb_generic_event_t *ev);
-void clientmessage(xcb_generic_event_t *ev);
-void configurerequest(xcb_generic_event_t *ev);
-void destroynotify(xcb_generic_event_t *ev);
-void enternotify(xcb_generic_event_t *ev);
-void keypress(xcb_generic_event_t *ev);
-void mappingnotify(xcb_generic_event_t *ev);
-void maprequest(xcb_generic_event_t *ev);
-void mousemotion(const Arg *arg);
-void requesterror(xcb_generic_event_t *ev);
-void unmapnotify(xcb_generic_event_t *ev);
-
 /* list.c */
 void attach(Client *c);
 void attachstack(Client *c);
@@ -104,10 +90,6 @@ void detach(Client *c);
 void detachstack(Client *c);
 void focus(Client *c);
 void focusstack(const Arg *arg);
-
-/* workspace.c */
-void selectrws(const Arg* arg);
-void selectws(const Arg* arg);
 
 /* tfwm.c */
 xcb_keycode_t *getkeycodes(xcb_keysym_t keysym);
@@ -130,7 +112,6 @@ extern unsigned int numlockmask;
 extern int scrno;
 extern Client *stack;
 extern int sigcode;
-extern void (*handler[XCB_NO_OPERATION])(xcb_generic_event_t *ev);
 extern xcb_ewmh_connection_t *ewmh;
 extern uint32_t focuscol, unfocuscol, outercol;
 extern bool dorestart;
@@ -144,7 +125,7 @@ void killselected(const Arg *arg);
 void manage(xcb_window_t w);
 void maximize(const Arg *arg);
 void maximizeaxis(const Arg *arg);
-void maximizeclient(Client *c, bool add);
+void maximizeclient(Client *c, bool doit);
 void move(const Arg *arg);
 void movewin(xcb_window_t win, int x, int y);
 void moveresize(Client *c, int w, int h, int x, int y);

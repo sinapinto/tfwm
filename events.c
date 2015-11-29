@@ -3,6 +3,58 @@
 #include "tfwm.h"
 #include "client.h"
 #include "list.h"
+#include "events.h"
+
+static void buttonpress(xcb_generic_event_t *ev);
+static void circulaterequest(xcb_generic_event_t *ev);
+static void clientmessage(xcb_generic_event_t *ev);
+static void configurerequest(xcb_generic_event_t *ev);
+static void destroynotify(xcb_generic_event_t *ev);
+static void enternotify(xcb_generic_event_t *ev);
+static void keypress(xcb_generic_event_t *ev);
+static void mappingnotify(xcb_generic_event_t *ev);
+static void maprequest(xcb_generic_event_t *ev);
+static void requesterror(xcb_generic_event_t *ev);
+static void unmapnotify(xcb_generic_event_t *ev);
+
+void
+handleevent(xcb_generic_event_t *ev) {
+	switch (ev->response_type & ~0x80) {
+		case XCB_BUTTON_PRESS:
+			buttonpress(ev);
+			break;
+		case XCB_CIRCULATE_REQUEST:
+			circulaterequest(ev);
+			break;
+		case XCB_CLIENT_MESSAGE:
+			clientmessage(ev);
+			break;
+		case XCB_CONFIGURE_REQUEST:
+			configurerequest(ev);
+			break;
+		case XCB_DESTROY_NOTIFY:
+			destroynotify(ev);
+			break;
+		case XCB_ENTER_NOTIFY:
+			enternotify(ev);
+			break;
+		case XCB_KEY_PRESS:
+			keypress(ev);
+			break;
+		case XCB_MAPPING_NOTIFY:
+			mappingnotify(ev);
+			break;
+		case XCB_MAP_REQUEST:
+			maprequest(ev);
+			break;
+		case XCB_UNMAP_NOTIFY:
+			unmapnotify(ev);
+			break;
+		case 0:
+			requesterror(ev);
+			break;
+	}
+}
 
 void
 buttonpress(xcb_generic_event_t *ev) {
@@ -207,7 +259,7 @@ mousemotion(const Arg *arg) {
 		switch (ev->response_type & ~0x80) {
 			case XCB_CONFIGURE_REQUEST:
 			case XCB_MAP_REQUEST:
-				handler[ev->response_type & ~0x80](ev);
+				maprequest(ev);
 				break;
 			case XCB_MOTION_NOTIFY:
 				e = (xcb_motion_notify_event_t*)ev;

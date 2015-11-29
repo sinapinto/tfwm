@@ -4,7 +4,7 @@
 #ifdef SHAPE
 #include <xcb/shape.h>
 #include <xcb/xcb_image.h>
-#include "corner"
+#include "corner.xbm"
 #endif
 #include "tfwm.h"
 #include "list.h"
@@ -215,20 +215,10 @@ maximizeaxis(const Arg *arg) {
 }
 
 void
-maximizeclient(Client *c, bool add) {
+maximizeclient(Client *c, bool doit) {
 	if (!c)
 		return;
-	if (!add) {
-		c->geom.x = c->isvertmax ? c->geom.x : c->oldgeom.x;
-		c->geom.y = c->ishormax ? c->geom.y : c->oldgeom.y;
-		c->geom.width = c->oldgeom.width;
-		c->geom.height = c->oldgeom.height;
-		c->ismax = c->ishormax = c->isvertmax = 0;
-		moveresize(c, c->geom.x, c->geom.y, c->geom.width, c->geom.height);
-		setborderwidth(sel, BORDER_WIDTH);
-		setborder(sel, true);
-	}
-	else {
+	if (doit) {
 		savegeometry(c);
 		c->ismax = true;
 		c->isvertmax = c->ishormax = false;
@@ -239,10 +229,22 @@ maximizeclient(Client *c, bool add) {
 		moveresize(c, c->geom.x, c->geom.y, c->geom.width, c->geom.height);
 		focus(NULL);
 		setborderwidth(c, 0);
-		long data[] = { c->ismax ? ewmh->_NET_WM_STATE_FULLSCREEN : XCB_ICCCM_WM_STATE_NORMAL };
-		xcb_change_property(conn, XCB_PROP_MODE_REPLACE, c->win,
-				ewmh->_NET_WM_STATE, XCB_ATOM_ATOM, 32, 1, data);
 	}
+	else {
+		c->geom.x = c->isvertmax ? c->geom.x : c->oldgeom.x;
+		c->geom.y = c->ishormax ? c->geom.y : c->oldgeom.y;
+		c->geom.width = c->oldgeom.width;
+		c->geom.height = c->oldgeom.height;
+		c->ismax = false;
+		c->ishormax = c->isvertmax = 0;
+		moveresize(c, c->geom.x, c->geom.y, c->geom.width, c->geom.height);
+		setborderwidth(sel, BORDER_WIDTH);
+		setborder(sel, true);
+	}
+
+	long data[] = { c->ismax ? ewmh->_NET_WM_STATE_FULLSCREEN : XCB_ICCCM_WM_STATE_NORMAL };
+	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, c->win,
+			ewmh->_NET_WM_STATE, XCB_ATOM_ATOM, 32, 1, data);
 }
 
 void

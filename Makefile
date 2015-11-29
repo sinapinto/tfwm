@@ -23,8 +23,8 @@ all: tfwm
 debug: CFLAGS+= -O0 -g -DDEBUG
 debug: tfwm
 
-tfwm.o: tfwm.c list.h client.h
-events.o: events.c tfwm.h client.h list.h
+tfwm.o: tfwm.c list.h client.h workspace.h events.h
+events.o: events.c tfwm.h client.h list.h events.h
 client.o: client.c tfwm.h list.h client.h
 list.o: list.c tfwm.h client.h list.h
 workspace.o: workspace.c tfwm.h list.h client.h

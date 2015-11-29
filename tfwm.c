@@ -1,7 +1,6 @@
 /* See LICENSE file for copyright and license details. */
 #include <stdlib.h>
 #include <stdio.h>
-#include <stdbool.h>
 #include <unistd.h>
 #include <signal.h>
 #include <string.h>
@@ -13,6 +12,8 @@
 #include "tfwm.h"
 #include "list.h"
 #include "client.h"
+#include "workspace.h"
+#include "events.h"
 
 static void cleanup();
 static void getatom(xcb_atom_t *atom, char *name);
@@ -27,7 +28,6 @@ unsigned int numlockmask;
 int scrno;
 Client *stack;
 int sigcode;
-void (*handler[XCB_NO_OPERATION])(xcb_generic_event_t *ev);
 xcb_ewmh_connection_t *ewmh;
 uint32_t focuscol, unfocuscol, outercol;
 bool dorestart;
@@ -100,8 +100,8 @@ Key keys[100] = {
 	{ MOD | SHIFT,  XK_r,                     restart,       {.i=NULL}          },
 	{ MOD | SHIFT,  XK_e,                     quit,          {.i=NULL}          },
 #define workspace(K,N) \
-	{ MOD,              K,           selectws,               {.i=N} }, \
-	{ MOD | SHIFT,      K,           sendtows,               {.i=N} },
+	{ MOD,              K,                    selectws,      {.i=N} }, \
+	{ MOD | SHIFT,      K,                    sendtows,      {.i=N} },
 	workspace(      XK_1,                                    0 )
 	workspace(      XK_2,                                    1 )
 	workspace(      XK_3,                                    2 )
@@ -245,9 +245,9 @@ run(void) {
 	xcb_generic_event_t *ev;
 	while (sigcode == 0) {
 		xcb_flush(conn);
+
 		ev = xcb_wait_for_event(conn);
-		if (handler[ev->response_type & ~0x80])
-			handler[ev->response_type & ~0x80](ev);
+		handleevent(ev);
 		free(ev);
 		if (xcb_connection_has_error(conn)) {
 			cleanup();
@@ -330,18 +330,6 @@ setup() {
 	focuscol = getcolor(FOCUS_COLOR);
 	unfocuscol = getcolor(UNFOCUS_COLOR);
 	outercol = getcolor(OUTER_COLOR);
-	/* set handlers */
-	handler[0]                     = requesterror;
-	handler[XCB_CONFIGURE_REQUEST] = configurerequest;
-	handler[XCB_DESTROY_NOTIFY]    = destroynotify;
-	handler[XCB_UNMAP_NOTIFY]      = unmapnotify;
-	handler[XCB_MAP_REQUEST]       = maprequest;
-	handler[XCB_MAPPING_NOTIFY]    = mappingnotify;
-	handler[XCB_CLIENT_MESSAGE]    = clientmessage;
-	handler[XCB_KEY_PRESS]         = keypress;
-	handler[XCB_BUTTON_PRESS]      = buttonpress;
-	handler[XCB_ENTER_NOTIFY]      = enternotify;
-	handler[XCB_CIRCULATE_REQUEST] = circulaterequest;
 	focus(NULL);
 }
 

@@ -10,7 +10,7 @@ extern void killselected(const Arg *arg);
 extern void manage(xcb_window_t w);
 extern void maximize(const Arg *arg);
 extern void maximizeaxis(const Arg *arg);
-extern void maximizeclient(Client *c, bool add);
+extern void maximizeclient(Client *c, bool doit);
 extern void move(const Arg *arg);
 extern void movewin(xcb_window_t win, int x, int y);
 extern void moveresize(Client *c, int w, int h, int x, int y);
