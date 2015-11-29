@@ -71,6 +71,7 @@ struct Client{
 	unsigned int ws;
 };
 
+
 enum { MoveDown, MoveRight, MoveUp, MoveLeft };
 enum { GrowHeight, GrowWidth, ShrinkHeight, ShrinkWidth, GrowBoth, ShrinkBoth };
 enum { ToCenter, ToTop, ToLeft, ToBottom, ToRight };
@@ -89,11 +90,10 @@ void attachstack(Client *c);
 void detach(Client *c);
 void detachstack(Client *c);
 void focus(Client *c);
-void focusstack(const Arg *arg);
+void focusstack(bool next);
 
 /* tfwm.c */
 xcb_keysym_t getkeysym(xcb_keycode_t keycode);
-void grabbuttons(Client *c);
 void grabkeys(void);
 void quit(const Arg *arg);
 void testcookie(xcb_void_cookie_t cookie, char *errormsg);

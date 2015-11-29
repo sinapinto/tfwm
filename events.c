@@ -104,6 +104,7 @@ clientmessage(xcb_generic_event_t *ev) {
 		setborder(sel, false);
 		focus(c);
 	} else if (e->type == ewmh->_NET_WM_DESKTOP) {
+	} else if (e->type == ewmh->_NET_MOVERESIZE_WINDOW) {
 	} else if (e->type == ewmh->_NET_CLOSE_WINDOW) {
 		unmanage(c);
 	}

@@ -87,8 +87,8 @@ Key keys[100] = {
 	{ MOD | SHIFT,  XK_h,                     resize,        {.i=ShrinkWidth}   },
 	{ MOD | CTRL,   XK_j,                     resize,        {.i=GrowBoth}      },
 	{ MOD | CTRL,   XK_k,                     resize,        {.i=ShrinkBoth}    },
-	{ MOD,          XK_Tab,                   focusstack,    {.i=PrevWindow}    },
-	{ MOD | SHIFT,  XK_Tab,                   focusstack,    {.i=NextWindow}    },
+	{ MOD,          XK_Tab,                   cycleclients,  {.i=PrevWindow}    },
+	{ MOD | SHIFT,  XK_Tab,                   cycleclients,  {.i=NextWindow}    },
 	{ MOD,          XK_s,                     teleport,      {.i=ToCenter}      },
 	{ MOD | SHIFT,  XK_p,                     teleport,      {.i=ToTop}         },
 	{ MOD | SHIFT,  XK_n,                     teleport,      {.i=ToBottom}      },
@@ -198,19 +198,6 @@ getkeysym(xcb_keycode_t keycode) {
 	xcb_keysym_t keysym = xcb_key_symbols_get_keysym(keysyms, keycode, 0);
 	xcb_key_symbols_free(keysyms);
 	return keysym;
-}
-
-void
-grabbuttons(Client *c) {
-	unsigned int i, j;
-	unsigned int modifiers[] = { 0, XCB_MOD_MASK_LOCK, numlockmask,
-		numlockmask | XCB_MOD_MASK_LOCK };
-
-	for (i = 0; i < LENGTH(buttons); i++)
-		for (j = 0; j < LENGTH(modifiers); j++)
-			xcb_grab_button(conn, 1, c->win, XCB_EVENT_MASK_BUTTON_PRESS,
-					XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, screen->root,
-					XCB_NONE, buttons[i].button, buttons[i].mask|modifiers[j]);
 }
 
 void

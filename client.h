@@ -4,6 +4,7 @@
 #include <xcb/xcb.h>
 
 extern void applyrules(Client *c);
+extern void cycleclients(const Arg *arg);
 extern void fitclient(Client *c);
 extern void gethints(Client *c);
 extern void killselected(const Arg *arg);

@@ -6,7 +6,7 @@ extern void attachstack(Client *c);
 extern void detach(Client *c);
 extern void detachstack(Client *c);
 extern void focus(Client *c);
-extern void focusstack(const Arg *arg);
+extern void focusstack(bool next);
 
 #endif
 

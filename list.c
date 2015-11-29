@@ -2,6 +2,7 @@
 #include "list.h"
 
 Client *clients;
+static void grabbuttons(Client *c);
 
 void
 attach(Client *c) {
@@ -61,18 +62,18 @@ focus(Client *c) {
 }
 
 void
-focusstack(const Arg *arg) {
+focusstack(bool next) {
 	Client *c = NULL, *i;
 
 	if (!sel)
 		return;
 	setborder(sel, false);
-	if (arg->i == NextWindow) {
+	if (next) {
 		for (c = sel->next; c && !ISVISIBLE(c); c = c->next);
 		if (!c)
 			for (c = clients; c && !ISVISIBLE(c); c = c->next);
 	}
-	else if (arg->i == PrevWindow) {
+	else {
 		for (i = clients; i != sel; i = i->next)
 			if (ISVISIBLE(i))
 				c = i;
@@ -85,5 +86,18 @@ focusstack(const Arg *arg) {
 		focus(c);
 		raisewindow(sel->win);
 	}
+}
+
+void
+grabbuttons(Client *c) {
+	unsigned int i, j;
+	unsigned int modifiers[] = { 0, XCB_MOD_MASK_LOCK, numlockmask,
+		numlockmask | XCB_MOD_MASK_LOCK };
+
+	for (i = 0; i < LENGTH(buttons); i++)
+		for (j = 0; j < LENGTH(modifiers); j++)
+			xcb_grab_button(conn, 1, c->win, XCB_EVENT_MASK_BUTTON_PRESS,
+					XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, screen->root,
+					XCB_NONE, buttons[i].button, buttons[i].mask|modifiers[j]);
 }
 

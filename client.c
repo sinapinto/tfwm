@@ -38,6 +38,14 @@ applyrules(Client *c) {
 }
 
 void
+cycleclients(const Arg *arg) {
+	if (arg->i == NextWindow)
+		focusstack(true);
+	else
+		focusstack(false);
+}
+
+void
 fitclient(Client *c) {
 	bool update = false;
 
