@@ -8,7 +8,7 @@ BINPREFIX?= $(PREFIX)/bin
 
 CC?= gcc
 
-CFLAGS= -std=c99 -Wall -Wextra -pedantic -I$(PREFIX)/include -DVERSION=\"$(VERSION)\"
+CFLAGS= -std=c99 -Wall -Wextra -Wshadow -Wno-uninitialized -pedantic -I$(PREFIX)/include -DVERSION=\"$(VERSION)\"
 
 LIBS= -lxcb-keysyms -lxcb-icccm -lxcb-ewmh -lxcb-util -lxcb
 

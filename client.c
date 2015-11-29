@@ -144,13 +144,6 @@ manage(xcb_window_t w) {
 	fitclient(c);
 	if (c->ws == selws)
 		xcb_map_window(conn, w);
-	/* set its workspace hint */
-	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, c->win, ewmh->_NET_WM_DESKTOP,
-			XCB_ATOM_CARDINAL, 32, 1, &selws);
-	/* set normal state */
-	long data[] = { XCB_ICCCM_WM_STATE_NORMAL, XCB_NONE };
-	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, w, ewmh->_NET_WM_STATE,
-			ewmh->_NET_WM_STATE, 32, 2, data);
 
 	xcb_get_property_reply_t *reply;
 	xcb_get_property_cookie_t cookie;
@@ -241,10 +234,6 @@ maximizeclient(Client *c, bool doit) {
 		setborderwidth(sel, BORDER_WIDTH);
 		setborder(sel, true);
 	}
-
-	long data[] = { c->ismax ? ewmh->_NET_WM_STATE_FULLSCREEN : XCB_ICCCM_WM_STATE_NORMAL };
-	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, c->win,
-			ewmh->_NET_WM_STATE, XCB_ATOM_ATOM, 32, 1, data);
 }
 
 void
@@ -368,8 +357,6 @@ sendtows(const Arg *arg) {
 	if (arg->i == selws)
 		return;
 	sel->ws = arg->i;
-	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, sel->win,
-			ewmh->_NET_WM_DESKTOP, XCB_ATOM_CARDINAL, 32, 1, &arg->i);
 	showhide(stack);
 	focus(NULL);
 }
@@ -393,7 +380,6 @@ setborder(Client *c, bool focus) {
 			c->geom.width+BORDER_WIDTH*2, c->geom.height+BORDER_WIDTH*2);
 	xcb_create_gc(conn, gc, pmap, 0, NULL);
 
-	/* See: https://github.com/venam/2bwm */
 	values[0] = outercol;
 	xcb_change_gc(conn, gc, XCB_GC_FOREGROUND, &values[0]);
 	xcb_rectangle_t rect_outer[] = {
@@ -453,8 +439,6 @@ sticky(const Arg *arg) {
 	if (sel->isfixed) {
 		sel->isfixed = false;
 		sel->ws = selws;
-		xcb_change_property(conn, XCB_PROP_MODE_REPLACE, sel->win,
-				ewmh->_NET_WM_DESKTOP, XCB_ATOM_CARDINAL, 32, 1, &selws);
 	}
 	else {
 		sel->isfixed = true;

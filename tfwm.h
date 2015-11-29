@@ -92,15 +92,10 @@ void focus(Client *c);
 void focusstack(const Arg *arg);
 
 /* tfwm.c */
-xcb_keycode_t *getkeycodes(xcb_keysym_t keysym);
 xcb_keysym_t getkeysym(xcb_keycode_t keycode);
 void grabbuttons(Client *c);
-void grabkeys();
+void grabkeys(void);
 void quit(const Arg *arg);
-void restart(const Arg *arg);
-void sigcatch(int sig);
-void sigchld();
-void spawn(const Arg *arg);
 void testcookie(xcb_void_cookie_t cookie, char *errormsg);
 
 extern const Rule rules[2];
@@ -111,7 +106,6 @@ extern xcb_screen_t *screen;
 extern unsigned int numlockmask;
 extern int scrno;
 extern Client *stack;
-extern int sigcode;
 extern xcb_ewmh_connection_t *ewmh;
 extern uint32_t focuscol, unfocuscol, outercol;
 extern bool dorestart;

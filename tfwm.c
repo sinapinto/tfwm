@@ -15,12 +15,17 @@
 #include "workspace.h"
 #include "events.h"
 
-static void cleanup();
+static void cleanup(void);
 static void getatom(xcb_atom_t *atom, char *name);
 static uint32_t getcolor(char *color);
+static xcb_keycode_t *getkeycodes(xcb_keysym_t keysym);
+static void restart(const Arg *arg);
 static void run(void);
-static void setup();
-static void updatenumlockmask();
+static void setup(void);
+static void sigchld();
+static void sigcatch(int sig);
+static void spawn(const Arg *arg);
+static void updatenumlockmask(void);
 
 xcb_connection_t *conn;
 xcb_screen_t *screen;
@@ -121,7 +126,7 @@ Button buttons[2] = {
 };
 
 void
-cleanup() {
+cleanup(void) {
 	while (stack)
 		unmanage(stack);
 
@@ -209,7 +214,7 @@ grabbuttons(Client *c) {
 }
 
 void
-grabkeys() {
+grabkeys(void) {
 	unsigned int i, j, k;
 	unsigned int modifiers[] = { 0, XCB_MOD_MASK_LOCK, numlockmask,
 		numlockmask | XCB_MOD_MASK_LOCK };
@@ -257,7 +262,7 @@ run(void) {
 }
 
 void
-setup() {
+setup(void) {
 	sigchld();
 	signal(SIGINT, sigcatch);
 	signal(SIGTERM, sigcatch);
@@ -283,12 +288,10 @@ setup() {
 	if (xcb_ewmh_init_atoms_replies(ewmh, xcb_ewmh_init_atoms(conn, ewmh), NULL) == 0)
 		err("can't initialize ewmh.");
 	xcb_drawable_t root = screen->root;
-	uint32_t mask = XCB_CW_EVENT_MASK;
-	uint32_t values[] = { XCB_EVENT_MASK_POINTER_MOTION };
 	xcb_window_t recorder = xcb_generate_id(conn);
 	xcb_create_window(conn, XCB_COPY_FROM_PARENT, recorder, root, 0, 0,
 			screen->width_in_pixels, screen->height_in_pixels, 0,
-			XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT, mask, values);
+			XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT, XCB_NONE, NULL);
 	xcb_ewmh_set_wm_pid(ewmh, recorder, getpid());
 	xcb_ewmh_set_wm_name(ewmh, screen->root, 4, "tfwm");
 	xcb_ewmh_set_supporting_wm_check(ewmh, recorder, recorder);
@@ -335,6 +338,7 @@ setup() {
 
 void
 sigcatch(int sig) {
+	PRINTF("caught signal %d\n", sig);
 	sigcode = sig;
 }
 
@@ -369,7 +373,7 @@ testcookie(xcb_void_cookie_t cookie, char *errormsg) {
 }
 
 void
-updatenumlockmask() {
+updatenumlockmask(void) {
 	unsigned int i, j, n;
 	numlockmask = 0;
 	xcb_keycode_t *modmap ;

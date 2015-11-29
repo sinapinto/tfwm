@@ -1,5 +1,4 @@
 #include "tfwm.h"
-#include "client.h"
 #include "list.h"
 
 Client *clients;

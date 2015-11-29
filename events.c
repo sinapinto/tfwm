@@ -1,7 +1,6 @@
 #include <string.h>
 #include <xcb/xcb_event.h>
 #include "tfwm.h"
-#include "client.h"
 #include "list.h"
 #include "events.h"
 
@@ -104,6 +103,7 @@ clientmessage(xcb_generic_event_t *ev) {
 	} else if (e->type == ewmh->_NET_ACTIVE_WINDOW) {
 		setborder(sel, false);
 		focus(c);
+	} else if (e->type == ewmh->_NET_WM_DESKTOP) {
 	} else if (e->type == ewmh->_NET_CLOSE_WINDOW) {
 		unmanage(c);
 	}
