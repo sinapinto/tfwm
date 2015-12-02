@@ -60,7 +60,7 @@ static const char *voldown[]   = { "amixer", "set", "Master", "3%-", "unmute", N
 static const char *voltoggle[] = { "amixer", "set", "Master", "toggle", NULL };
 
 #include <X11/XF86keysym.h>
-Key keys[100] = {
+Key keys[62] = {
 	/* modifier     key                       function       argument */
 	{ MOD,          XK_Return,                spawn,         {.com=terminal}    },
 	{ MOD,          XK_t,                     spawn,         {.com=terminal2}   },

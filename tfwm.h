@@ -99,7 +99,7 @@ void quit(const Arg *arg);
 void testcookie(xcb_void_cookie_t cookie, char *errormsg);
 
 extern const Rule rules[2];
-extern Key keys[100];
+extern Key keys[62];
 extern Button buttons[2];
 extern xcb_connection_t *conn;
 extern xcb_screen_t *screen;
