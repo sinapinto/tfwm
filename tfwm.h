@@ -81,9 +81,14 @@ enum { MaxVertical, MaxHorizontal };
 enum { LastWorkspace, PrevWorkspace, NextWorkspace };
 enum { PrevWindow, NextWindow };
 
+/* keys.c */
+void updatenumlockmask(void);
+
 /* util.c */
 void warn(const char *fmt, ...);
 void err(const char *fmt, ...);
+void testcookie(xcb_void_cookie_t cookie, char *errormsg);
+void spawn(const Arg *arg);
 
 /* list.c */
 void attach(Client *c);
@@ -97,7 +102,7 @@ void focusstack(bool next);
 xcb_keysym_t getkeysym(xcb_keycode_t keycode);
 void grabkeys(void);
 void quit(const Arg *arg);
-void testcookie(xcb_void_cookie_t cookie, char *errormsg);
+void restart(const Arg *arg);
 
 extern const Rule rules[2];
 extern Key keys[62];

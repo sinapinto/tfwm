@@ -9,6 +9,7 @@
 #include "tfwm.h"
 #include "list.h"
 #include "client.h"
+#include "keys.h"
 
 unsigned int selws = 0;
 unsigned int prevws = 0;
@@ -151,12 +152,10 @@ manage(xcb_window_t w) {
 	applyrules(c);
 	fitclient(c);
 
-	uint32_t values[] = {
-		XCB_EVENT_MASK_PROPERTY_CHANGE |
-			XCB_EVENT_MASK_FOCUS_CHANGE |
-			(SLOPPY_FOCUS ? XCB_EVENT_MASK_ENTER_WINDOW : 0)
-	};
+#if SLOPPY_FOCUS
+	uint32_t values[] = {XCB_EVENT_MASK_ENTER_WINDOW};
 	xcb_change_window_attributes(conn, w, XCB_CW_EVENT_MASK, values);
+#endif
 
 	if (c->ws == selws)
 		xcb_map_window(conn, w);
