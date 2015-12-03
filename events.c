@@ -59,9 +59,11 @@ void
 buttonpress(xcb_generic_event_t *ev) {
 	xcb_button_press_event_t *e = (xcb_button_press_event_t*)ev;
 	Client *c;
+
+	PRINTF("Event: button press: %X\n", e->event);
+
 	if ((c = wintoclient(e->event))) {
 		if (c->win != sel->win) {
-			setborder(sel, false);
 			focus(c);
 		}
 	}
@@ -101,7 +103,6 @@ clientmessage(xcb_generic_event_t *ev) {
 				maximizeclient(c, !c->ismax);
 		}
 	} else if (e->type == ewmh->_NET_ACTIVE_WINDOW) {
-		setborder(sel, false);
 		focus(c);
 	} else if (e->type == ewmh->_NET_WM_DESKTOP) {
 	} else if (e->type == ewmh->_NET_MOVERESIZE_WINDOW) {
@@ -160,21 +161,24 @@ destroynotify(xcb_generic_event_t *ev) {
 	xcb_destroy_notify_event_t *e = (xcb_destroy_notify_event_t *)ev;
 	Client *c;
 
-	if ((c = wintoclient(e->window))) {
-		PRINTF("Event: destroy notify: %X\n", e->window);
+	PRINTF("Event: destroy notify: %X\n", e->window);
+
+	if ((c = wintoclient(e->window)))
 		unmanage(c);
-	}
 }
 
 void
 enternotify(xcb_generic_event_t *ev) {
 	xcb_enter_notify_event_t *e = (xcb_enter_notify_event_t *)ev;
 	Client *c;
+
 	PRINTF("Event: enter notify: %d\n", e->event);
+
 	if (e->mode == XCB_NOTIFY_MODE_NORMAL || e->mode == XCB_NOTIFY_MODE_UNGRAB) {
-		if (sel != NULL && e->event == sel->win)
+		if (sel && e->event == sel->win)
 			return;
 		if ((c = wintoclient(e->event))) {
+			raisewindow(c->win);
 			focus(c);
 		}
 	}
@@ -197,7 +201,9 @@ keypress(xcb_generic_event_t *ev) {
 void
 mappingnotify(xcb_generic_event_t *ev) {
 	xcb_mapping_notify_event_t *e = (xcb_mapping_notify_event_t *)ev;
+
 	PRINTF("Event: mapping notify\n");
+
 	if (e->request != XCB_MAPPING_MODIFIER && e->request != XCB_MAPPING_KEYBOARD)
 		return;
 	xcb_ungrab_key(conn, XCB_GRAB_ANY, screen->root, XCB_MOD_MASK_ANY);
@@ -207,9 +213,9 @@ mappingnotify(xcb_generic_event_t *ev) {
 void
 maprequest(xcb_generic_event_t *ev) {
 	xcb_map_request_event_t *e = (xcb_map_request_event_t *)ev;
+
 	PRINTF("Event: map request: %X\n", e->window);
-	if (sel && sel->win != e->window)
-		setborder(sel, false);
+
 	if (!wintoclient(e->window))
 		manage(e->window);
 }
@@ -315,7 +321,9 @@ requesterror(xcb_generic_event_t *ev) {
 void
 unmapnotify(xcb_generic_event_t *ev) {
 	xcb_unmap_notify_event_t *e = (xcb_unmap_notify_event_t *)ev;
+
 	PRINTF("Event: unmap notify: %X\n", e->window);
+
 	Client *c;
 	if (e->window == screen->root)
 		return;

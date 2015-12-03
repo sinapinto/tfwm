@@ -30,6 +30,7 @@
 #define UNFOCUS_COLOR        "slate gray"
 #define MOVE_STEP            30
 #define RESIZE_STEP          30
+#define SLOPPY_FOCUS         false
 
 typedef union {
 	const char **com;

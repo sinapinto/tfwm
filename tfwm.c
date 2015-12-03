@@ -203,8 +203,7 @@ getkeysym(xcb_keycode_t keycode) {
 void
 grabkeys(void) {
 	unsigned int i, j, k;
-	unsigned int modifiers[] = { 0, XCB_MOD_MASK_LOCK, numlockmask,
-		numlockmask | XCB_MOD_MASK_LOCK };
+	unsigned int modifiers[] = { 0, XCB_MOD_MASK_LOCK, numlockmask, numlockmask|XCB_MOD_MASK_LOCK };
 	xcb_keycode_t *keycode;
 
 	xcb_ungrab_key(conn, XCB_GRAB_ANY, screen->root, XCB_MOD_MASK_ANY);
@@ -258,14 +257,14 @@ setup(void) {
 	if (!screen)
 		err("can't find screen.");
 	/* subscribe to handler */
-	unsigned int value[1] = {
+	unsigned int values[] = {
 		XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY |
 			XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT |
 			XCB_EVENT_MASK_BUTTON_PRESS
 	};
 	xcb_void_cookie_t cookie;
 	cookie = xcb_change_window_attributes_checked(conn, screen->root,
-			XCB_CW_EVENT_MASK, value);
+			XCB_CW_EVENT_MASK, values);
 	testcookie(cookie, "another window manager is running.");
 	xcb_flush(conn);
 	/* init atoms */
@@ -294,6 +293,8 @@ setup(void) {
 		ewmh->_NET_CLOSE_WINDOW,
 		ewmh->_NET_WM_STATE,
 		ewmh->_NET_WM_STATE_FULLSCREEN,
+		/* ewmh->_NET_CLIENT_LIST, */
+		/* ewmh->_NET_CLIENT_LIST_STACKING, */
 		/* ewmh->_NET_WM_STATE_MAXIMIZED_VERT, */
 		/* ewmh->_NET_WM_STATE_MAXIMIZED_HORZ, */
 		/* ewmh->_NET_WM_STATE_BELOW, */

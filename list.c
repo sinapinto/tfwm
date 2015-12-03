@@ -47,6 +47,8 @@ focus(Client *c) {
 		detachstack(c);
 		attachstack(c);
 		grabbuttons(c);
+		if (sel && sel != c)
+			setborder(sel, false);
 		setborder(c, true);
 		xcb_set_input_focus(conn, XCB_INPUT_FOCUS_POINTER_ROOT,
 				c->win, XCB_CURRENT_TIME);
@@ -67,7 +69,6 @@ focusstack(bool next) {
 
 	if (!sel)
 		return;
-	setborder(sel, false);
 	if (next) {
 		for (c = sel->next; c && !ISVISIBLE(c); c = c->next);
 		if (!c)

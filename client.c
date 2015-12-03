@@ -150,6 +150,14 @@ manage(xcb_window_t w) {
 	sel = c;
 	applyrules(c);
 	fitclient(c);
+
+	uint32_t values[] = {
+		XCB_EVENT_MASK_PROPERTY_CHANGE |
+			XCB_EVENT_MASK_FOCUS_CHANGE |
+			(SLOPPY_FOCUS ? XCB_EVENT_MASK_ENTER_WINDOW : 0)
+	};
+	xcb_change_window_attributes(conn, w, XCB_CW_EVENT_MASK, values);
+
 	if (c->ws == selws)
 		xcb_map_window(conn, w);
 
@@ -434,11 +442,12 @@ showhide(Client *c) {
 	}
 	else {
 		showhide(c->snext);
+		// TODO: set iconic state
 		movewin(c->win, WIDTH(c) * -2, c->geom.y);
 	}
 }
 
-// TODO
+// FIXME
 void
 sticky(const Arg *arg) {
 	(void)arg;
