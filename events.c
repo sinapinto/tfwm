@@ -4,17 +4,20 @@
 #include "list.h"
 #include "events.h"
 
-static void buttonpress(xcb_generic_event_t *ev);
-static void circulaterequest(xcb_generic_event_t *ev);
-static void clientmessage(xcb_generic_event_t *ev);
-static void configurerequest(xcb_generic_event_t *ev);
-static void destroynotify(xcb_generic_event_t *ev);
-static void enternotify(xcb_generic_event_t *ev);
-static void keypress(xcb_generic_event_t *ev);
-static void mappingnotify(xcb_generic_event_t *ev);
-static void maprequest(xcb_generic_event_t *ev);
-static void requesterror(xcb_generic_event_t *ev);
-static void unmapnotify(xcb_generic_event_t *ev);
+static void  buttonpress(xcb_generic_event_t *ev);
+static void  circulaterequest(xcb_generic_event_t *ev);
+static void  clientmessage(xcb_generic_event_t *ev);
+static void  configurerequest(xcb_generic_event_t *ev);
+static void  destroynotify(xcb_generic_event_t *ev);
+static void  enternotify(xcb_generic_event_t *ev);
+static void  keypress(xcb_generic_event_t *ev);
+static void  mappingnotify(xcb_generic_event_t *ev);
+static void  maprequest(xcb_generic_event_t *ev);
+static void  requesterror(xcb_generic_event_t *ev);
+static void  unmapnotify(xcb_generic_event_t *ev);
+#ifdef DEBUG
+static char *get_atom_name(xcb_atom_t atom);
+#endif
 
 void
 handleevent(xcb_generic_event_t *ev) {
@@ -60,7 +63,7 @@ buttonpress(xcb_generic_event_t *ev) {
 	xcb_button_press_event_t *e = (xcb_button_press_event_t*)ev;
 	Client *c;
 
-	PRINTF("Event: button press: %X\n", e->event);
+	PRINTF("Event: button press: %#x\n", e->event);
 
 	if ((c = wintoclient(e->event))) {
 		if (c->win != sel->win) {
@@ -78,7 +81,7 @@ buttonpress(xcb_generic_event_t *ev) {
 void
 circulaterequest(xcb_generic_event_t *ev) {
 	xcb_circulate_request_event_t *e = (xcb_circulate_request_event_t *)ev;
-	PRINTF("Event: circulate request: %X\n", e->window);
+	PRINTF("Event: circulate request: %#x\n", e->window);
 	xcb_circulate_window(conn, e->window, e->place);
 }
 
@@ -87,7 +90,12 @@ clientmessage(xcb_generic_event_t *ev) {
 	xcb_client_message_event_t *e = (xcb_client_message_event_t*)ev;
 	Client *c;
 
-	PRINTF("Event: client message %u: %X\n", e->type, e->window);
+#ifdef DEBUG
+	char *name;
+	name = get_atom_name(e->type);
+	PRINTF("Event: client message win %#x, atom %s (%u)\n", e->window, name, e->type);
+	free(name);
+#endif
 
 	if (!(c = wintoclient(e->window)))
 		return;
@@ -111,6 +119,31 @@ clientmessage(xcb_generic_event_t *ev) {
 	}
 }
 
+#ifdef DEBUG
+char *
+get_atom_name(xcb_atom_t atom) {
+	char *name = NULL;
+	xcb_get_atom_name_reply_t *reply;
+	int len;
+
+	reply = xcb_get_atom_name_reply(conn, xcb_get_atom_name(conn, atom), NULL);
+	if (!reply)
+		return NULL;
+
+	len = xcb_get_atom_name_name_length(reply);
+	if (len) {
+		if (!(name = malloc(len + 1)))
+			err("can't allocate memory.");
+		memcpy(name, xcb_get_atom_name_name(reply), len);
+		name[len] = '\0';
+	}
+
+	free(reply);
+
+	return name;
+}
+#endif
+
 void
 configurerequest(xcb_generic_event_t *ev) {
 	xcb_configure_request_event_t *e = (xcb_configure_request_event_t *)ev;
@@ -118,7 +151,7 @@ configurerequest(xcb_generic_event_t *ev) {
 	unsigned int v[7];
 	int i = 0;
 
-	PRINTF("Event: configure request x %d y %d w %d h %d bw %d: %X\n",
+	PRINTF("Event: configure request x %d y %d w %d h %d bw %d: %#x\n",
 			e->x, e->y, e->width, e->height, e->border_width, e->window);
 	if ((c = wintoclient(e->window))) {
 		if (e->value_mask & XCB_CONFIG_WINDOW_WIDTH)
@@ -161,7 +194,7 @@ destroynotify(xcb_generic_event_t *ev) {
 	xcb_destroy_notify_event_t *e = (xcb_destroy_notify_event_t *)ev;
 	Client *c;
 
-	PRINTF("Event: destroy notify: %X\n", e->window);
+	PRINTF("Event: destroy notify: %#x\n", e->window);
 
 	if ((c = wintoclient(e->window)))
 		unmanage(c);
@@ -214,7 +247,7 @@ void
 maprequest(xcb_generic_event_t *ev) {
 	xcb_map_request_event_t *e = (xcb_map_request_event_t *)ev;
 
-	PRINTF("Event: map request: %X\n", e->window);
+	PRINTF("Event: map request: %#x\n", e->window);
 
 	if (!wintoclient(e->window))
 		manage(e->window);
@@ -322,7 +355,7 @@ void
 unmapnotify(xcb_generic_event_t *ev) {
 	xcb_unmap_notify_event_t *e = (xcb_unmap_notify_event_t *)ev;
 
-	PRINTF("Event: unmap notify: %X\n", e->window);
+	PRINTF("Event: unmap notify: %#x\n", e->window);
 
 	Client *c;
 	if (e->window == screen->root)

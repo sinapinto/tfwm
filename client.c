@@ -398,10 +398,10 @@ setborder(Client *c, bool focus) {
 	values[0] = outercol;
 	xcb_change_gc(conn, gc, XCB_GC_FOREGROUND, &values[0]);
 	xcb_rectangle_t rect_outer[] = {
-		{ c->geom.width+BORDER_WIDTH-half, 0,                      half,                c->geom.height+BORDER_WIDTH*2 },
-		{ c->geom.width+BORDER_WIDTH,      0,                      half,                c->geom.height+BORDER_WIDTH*2 },
-		{ 0,                      c->geom.height+BORDER_WIDTH-half, c->geom.width+BORDER_WIDTH*2, half },
-		{ 0,                      c->geom.height+BORDER_WIDTH,      c->geom.width+BORDER_WIDTH*2, half },
+		{ c->geom.width+BORDER_WIDTH-half, 0, half, c->geom.height+BORDER_WIDTH*2 },
+		{ c->geom.width+BORDER_WIDTH, 0, half, c->geom.height+BORDER_WIDTH*2 },
+		{ 0, c->geom.height+BORDER_WIDTH-half, c->geom.width+BORDER_WIDTH*2, half },
+		{ 0, c->geom.height+BORDER_WIDTH, c->geom.width+BORDER_WIDTH*2, half },
 		{ 1, 1, 1, 1 }
 	};
 	xcb_poly_fill_rectangle(conn, pmap, gc, 5, rect_outer);
@@ -409,11 +409,11 @@ setborder(Client *c, bool focus) {
 	values[0] = focus ? focuscol : unfocuscol;
 	xcb_change_gc(conn, gc, XCB_GC_FOREGROUND, &values[0]);
 	xcb_rectangle_t rect_inner[] = {
-		{ c->geom.width,                   0,                      BORDER_WIDTH-half,      c->geom.height+BORDER_WIDTH-half},
-		{ c->geom.width+BORDER_WIDTH+half, 0,                      BORDER_WIDTH-half,      c->geom.height+BORDER_WIDTH-half},
-		{ 0,                      c->geom.height,                   c->geom.width+BORDER_WIDTH-half, BORDER_WIDTH-half},
-		{ 0,                      c->geom.height+BORDER_WIDTH+half, c->geom.width+BORDER_WIDTH-half, BORDER_WIDTH-half},
-		{ c->geom.width+BORDER_WIDTH+half, BORDER_WIDTH+c->geom.height+half, BORDER_WIDTH,           BORDER_WIDTH }
+		{ c->geom.width, 0, BORDER_WIDTH-half, c->geom.height+BORDER_WIDTH-half },
+		{ c->geom.width+BORDER_WIDTH+half, 0, BORDER_WIDTH-half, c->geom.height+BORDER_WIDTH-half },
+		{ 0, c->geom.height, c->geom.width+BORDER_WIDTH-half, BORDER_WIDTH-half },
+		{ 0, c->geom.height+BORDER_WIDTH+half, c->geom.width+BORDER_WIDTH-half, BORDER_WIDTH-half },
+		{ c->geom.width+BORDER_WIDTH+half, BORDER_WIDTH+c->geom.height+half, BORDER_WIDTH, BORDER_WIDTH }
 	};
 	xcb_poly_fill_rectangle(conn, pmap, gc, 5, rect_inner);
 

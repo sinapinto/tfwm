@@ -118,9 +118,6 @@ run(void) {
 
 void
 setup(void) {
-	sigchld();
-	signal(SIGINT, sigcatch);
-	signal(SIGTERM, sigcatch);
 	/* init screen */
 	screen = xcb_setup_roots_iterator(xcb_get_setup(conn)).data;
 	if (!screen)
@@ -212,14 +209,21 @@ main(int argc, char **argv) {
 	else if (argc != 1)
 		err("usage: tfwm [-v]\n");
 
+	sigchld();
+	signal(SIGINT, sigcatch);
+	signal(SIGTERM, sigcatch);
+
 	conn = xcb_connect(NULL, &scrno);
 	if (xcb_connection_has_error(conn))
 		err("xcb_connect error");
+
 	setup();
 	run();
 	cleanup();
+
 	if (dorestart)
 		execvp(argv[0], argv);
+
 	return EXIT_SUCCESS;
 }
 
