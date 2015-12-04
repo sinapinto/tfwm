@@ -34,6 +34,7 @@
 #define MOVE_STEP            30
 #define RESIZE_STEP          30
 #define SLOPPY_FOCUS         false
+#define JAVA_WORKAROUND      true
 
 typedef union {
 	const char **com;

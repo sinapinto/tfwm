@@ -1,3 +1,4 @@
+/* See LICENSE file for copyright and license details. */
 #include <string.h>
 #include <xcb/xcb_event.h>
 #include "tfwm.h"

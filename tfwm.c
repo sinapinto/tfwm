@@ -140,7 +140,11 @@ setup(void) {
 			screen->width_in_pixels, screen->height_in_pixels, 0,
 			XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT, XCB_NONE, NULL);
 	xcb_ewmh_set_wm_pid(ewmh, recorder, getpid());
-	xcb_ewmh_set_wm_name(ewmh, screen->root, 4, "tfwm");
+#if JAVA_WORKAROUND
+	xcb_ewmh_set_wm_name(ewmh, screen->root, strlen("LG3D"), "LG3D");
+#else
+	xcb_ewmh_set_wm_name(ewmh, screen->root, strlen("tfwm"), "tfwm");
+#endif
 	xcb_ewmh_set_supporting_wm_check(ewmh, recorder, recorder);
 	xcb_ewmh_set_supporting_wm_check(ewmh, screen->root, recorder);
 	xcb_atom_t net_atoms[] = {

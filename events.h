@@ -1,3 +1,4 @@
+/* See LICENSE file for copyright and license details. */
 #ifndef EVENTS_H
 #define EVENTS_H
 

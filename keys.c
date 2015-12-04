@@ -1,3 +1,4 @@
+/* See LICENSE file for copyright and license details. */
 #include <X11/keysym.h>
 #include <X11/XF86keysym.h>
 #include "tfwm.h"
