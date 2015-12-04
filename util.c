@@ -13,8 +13,8 @@ warn(const char *fmt, ...) {
 	va_end(ap);
 }
 
- __attribute__ ((noreturn))
-void err(const char *fmt, ...) {
+__attribute__ ((noreturn)) void
+err(const char *fmt, ...) {
 	va_list ap;
 	va_start(ap, fmt);
 	vfprintf(stderr, fmt, ap);

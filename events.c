@@ -72,8 +72,8 @@ buttonpress(xcb_generic_event_t *ev) {
 	}
 	for (unsigned int i = 0; i < LENGTH(buttons); i++)
 		if (buttons[i].button == e->detail &&
-				CLEANMASK(buttons[i].mask) == CLEANMASK(e->state) &&
-				buttons[i].func)
+			CLEANMASK(buttons[i].mask) == CLEANMASK(e->state) &&
+			buttons[i].func)
 			if (sel != NULL && e->event != screen->root)
 				buttons[i].func(&buttons[i].arg);
 }
@@ -102,7 +102,7 @@ clientmessage(xcb_generic_event_t *ev) {
 
 	if (e->type == ewmh->_NET_WM_STATE) {
 		if (e->data.data32[1] == ewmh->_NET_WM_STATE_FULLSCREEN ||
-				e->data.data32[2] == ewmh->_NET_WM_STATE_FULLSCREEN) {
+			e->data.data32[2] == ewmh->_NET_WM_STATE_FULLSCREEN) {
 			if (e->data.data32[0] == XCB_EWMH_WM_STATE_ADD)
 				maximizeclient(c, true);
 			else if (e->data.data32[0] == XCB_EWMH_WM_STATE_REMOVE)
@@ -152,7 +152,7 @@ configurerequest(xcb_generic_event_t *ev) {
 	int i = 0;
 
 	PRINTF("Event: configure request x %d y %d w %d h %d bw %d: %#x\n",
-			e->x, e->y, e->width, e->height, e->border_width, e->window);
+		   e->x, e->y, e->width, e->height, e->border_width, e->window);
 	if ((c = wintoclient(e->window))) {
 		if (e->value_mask & XCB_CONFIG_WINDOW_WIDTH)
 			if (!c->ismax && !c->ishormax)
@@ -223,8 +223,8 @@ keypress(xcb_generic_event_t *ev) {
 	xcb_keysym_t keysym = getkeysym(e->detail);
 	for (unsigned int i = 0; i < LENGTH(keys); i++) {
 		if (keysym == keys[i].keysym &&
-				CLEANMASK(keys[i].mod) == CLEANMASK(e->state) &&
-				keys[i].func) {
+			CLEANMASK(keys[i].mod) == CLEANMASK(e->state) &&
+			keys[i].func) {
 			keys[i].func(&keys[i].arg);
 			break;
 		}
@@ -272,16 +272,16 @@ mousemotion(const Arg *arg) {
 		cursorid = 52;
 	else
 		cursorid = 14;
-	xcb_create_glyph_cursor(conn, cursor, font, font,
-			cursorid, cursorid + 1, 0x0000, 0x0000, 0x0000, 0xffff, 0xffff, 0xffff);
+	xcb_create_glyph_cursor(conn, cursor, font, font, cursorid, cursorid + 1, 0x0000, 0x0000, 0x0000, 0xffff, 0xffff, 0xffff);
 	/* grab pointer */
 	xcb_grab_pointer_reply_t *grab_reply = xcb_grab_pointer_reply(conn,
-			xcb_grab_pointer(conn, 0, screen->root,
-				XCB_EVENT_MASK_BUTTON_PRESS |
-				XCB_EVENT_MASK_BUTTON_RELEASE |
-				XCB_EVENT_MASK_BUTTON_MOTION |
-				XCB_EVENT_MASK_POINTER_MOTION, XCB_GRAB_MODE_ASYNC,
-				XCB_GRAB_MODE_ASYNC, XCB_NONE, cursor, XCB_CURRENT_TIME), NULL);
+																  xcb_grab_pointer(conn, 0, screen->root,
+																				   XCB_EVENT_MASK_BUTTON_PRESS |
+																				   XCB_EVENT_MASK_BUTTON_RELEASE |
+																				   XCB_EVENT_MASK_BUTTON_MOTION |
+																				   XCB_EVENT_MASK_POINTER_MOTION, XCB_GRAB_MODE_ASYNC,
+																				   XCB_GRAB_MODE_ASYNC, XCB_NONE, cursor, XCB_CURRENT_TIME),
+																  NULL);
 	if (grab_reply->status != XCB_GRAB_STATUS_SUCCESS) {
 		free(grab_reply);
 		return;
@@ -346,9 +346,9 @@ void
 requesterror(xcb_generic_event_t *ev) {
 	xcb_request_error_t *e = (xcb_request_error_t *)ev;
 	warn("Event: failed request: %s, %s: %d\n",
-			xcb_event_get_request_label(e->major_opcode),
-			xcb_event_get_error_label(e->error_code),
-			e->bad_value);
+		 xcb_event_get_request_label(e->major_opcode),
+		 xcb_event_get_error_label(e->error_code),
+		 e->bad_value);
 }
 
 void

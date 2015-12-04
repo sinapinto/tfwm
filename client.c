@@ -70,8 +70,7 @@ void
 gethints(Client *c) {
 	xcb_size_hints_t h;
 	xcb_generic_error_t *e;
-	xcb_icccm_get_wm_normal_hints_reply(conn,
-			xcb_icccm_get_wm_normal_hints_unchecked(conn, c->win), &h, &e);
+	xcb_icccm_get_wm_normal_hints_reply(conn, xcb_icccm_get_wm_normal_hints_unchecked(conn, c->win), &h, &e);
 	if (e) {
 		free(e);
 		return;
@@ -206,8 +205,7 @@ maximizeaxis(const Arg *arg) {
 		sel->geom.height = th;
 		values[0] = sel->geom.y;
 		values[1] = sel->geom.height;
-		xcb_configure_window(conn, sel->win, XCB_CONFIG_WINDOW_Y
-				| XCB_CONFIG_WINDOW_HEIGHT, values);
+		xcb_configure_window(conn, sel->win, XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_HEIGHT, values);
 		sel->isvertmax = true;
 	}
 	else if (arg->i == MaxHorizontal) {
@@ -215,8 +213,7 @@ maximizeaxis(const Arg *arg) {
 		sel->geom.width = tw;
 		values[0] = sel->geom.x;
 		values[1] = sel->geom.width;
-		xcb_configure_window(conn, sel->win, XCB_CONFIG_WINDOW_X
-				| XCB_CONFIG_WINDOW_WIDTH, values);
+		xcb_configure_window(conn, sel->win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_WIDTH, values);
 		sel->ishormax = true;
 	}
 	setborder(sel, true);
@@ -330,7 +327,7 @@ void
 resizewin(xcb_window_t win, int w, int h) {
 	unsigned int values[2] = { w, h };
 	xcb_configure_window(conn, win, XCB_CONFIG_WINDOW_WIDTH |
-			XCB_CONFIG_WINDOW_HEIGHT, values);
+						 XCB_CONFIG_WINDOW_HEIGHT, values);
 }
 
 void
@@ -392,7 +389,7 @@ setborder(Client *c, bool focus) {
 	xcb_pixmap_t pmap = xcb_generate_id(conn);
 	xcb_gcontext_t gc = xcb_generate_id(conn);
 	xcb_create_pixmap(conn, screen->root_depth, pmap, screen->root,
-			c->geom.width+BORDER_WIDTH*2, c->geom.height+BORDER_WIDTH*2);
+					  c->geom.width+BORDER_WIDTH*2, c->geom.height+BORDER_WIDTH*2);
 	xcb_create_gc(conn, gc, pmap, 0, NULL);
 
 	values[0] = outercol;
@@ -531,22 +528,22 @@ check_shape_extension() {
 void
 roundcorners(Client *c) {
 	xcb_pixmap_t pmap = xcb_create_pixmap_from_bitmap_data(conn,
-			screen->root,
-			corner_bits,
-			corner_width, corner_height,
-			1, // depth
-			0, // fg
-			1, // bg
-			NULL); // gc
+														   screen->root,
+														   corner_bits,
+														   corner_width, corner_height,
+														   1, // depth
+														   0, // fg
+														   1, // bg
+														   NULL); // gc
 	if (pmap == XCB_NONE)
 		err("xcb_create_pixmap_from_bitmap_data() failed.");
 
 	xcb_shape_mask(conn,
-			XCB_SHAPE_SO_SUBTRACT,
-			XCB_SHAPE_SK_BOUNDING,
-			c->win,
-			0, 0,
-			pmap);
+				   XCB_SHAPE_SO_SUBTRACT,
+				   XCB_SHAPE_SK_BOUNDING,
+				   c->win,
+				   0, 0,
+				   pmap);
 	xcb_free_pixmap(conn, pmap);
 }
 #endif
