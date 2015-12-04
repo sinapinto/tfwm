@@ -152,7 +152,7 @@ manage(xcb_window_t w) {
 	fitclient(c);
 
 #if SLOPPY_FOCUS
-	uint32_t values[] = {XCB_EVENT_MASK_ENTER_WINDOW};
+	uint32_t values[] = {CLIENT_EVENT_MASK};
 	xcb_change_window_attributes(conn, w, XCB_CW_EVENT_MASK, values);
 #endif
 
@@ -223,6 +223,7 @@ void
 maximizeclient(Client *c, bool doit) {
 	if (!c)
 		return;
+	PRINTF("maximizeclient: %s\n", doit ? "max" : "unmax");
 	if (doit) {
 		savegeometry(c);
 		c->ismax = true;

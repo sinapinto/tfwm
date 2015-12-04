@@ -123,14 +123,9 @@ setup(void) {
 	if (!screen)
 		err("can't find screen.");
 	/* subscribe to handler */
-	unsigned int values[] = {
-		XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY |
-			XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT |
-			XCB_EVENT_MASK_BUTTON_PRESS
-	};
+	unsigned int values[] = {ROOT_EVENT_MASK};
 	xcb_void_cookie_t cookie;
-	cookie = xcb_change_window_attributes_checked(conn, screen->root,
-			XCB_CW_EVENT_MASK, values);
+	cookie = xcb_change_window_attributes_checked(conn, screen->root, XCB_CW_EVENT_MASK, values);
 	testcookie(cookie, "another window manager is running.");
 	xcb_flush(conn);
 	/* init atoms */

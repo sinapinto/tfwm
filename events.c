@@ -13,6 +13,7 @@ static void  enternotify(xcb_generic_event_t *ev);
 static void  keypress(xcb_generic_event_t *ev);
 static void  mappingnotify(xcb_generic_event_t *ev);
 static void  maprequest(xcb_generic_event_t *ev);
+static void  propertynotify(xcb_generic_event_t *ev);
 static void  requesterror(xcb_generic_event_t *ev);
 static void  unmapnotify(xcb_generic_event_t *ev);
 #ifdef DEBUG
@@ -49,6 +50,9 @@ handleevent(xcb_generic_event_t *ev) {
 		case XCB_MAP_REQUEST:
 			maprequest(ev);
 			break;
+		case XCB_PROPERTY_NOTIFY:
+			propertynotify(ev);
+			break;
 		case XCB_UNMAP_NOTIFY:
 			unmapnotify(ev);
 			break;
@@ -81,7 +85,7 @@ buttonpress(xcb_generic_event_t *ev) {
 void
 circulaterequest(xcb_generic_event_t *ev) {
 	xcb_circulate_request_event_t *e = (xcb_circulate_request_event_t *)ev;
-	PRINTF("Event: circulate request: %#x\n", e->window);
+	PRINTF("Event: circulate request win %#x\n", e->window);
 	xcb_circulate_window(conn, e->window, e->place);
 }
 
@@ -181,9 +185,27 @@ configurerequest(xcb_generic_event_t *ev) {
 			v[i++] = e->sibling;
 		if (e->value_mask & XCB_CONFIG_WINDOW_STACK_MODE)
 			v[i++] = e->stack_mode;
-		if (e->value_mask & XCB_CONFIG_WINDOW_BORDER_WIDTH)
+		if (e->value_mask & XCB_CONFIG_WINDOW_BORDER_WIDTH) {
 			v[i++] = e->border_width;
-		setborder(c, true);
+			/* setborder(c, true); */
+		}
+
+		xcb_configure_notify_event_t evt;
+		memset(&evt, '\0', sizeof evt);
+
+		evt.response_type = XCB_CONFIGURE_NOTIFY;
+		evt.event = c->win;
+		evt.window = c->win;
+		evt.above_sibling = XCB_NONE;
+		evt.x = c->geom.x;
+		evt.y = c->geom.y;
+		evt.width = c->geom.width;
+		evt.height = c->geom.height;
+		evt.border_width = c->noborder ? 0 : BORDER_WIDTH;
+		evt.override_redirect = false;
+
+		xcb_send_event(conn, false, c->win, XCB_EVENT_MASK_STRUCTURE_NOTIFY, (const char *)&evt);
+
 		if (!c->ismax && !c->isvertmax && !c->ishormax)
 			xcb_configure_window(conn, e->window, e->value_mask, v);
 	}
@@ -211,7 +233,7 @@ destroynotify(xcb_generic_event_t *ev) {
 	xcb_destroy_notify_event_t *e = (xcb_destroy_notify_event_t *)ev;
 	Client *c;
 
-	PRINTF("Event: destroy notify: %#x\n", e->window);
+	PRINTF("Event: destroy notify: win %#x\n", e->window);
 
 	if ((c = wintoclient(e->window)))
 		unmanage(c);
@@ -222,7 +244,7 @@ enternotify(xcb_generic_event_t *ev) {
 	xcb_enter_notify_event_t *e = (xcb_enter_notify_event_t *)ev;
 	Client *c;
 
-	PRINTF("Event: enter notify: %d\n", e->event);
+	PRINTF("Event: enter notify: win %#x\n", e->event);
 
 	if (e->mode == XCB_NOTIFY_MODE_NORMAL || e->mode == XCB_NOTIFY_MODE_UNGRAB) {
 		if (sel && e->event == sel->win)
@@ -264,7 +286,7 @@ void
 maprequest(xcb_generic_event_t *ev) {
 	xcb_map_request_event_t *e = (xcb_map_request_event_t *)ev;
 
-	PRINTF("Event: map request: %#x\n", e->window);
+	PRINTF("Event: map request win %#x\n", e->window);
 
 	if (!wintoclient(e->window))
 		manage(e->window);
@@ -357,6 +379,24 @@ mousemotion(const Arg *arg) {
 	testcookie(fontcookie, "can't close font.");
 	xcb_free_cursor(conn, cursor);
 	xcb_ungrab_pointer(conn, XCB_CURRENT_TIME);
+}
+
+void
+propertynotify(xcb_generic_event_t *ev) {
+	xcb_property_notify_event_t *e = (xcb_property_notify_event_t *)ev;
+	Client *c;
+
+#ifdef DEBUG
+	char *name;
+	name = get_atom_name(e->atom);
+	PRINTF("Event: property notify: win %#x atom %s", e->window, name);
+	free(name);
+#endif
+
+	if (!(c = wintoclient(e->window)))
+		return;
+
+	// TODO
 }
 
 void

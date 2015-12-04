@@ -22,10 +22,13 @@ static const char *mpcseekf[]  = { "mpc", "seek", "+30", NULL };
 static const char *mpcseekb[]  = { "mpc", "seek", "-30", NULL };
 static const char *mpcnext[]   = { "mpc", "next", NULL };
 static const char *mpcprev[]   = { "mpc", "prev", NULL };
-static const char *volup[]     = { "amixer", "set", "Master", "3%+", "unmute", NULL };
-static const char *voldown[]   = { "amixer", "set", "Master", "3%-", "unmute", NULL };
-static const char *voltoggle[] = { "amixer", "set", "Master", "toggle", NULL };
+static const char *volup[]     = { "amixer", "-q", "set", "Master", "3%+", "unmute", NULL };
+static const char *voldown[]   = { "amixer", "-q", "set", "Master", "3%-", "unmute", NULL };
+static const char *voltoggle[] = { "amixer", "-q", "set", "Master", "toggle", NULL };
 
+#define MOD					XCB_MOD_MASK_1
+#define SHIFT				XCB_MOD_MASK_SHIFT
+#define CTRL				XCB_MOD_MASK_CONTROL
 Key keys[62] = {
 	/* modifier     key                       function       argument */
 	{ MOD,          XK_Return,                spawn,         {.com=terminal}    },

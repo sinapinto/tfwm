@@ -7,10 +7,16 @@
 
 #ifdef DEBUG
 # include <stdio.h>
-# define PRINTF(...)     do { printf(__VA_ARGS__); } while(0)
+# define PRINTF(...)     do { fprintf(stderr, __VA_ARGS__); } while(0)
 #else
 # define PRINTF(...)
 #endif
+
+#define ROOT_EVENT_MASK    (XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY   |\
+                            XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT |\
+                            XCB_EVENT_MASK_BUTTON_PRESS)
+#define CLIENT_EVENT_MASK  (XCB_EVENT_MASK_ENTER_WINDOW          |\
+                            XCB_EVENT_MASK_PROPERTY_CHANGE)
 
 #define CLEANMASK(mask)  (mask & ~(numlockmask|XCB_MOD_MASK_LOCK))
 #define LENGTH(X)        (sizeof(X)/sizeof(*X))
@@ -19,9 +25,6 @@
 #define WIDTH(C)         ((C)->geom.width + 2 * BORDER_WIDTH)
 #define ISVISIBLE(C)     ((C)->ws == selws || (C)->isfixed)
 
-#define MOD                  XCB_MOD_MASK_1
-#define SHIFT                XCB_MOD_MASK_SHIFT
-#define CTRL                 XCB_MOD_MASK_CONTROL
 #define DOUBLE_BORDER        false
 #define BORDER_WIDTH         2
 #define OUTER_BORDER_WIDTH   4
