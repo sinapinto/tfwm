@@ -151,8 +151,25 @@ configurerequest(xcb_generic_event_t *ev) {
 	unsigned int v[7];
 	int i = 0;
 
-	PRINTF("Event: configure request x %d y %d w %d h %d bw %d: %#x\n",
-		   e->x, e->y, e->width, e->height, e->border_width, e->window);
+#ifdef DEBUG
+	PRINTF("Event: configure request: win %#x: ", e->window);
+	if (e->value_mask & XCB_CONFIG_WINDOW_X)
+		PRINTF("x: %d ", e->x);
+	if (e->value_mask & XCB_CONFIG_WINDOW_Y)
+		PRINTF("y: %d ", e->y);
+	if (e->value_mask & XCB_CONFIG_WINDOW_WIDTH)
+		PRINTF("w: %u ", e->width);
+	if (e->value_mask & XCB_CONFIG_WINDOW_HEIGHT)
+		PRINTF("h: %u ", e->height);
+	if (e->value_mask & XCB_CONFIG_WINDOW_BORDER_WIDTH)
+		PRINTF("border: %u ", e->border_width);
+	if (e->value_mask & XCB_CONFIG_WINDOW_SIBLING)
+		PRINTF("sibling: %#x ", e->sibling);
+	if (e->value_mask & XCB_CONFIG_WINDOW_STACK_MODE)
+		PRINTF("stack mode: %u", e->stack_mode);
+	PRINTF("\n");
+#endif
+
 	if ((c = wintoclient(e->window))) {
 		if (e->value_mask & XCB_CONFIG_WINDOW_WIDTH)
 			if (!c->ismax && !c->ishormax)
