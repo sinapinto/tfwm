@@ -18,6 +18,7 @@
 #include "pointer.h"
 
 static void cleanup(void);
+static bool connection_has_error(void);
 static void getatom(xcb_atom_t *atom, char *name);
 static void run(void);
 static void setup(void);
@@ -55,6 +56,41 @@ cleanup(void) {
 	xcb_set_input_focus(conn, XCB_NONE, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
 	xcb_flush(conn);
 	xcb_disconnect(conn);
+}
+
+bool
+connection_has_error(void) {
+	int err = 0;
+
+	if ((err = xcb_connection_has_error(conn)) > 0) {
+		warn("X connection error: ");
+		switch (err) {
+			case XCB_CONN_ERROR:
+				warn("socket, pipe, or other stream error.\n");
+				break;
+			case XCB_CONN_CLOSED_EXT_NOTSUPPORTED:
+				warn("extension not supported.\n");
+				break;
+			case XCB_CONN_CLOSED_MEM_INSUFFICIENT:
+				warn("memory not available.\n");
+				break;
+			case XCB_CONN_CLOSED_REQ_LEN_EXCEED:
+				warn("exceeding request length.\n");
+				break;
+			case XCB_CONN_CLOSED_PARSE_ERR:
+				warn("error parsing display string.\n");
+				break;
+			case XCB_CONN_CLOSED_INVALID_SCREEN:
+				warn("no screen matching the display.\n");
+				break;
+			default:
+				warn("unkown error.\n");
+				break;
+		}
+		return true;
+	}
+
+	return false;
 }
 
 void
@@ -117,10 +153,11 @@ run(void) {
 	xcb_generic_event_t *ev;
 	while (sigcode == 0) {
 		xcb_flush(conn);
-		ev = xcb_wait_for_event(conn);
-		handleevent(ev);
-		free(ev);
-		if (xcb_connection_has_error(conn)) {
+		if ((ev = xcb_wait_for_event(conn)) != NULL) {
+			handleevent(ev);
+			free(ev);
+		}
+		if (connection_has_error()) {
 			cleanup();
 			exit(1);
 		}
@@ -221,13 +258,13 @@ int
 main(int argc, char **argv) {
 	(void)argc;
 
-	warn("welcome to tfwm version-%s\n", VERSION);
+	warn("welcome to tfwm version %s\n", VERSION);
 
 	if ((display = XOpenDisplay(NULL)) == NULL)
 		err("can't open display.");
 
 	conn = XGetXCBConnection(display);
-	if (xcb_connection_has_error(conn))
+	if (connection_has_error())
 		err("can't get xcb connection.");
 
 	XSetEventQueueOwner(display, XCBOwnsEventQueue);
