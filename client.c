@@ -30,7 +30,6 @@ applyrules(Client *c) {
 			if (!r->border)
 				c->noborder = true;
 			/* if (r->fullscreen) */
-			// TODO
 			/* const Arg a = { .i = r->workspace }; */
 			/* sendtows(&a); */
 		}
@@ -68,6 +67,8 @@ fitclient(Client *c) {
 
 void
 gethints(Client *c) {
+	/* ``When blowflies fight over a pile of elephant shit, their pecking order
+	 * is a more elegant protocol than ICCCM.'' -- Conrad Parker */
 	xcb_size_hints_t h;
 	xcb_generic_error_t *e;
 	xcb_icccm_get_wm_normal_hints_reply(conn, xcb_icccm_get_wm_normal_hints_unchecked(conn, c->win), &h, &e);
@@ -77,17 +78,11 @@ gethints(Client *c) {
 	}
 	free(e);
 
-	// TODO
 	/* if (h.flags & XCB_ICCCM_SIZE_HINT_US_POSITION) */
-	/* 	PRINTF("Hint: US_POSITION: x: %d y: %d\n", h.x, h.y); */
 	/* if (h.flags & XCB_ICCCM_SIZE_HINT_US_SIZE) */
-	/* 	PRINTF("Hint: US_SIZE: width %d height %d\n", h.width, h.height); */
 	/* if (h.flags & XCB_ICCCM_SIZE_HINT_P_POSITION) */
-	/* 	PRINTF("Hint: P_POSITION: x: %d y: %d\n", h.x, h.y); */
 	/* if (h.flags & XCB_ICCCM_SIZE_HINT_P_SIZE) */
-	/* 	PRINTF("Hint: P_SIZE: width %d height %d\n", h.width, h.height); */
 	/* if (h.flags & XCB_ICCCM_SIZE_HINT_P_MAX_SIZE) */
-	/* 	PRINTF("Hint: P_MAX_SIZE max_width %d max_height %d\n", h.max_width, h.max_width); */
 
 	if (h.flags & XCB_ICCCM_SIZE_HINT_P_MIN_SIZE) {
 		if (h.min_width > 0 && h.min_width < screen->width_in_pixels)
@@ -471,21 +466,25 @@ teleport(const Arg *arg) {
 		th +=  BORDER_WIDTH * 2;
 	}
 	switch (arg->i) {
-		case ToCenter:
+		case Center:
 			sel->geom.x = (screen->width_in_pixels - tw) / 2;
 			sel->geom.y = (screen->height_in_pixels - th) / 2;
 			break;
-		case ToTop:
+		case TopLeft:
+			sel->geom.x = 0;
 			sel->geom.y = 0;
 			break;
-		case ToBottom:
+		case TopRight:
+			sel->geom.x = screen->width_in_pixels - tw;
+			sel->geom.y = 0;
+			break;
+		case BottomLeft:
+			sel->geom.x = 0;
 			sel->geom.y = screen->height_in_pixels - th;
 			break;
-		case ToLeft:
-			sel->geom.x = 0;
-			break;
-		case ToRight:
+		case BottomRight:
 			sel->geom.x = screen->width_in_pixels - tw;
+			sel->geom.y = screen->height_in_pixels - th;
 			break;
 	}
 	movewin(sel->win, sel->geom.x, sel->geom.y);

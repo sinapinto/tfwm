@@ -5,18 +5,17 @@
 #include "list.h"
 #include "events.h"
 
-static void  buttonpress(xcb_generic_event_t *ev);
-static void  circulaterequest(xcb_generic_event_t *ev);
-static void  clientmessage(xcb_generic_event_t *ev);
-static void  configurerequest(xcb_generic_event_t *ev);
-static void  destroynotify(xcb_generic_event_t *ev);
-static void  enternotify(xcb_generic_event_t *ev);
-static void  keypress(xcb_generic_event_t *ev);
-static void  mappingnotify(xcb_generic_event_t *ev);
-static void  maprequest(xcb_generic_event_t *ev);
-static void  propertynotify(xcb_generic_event_t *ev);
-static void  requesterror(xcb_generic_event_t *ev);
-static void  unmapnotify(xcb_generic_event_t *ev);
+static void buttonpress(xcb_generic_event_t *ev);
+static void circulaterequest(xcb_generic_event_t *ev);
+static void clientmessage(xcb_generic_event_t *ev);
+static void configurerequest(xcb_generic_event_t *ev);
+static void destroynotify(xcb_generic_event_t *ev);
+static void enternotify(xcb_generic_event_t *ev);
+static void keypress(xcb_generic_event_t *ev);
+static void mappingnotify(xcb_generic_event_t *ev);
+static void propertynotify(xcb_generic_event_t *ev);
+static void requesterror(xcb_generic_event_t *ev);
+static void unmapnotify(xcb_generic_event_t *ev);
 #ifdef DEBUG
 static char *get_atom_name(xcb_atom_t atom);
 #endif
@@ -291,95 +290,6 @@ maprequest(xcb_generic_event_t *ev) {
 
 	if (!wintoclient(e->window))
 		manage(e->window);
-}
-
-void
-mousemotion(const Arg *arg) {
-	if (!sel || sel->win == screen->root)
-		return;
-	xcb_time_t lasttime = 0;
-	raisewindow(sel->win);
-	xcb_query_pointer_reply_t *pointer;
-	pointer = xcb_query_pointer_reply(conn, xcb_query_pointer(conn, screen->root), 0);
-	/* create cursor */
-	xcb_font_t font = xcb_generate_id(conn);
-	xcb_void_cookie_t fontcookie =
-		xcb_open_font_checked(conn, font, strlen("cursor"), "cursor");
-	testcookie(fontcookie, "can't open font.");
-	xcb_cursor_t cursor = xcb_generate_id(conn);
-	int cursorid;
-	if (arg->i == MouseMove)
-		cursorid = 52;
-	else
-		cursorid = 14;
-	xcb_create_glyph_cursor(conn, cursor, font, font, cursorid, cursorid + 1, 0x0000, 0x0000, 0x0000, 0xffff, 0xffff, 0xffff);
-	/* grab pointer */
-	xcb_grab_pointer_reply_t *grab_reply = xcb_grab_pointer_reply(conn,
-																  xcb_grab_pointer(conn, 0, screen->root,
-																				   XCB_EVENT_MASK_BUTTON_PRESS |
-																				   XCB_EVENT_MASK_BUTTON_RELEASE |
-																				   XCB_EVENT_MASK_BUTTON_MOTION |
-																				   XCB_EVENT_MASK_POINTER_MOTION, XCB_GRAB_MODE_ASYNC,
-																				   XCB_GRAB_MODE_ASYNC, XCB_NONE, cursor, XCB_CURRENT_TIME),
-																  NULL);
-	if (grab_reply->status != XCB_GRAB_STATUS_SUCCESS) {
-		free(grab_reply);
-		return;
-	}
-	free(grab_reply);
-
-	xcb_generic_event_t *ev;
-	xcb_motion_notify_event_t *e;
-	bool ungrab = false;
-	int nx = sel->geom.x;
-	int ny = sel->geom.y;
-	int nw = sel->geom.width;
-	int nh = sel->geom.height;
-	while ((ev = xcb_wait_for_event(conn)) && !ungrab) {
-		switch (ev->response_type & ~0x80) {
-			case XCB_CONFIGURE_REQUEST:
-			case XCB_MAP_REQUEST:
-				maprequest(ev);
-				break;
-			case XCB_MOTION_NOTIFY:
-				e = (xcb_motion_notify_event_t*)ev;
-				if ((e->time - lasttime) <= (1000 / 60))
-					continue;
-				lasttime = e->time;
-
-				if (arg->i == MouseMove) {
-					nx = sel->geom.x + e->root_x - pointer->root_x;
-					ny = sel->geom.y + e->root_y - pointer->root_y;
-					movewin(sel->win, nx, ny);
-				}
-				else {
-					nw = MAX(sel->geom.width + e->root_x - pointer->root_x, sel->minw + 40);
-					nh = MAX(sel->geom.height + e->root_y - pointer->root_y, sel->minh + 40);
-					resizewin(sel->win, nw, nh);
-				}
-				break;
-			case XCB_BUTTON_RELEASE:
-				if (arg->i == MouseMove) {
-					sel->geom.x = nx;
-					sel->geom.y = ny;
-				}
-				else {
-					sel->geom.width = nw;
-					sel->geom.height = nh;
-				}
-				ungrab = true;
-				setborder(sel, true);
-		}
-		free(ev);
-		xcb_flush(conn);
-	}
-	sel->ismax = false;
-	free(ev);
-	free(pointer);
-	fontcookie = xcb_close_font_checked(conn, font);
-	testcookie(fontcookie, "can't close font.");
-	xcb_free_cursor(conn, cursor);
-	xcb_ungrab_pointer(conn, XCB_CURRENT_TIME);
 }
 
 void

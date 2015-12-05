@@ -6,6 +6,7 @@
 #include "client.h"
 #include "events.h"
 #include "workspace.h"
+#include "pointer.h"
 
 const Rule rules[2] = {
 	/* class           workspace       fullscreen       border */
@@ -18,11 +19,11 @@ static const char *terminal2[] = { "termite", NULL };
 static const char *browser[]   = { "chromium", NULL };
 static const char *browser2[]  = { "firefox", NULL };
 static const char *launcher[]  = { "rofi", "-show", "run",  NULL };
-static const char *mpctoggle[] = { "mpc", "toggle", NULL };
-static const char *mpcseekf[]  = { "mpc", "seek", "+30", NULL };
-static const char *mpcseekb[]  = { "mpc", "seek", "-30", NULL };
-static const char *mpcnext[]   = { "mpc", "next", NULL };
-static const char *mpcprev[]   = { "mpc", "prev", NULL };
+static const char *mpctoggle[] = { "mpc", "-q", "toggle", NULL };
+static const char *mpcseekf[]  = { "mpc", "-q", "seek", "+30", NULL };
+static const char *mpcseekb[]  = { "mpc", "-q", "seek", "-30", NULL };
+static const char *mpcnext[]   = { "mpc", "-q", "next", NULL };
+static const char *mpcprev[]   = { "mpc", "-q", "prev", NULL };
 static const char *volup[]     = { "amixer", "-q", "set", "Master", "3%+", "unmute", NULL };
 static const char *voldown[]   = { "amixer", "-q", "set", "Master", "3%-", "unmute", NULL };
 static const char *voltoggle[] = { "amixer", "-q", "set", "Master", "toggle", NULL };
@@ -59,11 +60,11 @@ Key keys[62] = {
 	{ MOD | CTRL,   XK_k,                     resize,        {.i=ShrinkBoth}    },
 	{ MOD,          XK_Tab,                   cycleclients,  {.i=PrevWindow}    },
 	{ MOD | SHIFT,  XK_Tab,                   cycleclients,  {.i=NextWindow}    },
-	{ MOD,          XK_s,                     teleport,      {.i=ToCenter}      },
-	{ MOD | SHIFT,  XK_p,                     teleport,      {.i=ToTop}         },
-	{ MOD | SHIFT,  XK_n,                     teleport,      {.i=ToBottom}      },
-	{ MOD | SHIFT,  XK_y,                     teleport,      {.i=ToLeft}        },
-	{ MOD | SHIFT,  XK_u,                     teleport,      {.i=ToRight}       },
+	{ MOD,          XK_s,                     teleport,      {.i=Center}        },
+	{ MOD,          XK_y,                     teleport,      {.i=TopLeft}       },
+	{ MOD,          XK_u,                     teleport,      {.i=TopRight}      },
+	{ MOD,          XK_b,                     teleport,      {.i=BottomLeft}    },
+	{ MOD,          XK_n,                     teleport,      {.i=BottomRight}   },
 	{ MOD,          XK_a,                     maximize,      {.i=NULL}          },
 	{ MOD,          XK_m,                     maximizeaxis,  {.i=MaxVertical}   },
 	{ MOD,          XK_n,                     maximizeaxis,  {.i=MaxHorizontal} },

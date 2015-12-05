@@ -7,12 +7,15 @@
 #include <sys/wait.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_ewmh.h>
+#include <X11/Xlib-xcb.h>
+#include <X11/cursorfont.h>
 #include "tfwm.h"
 #include "list.h"
 #include "client.h"
 #include "workspace.h"
 #include "events.h"
 #include "keys.h"
+#include "pointer.h"
 
 static void cleanup(void);
 static void getatom(xcb_atom_t *atom, char *name);
@@ -31,6 +34,12 @@ xcb_ewmh_connection_t *ewmh;
 uint32_t focuscol, unfocuscol, outercol;
 bool dorestart;
 xcb_atom_t WM_DELETE_WINDOW;
+Display *display;
+cursor_t cursors[XC_MAX] = {
+	{"left_ptr",            XC_left_ptr,            XCB_CURSOR_NONE},
+	{"fleur",               XC_fleur,               XCB_CURSOR_NONE},
+	{"bottom_right_corner", XC_bottom_right_corner, XCB_CURSOR_NONE}
+};
 
 void
 cleanup(void) {
@@ -40,6 +49,8 @@ cleanup(void) {
 	xcb_ewmh_connection_wipe(ewmh);
 	if (ewmh)
 		free(ewmh);
+
+	free_cursors();
 
 	xcb_set_input_focus(conn, XCB_NONE, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
 	xcb_flush(conn);
@@ -186,6 +197,11 @@ setup(void) {
 	focuscol = getcolor(FOCUS_COLOR);
 	unfocuscol = getcolor(UNFOCUS_COLOR);
 	outercol = getcolor(OUTER_COLOR);
+	/* init cursors */
+	load_cursors();
+	values[0] = cursors[XC_LEFT_PTR].cid;
+	cookie = xcb_change_window_attributes_checked(conn, screen->root, XCB_CW_CURSOR, values);
+	testcookie(cookie, "couldn't set root cursor.");
 	focus(NULL);
 }
 
@@ -203,18 +219,24 @@ sigchld() {
 
 int
 main(int argc, char **argv) {
-	if ((argc == 2) && !strcmp("-v", argv[1]))
-		err("tfwm-%s\n", VERSION);
-	else if (argc != 1)
-		err("usage: tfwm [-v]\n");
+	(void)argc;
+
+	warn("welcome to tfwm version-%s\n", VERSION);
+
+	if ((display = XOpenDisplay(NULL)) == NULL)
+		err("can't open display.");
+
+	conn = XGetXCBConnection(display);
+	if (xcb_connection_has_error(conn))
+		err("can't get xcb connection.");
+
+	XSetEventQueueOwner(display, XCBOwnsEventQueue);
 
 	sigchld();
 	signal(SIGINT, sigcatch);
 	signal(SIGTERM, sigcatch);
 
-	conn = xcb_connect(NULL, &scrno);
-	if (xcb_connection_has_error(conn))
-		err("xcb_connect error");
+	scrno = 0;
 
 	setup();
 	run();

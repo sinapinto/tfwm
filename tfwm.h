@@ -3,6 +3,7 @@
 #define TFWM_H
 #include <xcb/xcb_ewmh.h>
 #include <xcb/xcb_keysyms.h>
+#include <X11/Xlib-xcb.h>
 #include <stdbool.h>
 
 #ifdef DEBUG
@@ -17,6 +18,10 @@
                             XCB_EVENT_MASK_BUTTON_PRESS)
 #define CLIENT_EVENT_MASK  (XCB_EVENT_MASK_ENTER_WINDOW          |\
                             XCB_EVENT_MASK_PROPERTY_CHANGE)
+#define POINTER_EVENT_MASK (XCB_EVENT_MASK_BUTTON_PRESS          |\
+                            XCB_EVENT_MASK_BUTTON_RELEASE        |\
+                            XCB_EVENT_MASK_BUTTON_MOTION         |\
+                            XCB_EVENT_MASK_POINTER_MOTION)
 
 #define CLEANMASK(mask)  (mask & ~(numlockmask|XCB_MOD_MASK_LOCK))
 #define LENGTH(X)        (sizeof(X)/sizeof(*X))
@@ -76,14 +81,31 @@ struct Client{
 	unsigned int ws;
 };
 
+typedef struct cursor_t {
+	char *name;
+	uint8_t cf_glyph;
+	xcb_cursor_t cid;
+} cursor_t;
+
 
 enum { MoveDown, MoveRight, MoveUp, MoveLeft };
 enum { GrowHeight, GrowWidth, ShrinkHeight, ShrinkWidth, GrowBoth, ShrinkBoth };
-enum { ToCenter, ToTop, ToLeft, ToBottom, ToRight };
+enum { Center, TopLeft, TopRight, BottomLeft, BottomRight };
 enum { MouseMove, MouseResize };
 enum { MaxVertical, MaxHorizontal };
 enum { LastWorkspace, PrevWorkspace, NextWorkspace };
 enum { PrevWindow, NextWindow };
+enum {
+	XC_LEFT_PTR,
+	XC_FLEUR,
+	XC_BOTTOM_RIGHT_CORNER,
+	XC_MAX
+};
+
+
+/* keys.c */
+void load_cursors(void);
+void free_cursors(void);
 
 /* keys.c */
 void updatenumlockmask(void);
@@ -120,6 +142,9 @@ extern xcb_ewmh_connection_t *ewmh;
 extern uint32_t focuscol, unfocuscol, outercol;
 extern bool dorestart;
 extern xcb_atom_t WM_DELETE_WINDOW;
+extern Display *display;
+extern cursor_t cursors[XC_MAX];
+
 
 /* client.c */
 void applyrules(Client *c);
