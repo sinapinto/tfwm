@@ -138,7 +138,7 @@ manage(xcb_window_t w) {
 	free(geom);
 	c->ws = selws;
 	c->minw = c->minh = c->basew = c->baseh = c->incw = c->inch = 0;
-	c->ismax = c->isvertmax = c->ishormax = c->isfixed = c->noborder = false;
+	c->ismax = c->isvertmax = c->ishormax = c->isfixed = c->isurgent = c->noborder = false;
 	gethints(c);
 	attach(c);
 	attachstack(c);

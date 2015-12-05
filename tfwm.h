@@ -73,7 +73,7 @@ struct Client{
 	xcb_rectangle_t oldgeom;
 	int32_t basew, baseh, minw, minh, incw, inch;
 	bool ismax, isvertmax, ishormax;
-	bool isfixed, noborder;
+	bool isfixed, isurgent, noborder;
 	// TODO xcb_window_t *frame;
 	Client *next;
 	Client *snext;

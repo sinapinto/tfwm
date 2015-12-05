@@ -1,6 +1,7 @@
 /* See LICENSE file for copyright and license details. */
 #include <string.h>
 #include <xcb/xcb_event.h>
+#include <xcb/xcb_icccm.h>
 #include "tfwm.h"
 #include "list.h"
 #include "events.h"
@@ -307,7 +308,26 @@ propertynotify(xcb_generic_event_t *ev) {
 	if (!(c = wintoclient(e->window)))
 		return;
 
-	// TODO
+	if (e->atom == XCB_ATOM_WM_HINTS) { /* update urgency */
+		xcb_icccm_wm_hints_t hints;
+		if (xcb_icccm_get_wm_hints_reply(conn, xcb_icccm_get_wm_hints(conn, e->window), &hints, NULL) == 1 &&
+			hints.flags & XCB_ICCCM_WM_HINT_X_URGENCY) {
+			if ((c->isurgent = xcb_icccm_wm_hints_get_urgency(&hints)) &&
+				c != sel) {
+				/* set red border */
+				const uint32_t value[] = { 0xff0000 } ;
+				xcb_change_window_attributes(conn, c->win, XCB_CW_BORDER_PIXEL, value);
+			}
+		}
+	}
+	else if (e->atom == XCB_ATOM_WM_NORMAL_HINTS) { /* update size hints */
+		xcb_size_hints_t hints;
+		if (xcb_icccm_get_wm_normal_hints_reply(conn, xcb_icccm_get_wm_normal_hints(conn, e->window), &hints, NULL) == 1 &&
+			hints.flags & XCB_ICCCM_SIZE_HINT_P_MIN_SIZE) {
+			c->minw = hints.min_width;
+			c->minh = hints.min_height;
+		}
+	}
 }
 
 void

@@ -265,7 +265,7 @@ main(int argc, char **argv) {
 
 	conn = XGetXCBConnection(display);
 	if (connection_has_error())
-		err("can't get xcb connection.");
+		return EXIT_FAILURE;
 
 	XSetEventQueueOwner(display, XCBOwnsEventQueue);
 
