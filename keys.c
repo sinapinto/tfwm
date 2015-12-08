@@ -28,9 +28,9 @@ static const char *volup[]     = { "amixer", "-q", "set", "Master", "3%+", "unmu
 static const char *voldown[]   = { "amixer", "-q", "set", "Master", "3%-", "unmute", NULL };
 static const char *voltoggle[] = { "amixer", "-q", "set", "Master", "toggle", NULL };
 
-#define MOD					XCB_MOD_MASK_1
-#define SHIFT				XCB_MOD_MASK_SHIFT
-#define CTRL				XCB_MOD_MASK_CONTROL
+#define MOD    XCB_MOD_MASK_1
+#define SHIFT  XCB_MOD_MASK_SHIFT
+#define CTRL   XCB_MOD_MASK_CONTROL
 Key keys[62] = {
 	/* modifier     key                       function       argument */
 	{ MOD,          XK_Return,                spawn,         {.com=terminal}    },
@@ -75,20 +75,19 @@ Key keys[62] = {
 	{ MOD,          XK_bracketright,          selectrws,     {.i=NextWorkspace} },
 	{ MOD | SHIFT,  XK_r,                     restart,       {.i=NULL}          },
 	{ MOD | SHIFT,  XK_e,                     quit,          {.i=NULL}          },
-#define workspace(K,N) \
+#define WORKSPACE(K,N) \
 	{ MOD,              K,                    selectws,      {.i=N} }, \
 	{ MOD | SHIFT,      K,                    sendtows,      {.i=N} },
-	workspace(      XK_1,                                    0 )
-	workspace(      XK_2,                                    1 )
-	workspace(      XK_3,                                    2 )
-	workspace(      XK_4,                                    3 )
-	workspace(      XK_5,                                    4 )
-	workspace(      XK_6,                                    5 )
-	workspace(      XK_7,                                    6 )
-	workspace(      XK_8,                                    7 )
-	workspace(      XK_9,                                    8 )
-	workspace(      XK_0,                                    9 )
-#undef workspace
+	WORKSPACE(      XK_1,                                    0 )
+	WORKSPACE(      XK_2,                                    1 )
+	WORKSPACE(      XK_3,                                    2 )
+	WORKSPACE(      XK_4,                                    3 )
+	WORKSPACE(      XK_5,                                    4 )
+	WORKSPACE(      XK_6,                                    5 )
+	WORKSPACE(      XK_7,                                    6 )
+	WORKSPACE(      XK_8,                                    7 )
+	WORKSPACE(      XK_9,                                    8 )
+	WORKSPACE(      XK_0,                                    9 )
 };
 
 Button buttons[2] = {

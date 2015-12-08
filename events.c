@@ -17,9 +17,6 @@ static void mappingnotify(xcb_generic_event_t *ev);
 static void propertynotify(xcb_generic_event_t *ev);
 static void requesterror(xcb_generic_event_t *ev);
 static void unmapnotify(xcb_generic_event_t *ev);
-#ifdef DEBUG
-static char *get_atom_name(xcb_atom_t atom);
-#endif
 
 void
 handleevent(xcb_generic_event_t *ev) {
@@ -155,6 +152,7 @@ configurerequest(xcb_generic_event_t *ev) {
 	Client *c;
 	unsigned int v[7];
 	int i = 0;
+	uint16_t mask = 0;
 
 #ifdef DEBUG
 	PRINTF("Event: configure request: win %#x: ", e->window);
@@ -176,20 +174,38 @@ configurerequest(xcb_generic_event_t *ev) {
 #endif
 
 	if ((c = wintoclient(e->window))) {
-		if (e->value_mask & XCB_CONFIG_WINDOW_WIDTH)
-			if (!c->ismax && !c->ishormax)
+		/* if (e->value_mask & XCB_CONFIG_WINDOW_X) */
+		/* 	v[i++] = e->x; */
+		/* if (e->value_mask & XCB_CONFIG_WINDOW_Y) */
+		/* 	v[i++] = e->y; */
+		if (e->value_mask & XCB_CONFIG_WINDOW_WIDTH) {
+			if (!c->ismax && !c->ishormax) {
+				mask |= XCB_CONFIG_WINDOW_WIDTH;
 				v[i++] = c->geom.width = MIN(e->width, screen->width_in_pixels-2*BORDER_WIDTH);
-		if (e->value_mask & XCB_CONFIG_WINDOW_HEIGHT)
-			if (!c->ismax && !c->isvertmax)
-				v[i++] = c->geom.height = MIN(e->height, screen->height_in_pixels-2*BORDER_WIDTH);
-		if (e->value_mask & XCB_CONFIG_WINDOW_SIBLING)
-			v[i++] = e->sibling;
-		if (e->value_mask & XCB_CONFIG_WINDOW_STACK_MODE)
-			v[i++] = e->stack_mode;
-		if (e->value_mask & XCB_CONFIG_WINDOW_BORDER_WIDTH) {
-			v[i++] = e->border_width;
-			/* setborder(c, true); */
+			}
 		}
+		if (e->value_mask & XCB_CONFIG_WINDOW_HEIGHT) {
+			if (!c->ismax && !c->isvertmax) {
+				mask |= XCB_CONFIG_WINDOW_HEIGHT;
+				v[i++] = c->geom.height = MIN(e->height, screen->height_in_pixels-2*BORDER_WIDTH);
+			}
+		}
+		if (e->value_mask & XCB_CONFIG_WINDOW_SIBLING) {
+			mask |= XCB_CONFIG_WINDOW_SIBLING;
+			v[i++] = e->sibling;
+		}
+		if (e->value_mask & XCB_CONFIG_WINDOW_STACK_MODE) {
+			mask |= XCB_CONFIG_WINDOW_STACK_MODE;
+			v[i++] = e->stack_mode;
+		}
+		if (e->value_mask & XCB_CONFIG_WINDOW_BORDER_WIDTH) {
+			/* mask |= XCB_CONFIG_WINDOW_BORDER_WIDTH; */
+			/* v[i++] = e->border_width; */
+			setborder(c, true);
+		}
+
+		if (!c->ismax && !c->isvertmax && !c->ishormax)
+			xcb_configure_window(conn, e->window, mask, v);
 
 		xcb_configure_notify_event_t evt;
 		memset(&evt, '\0', sizeof evt);
@@ -206,26 +222,38 @@ configurerequest(xcb_generic_event_t *ev) {
 		evt.override_redirect = false;
 
 		xcb_send_event(conn, false, c->win, XCB_EVENT_MASK_STRUCTURE_NOTIFY, (const char *)&evt);
-
-		if (!c->ismax && !c->isvertmax && !c->ishormax)
-			xcb_configure_window(conn, e->window, e->value_mask, v);
 	}
 	else {
-		if (e->value_mask & XCB_CONFIG_WINDOW_X)
+		if (e->value_mask & XCB_CONFIG_WINDOW_X) {
+			mask |= XCB_CONFIG_WINDOW_X;
 			v[i++] = e->x;
-		if (e->value_mask & XCB_CONFIG_WINDOW_Y)
+		}
+		if (e->value_mask & XCB_CONFIG_WINDOW_Y) {
+			mask |= XCB_CONFIG_WINDOW_Y;
 			v[i++] = e->y;
-		if (e->value_mask & XCB_CONFIG_WINDOW_WIDTH)
+		}
+		if (e->value_mask & XCB_CONFIG_WINDOW_WIDTH) {
+			mask |= XCB_CONFIG_WINDOW_WIDTH;
 			v[i++] = e->width;
-		if (e->value_mask & XCB_CONFIG_WINDOW_HEIGHT)
+		}
+		if (e->value_mask & XCB_CONFIG_WINDOW_HEIGHT) {
+			mask |= XCB_CONFIG_WINDOW_HEIGHT;
 			v[i++] = e->height;
-		if (e->value_mask & XCB_CONFIG_WINDOW_SIBLING)
+		}
+		if (e->value_mask & XCB_CONFIG_WINDOW_SIBLING) {
+			mask |= XCB_CONFIG_WINDOW_SIBLING;
 			v[i++] = e->sibling;
-		if (e->value_mask & XCB_CONFIG_WINDOW_STACK_MODE)
+		}
+		if (e->value_mask & XCB_CONFIG_WINDOW_STACK_MODE) {
+			mask |= XCB_CONFIG_WINDOW_STACK_MODE;
 			v[i++] = e->stack_mode;
-		if (e->value_mask & XCB_CONFIG_WINDOW_BORDER_WIDTH)
+		}
+		if (e->value_mask & XCB_CONFIG_WINDOW_BORDER_WIDTH) {
+			mask |= XCB_CONFIG_WINDOW_BORDER_WIDTH;
 			v[i++] = e->border_width;
-		xcb_configure_window(conn, e->window, e->value_mask, v);
+		}
+
+		xcb_configure_window(conn, e->window, mask, v);
 	}
 }
 

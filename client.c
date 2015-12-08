@@ -2,9 +2,9 @@
 #include <string.h>
 #include <xcb/xcb_icccm.h>
 #ifdef SHAPE
-#include <xcb/shape.h>
-#include <xcb/xcb_image.h>
-#include "corner.xbm"
+# include <xcb/shape.h>
+# include <xcb/xcb_image.h>
+# include "corner.xbm"
 #endif
 #include "tfwm.h"
 #include "list.h"
@@ -18,23 +18,62 @@ Client *sel;
 void
 applyrules(Client *c) {
 	unsigned int i;
-	const Rule *r;
-	xcb_icccm_get_wm_class_reply_t ch;
+	xcb_atom_t a = XCB_NONE;
 
-	if (!xcb_icccm_get_wm_class_reply(conn, xcb_icccm_get_wm_class(conn, c->win), &ch, NULL))
+	// WM_WINDOW_TYPE_*
+	xcb_ewmh_get_atoms_reply_t win_type;
+	if (xcb_ewmh_get_wm_window_type_reply(ewmh, xcb_ewmh_get_wm_window_type(ewmh, c->win), &win_type, NULL) == 1) {
+		for (i = 0; i < win_type.atoms_len; i++) {
+			a = win_type.atoms[i];
+#ifdef DEBUG
+			char *name;
+			name = get_atom_name(a);
+			PRINTF("applyrules: win %#x, atom %s\n", c->win, name);
+			free(name);
+#endif
+		}
+		xcb_ewmh_get_atoms_reply_wipe(&win_type);
+	}
+
+	// WM_STATE_*
+	xcb_ewmh_get_atoms_reply_t win_state;
+	if (xcb_ewmh_get_wm_state_reply(ewmh, xcb_ewmh_get_wm_state(ewmh, c->win), &win_state, NULL) == 1) {
+		for (i = 0; i < win_state.atoms_len; i++) {
+			a = win_state.atoms[i];
+#ifdef DEBUG
+			char *name;
+			name = get_atom_name(a);
+			PRINTF("applyrules: win %#x, atom %s\n", c->win, name);
+			free(name);
+#endif
+			if (a == ewmh->_NET_WM_STATE_FULLSCREEN) {
+				maximizeclient(c, true);
+			}
+		}
+		xcb_ewmh_get_atoms_reply_wipe(&win_state);
+	}
+
+	xcb_size_hints_t size_hints;
+	if (xcb_icccm_get_wm_normal_hints_reply(conn, xcb_icccm_get_wm_normal_hints(conn, c->win), &size_hints, NULL) == 1) {
+		c->minw = size_hints.min_width;
+		c->minh = size_hints.min_height;
+	}
+
+	/* custom rules */
+	const Rule *r;
+	xcb_icccm_get_wm_class_reply_t class_reply;
+
+	if (!xcb_icccm_get_wm_class_reply(conn, xcb_icccm_get_wm_class(conn, c->win), &class_reply, NULL))
 		return;
 
 	for (i = 0; i < LENGTH(rules); i++) {
 		r = &rules[i];
-		if ((r->class && strstr(ch.class_name, r->class))) {
+		if ((r->class && strstr(class_reply.class_name, r->class))) {
 			if (!r->border)
 				c->noborder = true;
-			/* if (r->fullscreen) */
-			/* const Arg a = { .i = r->workspace }; */
-			/* sendtows(&a); */
 		}
 	}
-	xcb_icccm_get_wm_class_reply_wipe(&ch);
+	xcb_icccm_get_wm_class_reply_wipe(&class_reply);
 }
 
 void
@@ -66,52 +105,6 @@ fitclient(Client *c) {
 }
 
 void
-gethints(Client *c) {
-	/* ``When blowflies fight over a pile of elephant shit, their pecking order
-	 * is a more elegant protocol than ICCCM.'' -- Conrad Parker */
-	xcb_size_hints_t h;
-	xcb_generic_error_t *e;
-	xcb_icccm_get_wm_normal_hints_reply(conn, xcb_icccm_get_wm_normal_hints_unchecked(conn, c->win), &h, &e);
-	if (e) {
-		free(e);
-		return;
-	}
-	free(e);
-
-	/* if (h.flags & XCB_ICCCM_SIZE_HINT_US_POSITION) */
-	/* if (h.flags & XCB_ICCCM_SIZE_HINT_US_SIZE) */
-	/* if (h.flags & XCB_ICCCM_SIZE_HINT_P_POSITION) */
-	/* if (h.flags & XCB_ICCCM_SIZE_HINT_P_SIZE) */
-	/* if (h.flags & XCB_ICCCM_SIZE_HINT_P_MAX_SIZE) */
-
-	if (h.flags & XCB_ICCCM_SIZE_HINT_P_MIN_SIZE) {
-		if (h.min_width > 0 && h.min_width < screen->width_in_pixels)
-			c->minw = h.min_width;
-		if (h.min_height > 0 && h.min_height < screen->height_in_pixels)
-			c->minh = h.min_height;
-	}
-	if (h.flags & XCB_ICCCM_SIZE_HINT_BASE_SIZE) {
-		c->basew = h.base_width;
-		c->baseh = h.base_height;
-	}
-	if (h.flags & XCB_ICCCM_SIZE_HINT_P_RESIZE_INC) {
-		c->incw = h.width_inc;
-		c->inch = h.height_inc;
-	}
-	/* configure win */
-	if (c->basew < screen->width_in_pixels)
-		c->geom.width = MAX(c->geom.width, c->basew);
-	if (c->baseh < screen->height_in_pixels)
-		c->geom.height = MAX(c->geom.height, c->baseh);
-	if (c->minw < screen->width_in_pixels)
-		c->geom.width = MAX(c->geom.width, c->minw);
-	if (c->minh < screen->height_in_pixels)
-		c->geom.height = MAX(c->geom.height, c->minh);
-
-	resizewin(c->win, c->geom.width, c->geom.height);
-}
-
-void
 killselected(const Arg *arg) {
 	(void)arg;
 	if (!sel)
@@ -139,11 +132,10 @@ manage(xcb_window_t w) {
 	c->ws = selws;
 	c->minw = c->minh = c->basew = c->baseh = c->incw = c->inch = 0;
 	c->ismax = c->isvertmax = c->ishormax = c->isfixed = c->isurgent = c->noborder = false;
-	gethints(c);
+	applyrules(c);
 	attach(c);
 	attachstack(c);
 	sel = c;
-	applyrules(c);
 	fitclient(c);
 
 #if SLOPPY_FOCUS
@@ -154,20 +146,6 @@ manage(xcb_window_t w) {
 	if (c->ws == selws)
 		xcb_map_window(conn, w);
 
-	xcb_get_property_reply_t *reply;
-	xcb_get_property_cookie_t cookie;
-	cookie = xcb_get_property(conn, 0, w, ewmh->_NET_WM_STATE, XCB_ATOM_ATOM, 0, 1);
-
-	if ((reply = xcb_get_property_reply(conn, cookie, NULL))) {
-		if (xcb_get_property_value_length(reply) != 0) {
-			if (reply->format == 32) {
-				xcb_atom_t *v = xcb_get_property_value(reply);
-				if (v[0] == ewmh->_NET_WM_STATE_FULLSCREEN)
-					maximize(NULL);
-			}
-		}
-		free(reply);
-	}
 	focus(NULL);
 }
 
@@ -218,7 +196,10 @@ void
 maximizeclient(Client *c, bool doit) {
 	if (!c)
 		return;
-	PRINTF("maximizeclient: %s\n", doit ? "max" : "unmax");
+	if (c->ismax && doit)
+		return;
+
+	PRINTF("maximizeclient: %s, ", doit ? "maximizing" : "unmaximizing");
 	if (doit) {
 		savegeometry(c);
 		c->ismax = true;
@@ -227,17 +208,18 @@ maximizeclient(Client *c, bool doit) {
 		c->geom.y = 0;
 		c->geom.width = screen->width_in_pixels;
 		c->geom.height = screen->height_in_pixels;
+		PRINTF("x %d y %d w %d h %d\n", c->geom.x, c->geom.y, c->geom.width, c->geom.height);
 		moveresize(c, c->geom.x, c->geom.y, c->geom.width, c->geom.height);
 		focus(NULL);
 		setborderwidth(c, 0);
 	}
 	else {
-		c->geom.x = c->isvertmax ? c->geom.x : c->oldgeom.x;
-		c->geom.y = c->ishormax ? c->geom.y : c->oldgeom.y;
+		c->geom.x = c->isvertmax ? c->geom.x : MAX(0, c->oldgeom.x);
+		c->geom.y = c->ishormax ? c->geom.y : MAX(0, c->oldgeom.y);
 		c->geom.width = c->oldgeom.width;
 		c->geom.height = c->oldgeom.height;
-		c->ismax = false;
-		c->ishormax = c->isvertmax = 0;
+		c->ismax = c->ishormax = c->isvertmax = false;
+		PRINTF("x %d y %d w %d h %d\n", c->geom.x, c->geom.y, c->geom.width, c->geom.height);
 		moveresize(c, c->geom.x, c->geom.y, c->geom.width, c->geom.height);
 		setborderwidth(sel, BORDER_WIDTH);
 		setborder(sel, true);

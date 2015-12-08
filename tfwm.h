@@ -103,6 +103,14 @@ enum {
 };
 
 
+/* events.c */
+void handleevent(xcb_generic_event_t *ev);
+void mousemotion(const Arg *arg);
+void maprequest(xcb_generic_event_t *ev);
+#ifdef DEBUG
+char * get_atom_name(xcb_atom_t atom);
+#endif
+
 /* keys.c */
 void load_cursors(void);
 void free_cursors(void);
@@ -149,7 +157,6 @@ extern cursor_t cursors[XC_MAX];
 /* client.c */
 void applyrules(Client *c);
 void fitclient(Client *c);
-void gethints(Client *c);
 void killselected(const Arg *arg);
 void manage(xcb_window_t w);
 void maximize(const Arg *arg);

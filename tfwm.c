@@ -208,19 +208,19 @@ setup(void) {
 		ewmh->_NET_WM_STATE_FULLSCREEN,
 		/* ewmh->_NET_CLIENT_LIST, */
 		/* ewmh->_NET_CLIENT_LIST_STACKING, */
-		/* ewmh->_NET_WM_STATE_MAXIMIZED_VERT, */
-		/* ewmh->_NET_WM_STATE_MAXIMIZED_HORZ, */
-		/* ewmh->_NET_WM_STATE_BELOW, */
-		/* ewmh->_NET_WM_STATE_ABOVE, */
-		/* ewmh->_NET_WM_STATE_STICKY, */
-		/* ewmh->_NET_WM_STATE_DEMANDS_ATTENTION, */
-		/* ewmh->_NET_WM_WINDOW_TYPE, */
-		/* ewmh->_NET_WM_WINDOW_TYPE_DOCK, */
-		/* ewmh->_NET_WM_WINDOW_TYPE_DESKTOP, */
-		/* ewmh->_NET_WM_WINDOW_TYPE_NOTIFICATION, */
-		/* ewmh->_NET_WM_WINDOW_TYPE_DIALOG, */
-		/* ewmh->_NET_WM_WINDOW_TYPE_UTILITY, */
-		/* ewmh->_NET_WM_WINDOW_TYPE_TOOLBAR, */
+		ewmh->_NET_WM_STATE_MAXIMIZED_VERT,
+		ewmh->_NET_WM_STATE_MAXIMIZED_HORZ,
+		ewmh->_NET_WM_STATE_BELOW,
+		ewmh->_NET_WM_STATE_ABOVE,
+		ewmh->_NET_WM_STATE_STICKY,
+		ewmh->_NET_WM_STATE_DEMANDS_ATTENTION,
+		ewmh->_NET_WM_WINDOW_TYPE,
+		ewmh->_NET_WM_WINDOW_TYPE_DOCK,
+		ewmh->_NET_WM_WINDOW_TYPE_DESKTOP,
+		ewmh->_NET_WM_WINDOW_TYPE_NOTIFICATION,
+		ewmh->_NET_WM_WINDOW_TYPE_DIALOG,
+		ewmh->_NET_WM_WINDOW_TYPE_UTILITY,
+		ewmh->_NET_WM_WINDOW_TYPE_TOOLBAR,
 		/* ewmh->_NET_SUPPORTING_WM_CHECK, */
 	};
 	xcb_ewmh_set_supported(ewmh, scrno, LENGTH(net_atoms), net_atoms);
@@ -258,7 +258,7 @@ int
 main(int argc, char **argv) {
 	(void)argc;
 
-	warn("welcome to tfwm version %s\n", VERSION);
+	warn("welcome to tfwm %s\n", VERSION);
 
 	if ((display = XOpenDisplay(NULL)) == NULL)
 		err("can't open display.");
