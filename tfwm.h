@@ -121,7 +121,6 @@ void updatenumlockmask(void);
 /* util.c */
 void warn(const char *fmt, ...);
 void err(const char *fmt, ...);
-void testcookie(xcb_void_cookie_t cookie, char *errormsg);
 void spawn(const Arg *arg);
 
 /* list.c */

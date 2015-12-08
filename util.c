@@ -23,17 +23,6 @@ err(const char *fmt, ...) {
 }
 
 void
-testcookie(xcb_void_cookie_t cookie, char *errormsg) {
-	xcb_generic_error_t *error = xcb_request_check(conn, cookie);
-	if (error) {
-		warn("%s : %d\n", errormsg, error->error_code);
-		free(error);
-		xcb_disconnect(conn);
-		exit(EXIT_FAILURE);
-	}
-}
-
-void
 spawn(const Arg *arg) {
 	(void)arg;
 	if (fork() == 0) {

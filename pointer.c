@@ -18,8 +18,7 @@ load_cursors(void) {
 			warn("couldn't load xcursor %s, falling back to cursorfont\n", cursors[i].name);
 			if (font == XCB_NONE) {
 				font = xcb_generate_id(conn);
-				xcb_void_cookie_t fontcookie = xcb_open_font_checked(conn, font, strlen("cursor"), "cursor");
-				testcookie(fontcookie, "can't open font.");
+				xcb_open_font_checked(conn, font, strlen("cursor"), "cursor");
 			}
 
 			cursors[i].cid = xcb_generate_id(conn);
