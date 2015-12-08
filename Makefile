@@ -15,7 +15,7 @@ LIBS= -lX11 -lX11-xcb -lXcursor -lxcb-keysyms -lxcb-icccm -lxcb-ewmh -lxcb-util 
 # CFLAGS+= -DSHAPE
 # LIBS+= -lxcb-shape -lxcb-image -lxcb-shm
 
-OBJ= tfwm.o util.o events.o client.o list.o workspace.o keys.o pointer.o
+OBJ= tfwm.o util.o events.o client.o list.o workspace.o keys.o pointer.o ewmh.o
 
 all: CFLAGS+= -Os
 all: tfwm
@@ -23,13 +23,14 @@ all: tfwm
 debug: CFLAGS+= -O0 -g -DDEBUG
 debug: tfwm
 
-tfwm.o: tfwm.c list.h client.h workspace.h events.h keys.h pointer.h
+tfwm.o: tfwm.c list.h client.h workspace.h events.h keys.h pointer.h ewmh.h
 events.o: events.c tfwm.h client.h list.h events.h
 client.o: client.c tfwm.h list.h client.h keys.h
 list.o: list.c tfwm.h client.h list.h
 workspace.o: workspace.c tfwm.h list.h client.h
 keys.o: keys.c tfwm.h list.h client.h events.h workspace.h pointer.h
 pointer.o: pointer.c tfwm.h events.h
+ewmh.o: ewmh.c tfwm.h
 
 %.o: %.c
 	$(CC) -c $(CFLAGS) -o $@ $<
