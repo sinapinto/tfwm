@@ -29,8 +29,6 @@ void
 gotows(unsigned int i) {
 	if (selws == i)
 		return;
-	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root,
-			ewmh->_NET_CURRENT_DESKTOP, XCB_ATOM_CARDINAL, 32, 1, &i);
 	xcb_ewmh_set_current_desktop(ewmh, scrno, i);
 	prevws = selws;
 	selws = i;

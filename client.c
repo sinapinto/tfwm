@@ -509,23 +509,11 @@ check_shape_extension() {
 
 void
 roundcorners(Client *c) {
-	xcb_pixmap_t pmap = xcb_create_pixmap_from_bitmap_data(conn,
-														   screen->root,
-														   corner_bits,
-														   corner_width, corner_height,
-														   1, // depth
-														   0, // fg
-														   1, // bg
-														   NULL); // gc
+	xcb_pixmap_t pmap = xcb_create_pixmap_from_bitmap_data(conn, screen->root, corner_bits, corner_width, corner_height, 1, 0, 1, NULL);
 	if (pmap == XCB_NONE)
 		err("xcb_create_pixmap_from_bitmap_data() failed.");
 
-	xcb_shape_mask(conn,
-				   XCB_SHAPE_SO_SUBTRACT,
-				   XCB_SHAPE_SK_BOUNDING,
-				   c->win,
-				   0, 0,
-				   pmap);
+	xcb_shape_mask(conn, XCB_SHAPE_SO_SUBTRACT, XCB_SHAPE_SK_BOUNDING, c->win, 0, 0, pmap);
 	xcb_free_pixmap(conn, pmap);
 }
 #endif

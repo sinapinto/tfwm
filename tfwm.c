@@ -47,6 +47,25 @@ cleanup(void) {
 	while (stack)
 		unmanage(stack);
 
+	/* delete supporting wm check window */
+	xcb_window_t id;
+	xcb_get_property_cookie_t pc;
+	xcb_get_property_reply_t *pr;
+
+	pc = xcb_get_property(conn, 0, screen->root, ewmh->_NET_SUPPORTING_WM_CHECK, XCB_ATOM_WINDOW, 0, 1);
+	pr = xcb_get_property_reply(conn, pc, NULL);
+	if (pr) {
+		if (pr->format == ewmh->_NET_SUPPORTING_WM_CHECK) {
+			id = *((xcb_window_t *)xcb_get_property_value(pr));
+
+			xcb_destroy_window(conn, id);
+			xcb_delete_property(conn, screen->root, ewmh->_NET_SUPPORTING_WM_CHECK);
+			xcb_delete_property(conn, screen->root, ewmh->_NET_SUPPORTED);
+		}
+		free(pr);
+	}
+
+
 	xcb_ewmh_connection_wipe(ewmh);
 	if (ewmh)
 		free(ewmh);
@@ -84,7 +103,7 @@ connection_has_error(void) {
 				warn("no screen matching the display.\n");
 				break;
 			default:
-				warn("unkown error.\n");
+				warn("unknown error.\n");
 				break;
 		}
 		return true;
@@ -170,35 +189,29 @@ setup(void) {
 	screen = xcb_setup_roots_iterator(xcb_get_setup(conn)).data;
 	if (!screen)
 		err("can't find screen.");
+
 	/* subscribe to handler */
 	unsigned int values[] = {ROOT_EVENT_MASK};
 	xcb_void_cookie_t cookie;
 	cookie = xcb_change_window_attributes_checked(conn, screen->root, XCB_CW_EVENT_MASK, values);
 	testcookie(cookie, "another window manager is running.");
 	xcb_flush(conn);
+
 	/* init atoms */
 	getatom(&WM_DELETE_WINDOW, "WM_DELETE_WINDOW");
+
 	/* init ewmh */
 	ewmh = malloc(sizeof(xcb_ewmh_connection_t));
 	if (xcb_ewmh_init_atoms_replies(ewmh, xcb_ewmh_init_atoms(conn, ewmh), NULL) == 0)
 		err("can't initialize ewmh.");
+
 	xcb_drawable_t root = screen->root;
-	xcb_window_t recorder = xcb_generate_id(conn);
-	xcb_create_window(conn, XCB_COPY_FROM_PARENT, recorder, root, 0, 0,
-			screen->width_in_pixels, screen->height_in_pixels, 0,
-			XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT, XCB_NONE, NULL);
-	xcb_ewmh_set_wm_pid(ewmh, recorder, getpid());
-#if JAVA_WORKAROUND
-	xcb_ewmh_set_wm_name(ewmh, screen->root, strlen("LG3D"), "LG3D");
-#else
-	xcb_ewmh_set_wm_name(ewmh, screen->root, strlen("tfwm"), "tfwm");
-#endif
-	xcb_ewmh_set_supporting_wm_check(ewmh, recorder, recorder);
-	xcb_ewmh_set_supporting_wm_check(ewmh, screen->root, recorder);
+
 	xcb_atom_t net_atoms[] = {
 		ewmh->_NET_WM_NAME,
 		ewmh->_NET_WM_PID,
 		ewmh->_NET_SUPPORTED,
+		ewmh->_NET_SUPPORTING_WM_CHECK,
 		ewmh->_NET_NUMBER_OF_DESKTOPS,
 		ewmh->_NET_CURRENT_DESKTOP,
 		ewmh->_NET_WM_DESKTOP,
@@ -220,25 +233,49 @@ setup(void) {
 		ewmh->_NET_WM_WINDOW_TYPE_NOTIFICATION,
 		ewmh->_NET_WM_WINDOW_TYPE_DIALOG,
 		ewmh->_NET_WM_WINDOW_TYPE_UTILITY,
-		ewmh->_NET_WM_WINDOW_TYPE_TOOLBAR,
-		/* ewmh->_NET_SUPPORTING_WM_CHECK, */
+		ewmh->_NET_WM_WINDOW_TYPE_TOOLBAR
 	};
 	xcb_ewmh_set_supported(ewmh, scrno, LENGTH(net_atoms), net_atoms);
+
+	xcb_window_t recorder = xcb_generate_id(conn);
+	xcb_create_window(conn, XCB_COPY_FROM_PARENT, recorder, root, 0, 0,
+			screen->width_in_pixels, screen->height_in_pixels, 0,
+			XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT, XCB_NONE, NULL);
+
+	/* set up _NET_WM_PID */
+	xcb_ewmh_set_wm_pid(ewmh, recorder, getpid());
+
+	/* set up _NET_WM_NAME */
+#if JAVA_WORKAROUND
+	xcb_ewmh_set_wm_name(ewmh, screen->root, strlen("LG3D"), "LG3D");
+#else
+	xcb_ewmh_set_wm_name(ewmh, screen->root, strlen("tfwm"), "tfwm");
+#endif
+
+	/* set up _NET_SUPPORTING_WM_CHECK */
+	xcb_ewmh_set_supporting_wm_check(ewmh, recorder, recorder);
+	xcb_ewmh_set_supporting_wm_check(ewmh, screen->root, recorder);
+
+	/* set up _NET_NUMBER_OF_DESKTOPS */
 	static const uint8_t numdesktops = 10;
 	xcb_ewmh_set_number_of_desktops(ewmh, scrno, numdesktops);
 	xcb_ewmh_set_current_desktop(ewmh, scrno, 0);
+
 	/* init keys */
 	updatenumlockmask();
 	grabkeys();
+
 	/* init colors */
 	focuscol = getcolor(FOCUS_COLOR);
 	unfocuscol = getcolor(UNFOCUS_COLOR);
 	outercol = getcolor(OUTER_COLOR);
+
 	/* init cursors */
 	load_cursors();
 	values[0] = cursors[XC_LEFT_PTR].cid;
 	cookie = xcb_change_window_attributes_checked(conn, screen->root, XCB_CW_CURSOR, values);
 	testcookie(cookie, "couldn't set root cursor.");
+
 	focus(NULL);
 }
 
