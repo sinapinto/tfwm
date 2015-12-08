@@ -1,21 +1,22 @@
-VERSION= $(shell git describe --tags 2>/dev/null)
+VERSION = $(shell git describe --tags 2>/dev/null)
 ifeq ($(VERSION),)
-  VERSION= 0.1
+  VERSION = 0.1.0
 endif
 
-PREFIX?= /usr/local
-BINPREFIX?= $(PREFIX)/bin
+PREFIX   ?= /usr/local
+MANPREFIX = $(PREFIX)/share/man
+BINPREFIX = $(PREFIX)/bin
 
-CC?= gcc
+CC     ?= gcc
+CFLAGS  = -std=c99 -Wall -Wextra -Wshadow -Wno-uninitialized -pedantic
+CFLAGS += -I$(PREFIX)/include -DVERSION=\"$(VERSION)\"
+LIBS    = -lX11 -lX11-xcb -lXcursor -lxcb-keysyms -lxcb-icccm -lxcb-ewmh -lxcb-util -lxcb
 
-CFLAGS= -std=c99 -Wall -Wextra -Wshadow -Wno-uninitialized -pedantic -I$(PREFIX)/include -DVERSION=\"$(VERSION)\"
+# uncomment to enable shape extension
+# CFLAGS += -DSHAPE
+# LIBS   += -lxcb-shape -lxcb-image -lxcb-shm
 
-LIBS= -lX11 -lX11-xcb -lXcursor -lxcb-keysyms -lxcb-icccm -lxcb-ewmh -lxcb-util -lxcb
-
-# CFLAGS+= -DSHAPE
-# LIBS+= -lxcb-shape -lxcb-image -lxcb-shm
-
-OBJ= tfwm.o util.o events.o client.o list.o workspace.o keys.o pointer.o ewmh.o
+OBJ = tfwm.o util.o events.o client.o list.o workspace.o keys.o pointer.o ewmh.o
 
 all: CFLAGS+= -Os
 all: tfwm
@@ -39,11 +40,12 @@ tfwm: $(OBJ)
 	$(CC) $(LIBS) $(CFLAGS) -o $@ $(OBJ)
 
 install: all
-	mkdir -p "$(BINPREFIX)"
-	cp -pf tfwm "$(BINPREFIX)"
+	install -D -m 0755 tfwm $(DESTDIR)$(BINPREFIX)
+	install -D -m 0644 tfwm.1 $(DESTDIR)$(MANPREFIX)/man1
 
 uninstall:
-	rm -f "$(BINPREFIX)"/tfwm
+	rm -f $(DESTDIR)$(BINPREFIX)/tfwm
+	rm -f $(DESTDIR)$(MANPREFIX)/man1/tfwm.1
 
 clean:
 	rm -f $(OBJ) tfwm
