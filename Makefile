@@ -26,7 +26,7 @@ debug: tfwm
 
 tfwm.o: tfwm.c list.h client.h workspace.h events.h keys.h pointer.h ewmh.h
 events.o: events.c tfwm.h client.h list.h events.h
-client.o: client.c tfwm.h list.h client.h keys.h
+client.o: client.c tfwm.h list.h client.h keys.h ewmh.h
 list.o: list.c tfwm.h client.h list.h
 workspace.o: workspace.c tfwm.h list.h client.h
 keys.o: keys.c tfwm.h list.h client.h events.h workspace.h pointer.h

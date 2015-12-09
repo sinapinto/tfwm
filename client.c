@@ -10,6 +10,7 @@
 #include "list.h"
 #include "client.h"
 #include "keys.h"
+#include "ewmh.h"
 
 unsigned int selws = 0;
 unsigned int prevws = 0;
@@ -51,13 +52,6 @@ applyrules(Client *c) {
 			}
 		}
 		xcb_ewmh_get_atoms_reply_wipe(&win_state);
-	}
-
-	/* ICCCM size hints */
-	xcb_size_hints_t size_hints;
-	if (xcb_icccm_get_wm_normal_hints_reply(conn, xcb_icccm_get_wm_normal_hints(conn, c->win), &size_hints, NULL) == 1) {
-		c->size_hints.min_width = size_hints.min_width;
-		c->size_hints.min_height = size_hints.min_height;
 	}
 
 	/* custom rules */
@@ -110,27 +104,37 @@ killselected(const Arg *arg) {
 	(void)arg;
 	if (!sel)
 		return;
-	if (!sendevent(sel, WM_DELETE_WINDOW))
+	if (sel->can_delete)
+		send_client_message(sel, WM_DELETE_WINDOW);
+	else
 		xcb_kill_client(conn, sel->win);
 }
 
 void
 manage(xcb_window_t w) {
 	Client *c = NULL;
+	xcb_get_geometry_reply_t *gr;
+	xcb_icccm_get_wm_protocols_reply_t pr;
+	unsigned int i;
+
 	if (!(c = malloc(sizeof(Client))))
 		err("can't allocate memory.");
+
 	c->win = w;
+
 	/* geometry */
-	xcb_get_geometry_reply_t *geom;
-	geom = xcb_get_geometry_reply(conn, xcb_get_geometry(conn, w), NULL);
-	if (!geom)
-		err("geometry reply failed.");
-	c->geom.x = c->old_geom.x = geom->x;
-	c->geom.y = c->old_geom.y = geom->y;
-	c->geom.width = c->old_geom.width = geom->width;
-	c->geom.height = c->old_geom.height = geom->height;
-	free(geom);
-	c->ws = selws;
+	gr = xcb_get_geometry_reply(conn, xcb_get_geometry(conn, w), NULL);
+	if (!gr) {
+		warn("xcb_get_geometry failed.");
+		return;
+	}
+	c->geom.x = c->old_geom.x = gr->x;
+	c->geom.y = c->old_geom.y = gr->y;
+	c->geom.width = c->old_geom.width = gr->width;
+	c->geom.height = c->old_geom.height = gr->height;
+	free(gr);
+
+	/* init members */
 	c->size_hints.flags = 0;
 	c->size_hints.x = c->size_hints.y = 0;
 	c->size_hints.width = c->size_hints.height = 0;
@@ -141,8 +145,29 @@ manage(xcb_window_t w) {
 	c->size_hints.max_aspect_num = c->size_hints.max_aspect_den = 0;
 	c->size_hints.base_width = c->size_hints.base_height = 0;
 	c->size_hints.win_gravity = 0;
-	c->ismax = c->isvertmax = c->ishormax = c->isfixed =  c->noborder = false;
+	c->ismax = c->isvertmax = c->ishormax = c->can_focus = c->can_delete =  c->noborder = false;
+	c->ws = selws;
+
+	/* get size hints */
+	xcb_icccm_get_wm_normal_hints_reply(conn, xcb_icccm_get_wm_normal_hints(conn, c->win), &c->size_hints, NULL);
+
+	/* get wm hints */
+	xcb_icccm_get_wm_hints_reply(conn, xcb_icccm_get_wm_hints(conn, c->win), &c->wm_hints, NULL);
+
+	/* get protocols */
+	if (xcb_icccm_get_wm_protocols_reply(conn, xcb_icccm_get_wm_protocols(conn, c->win, WM_PROTOCOLS), &pr, NULL) == 1) {
+		for (i = 0; i < pr.atoms_len; ++i) {
+			if (pr.atoms[i] == WM_DELETE_WINDOW)
+				c->can_delete = true;
+			if (pr.atoms[i] == WM_TAKE_FOCUS)
+				c->can_focus = true;
+		}
+		xcb_icccm_get_wm_protocols_reply_wipe(&pr);
+	}
+
+	/* reparent the window */
 	/* reparent(c); */
+
 	applyrules(c);
 	attach(c);
 	attachstack(c);
@@ -150,13 +175,13 @@ manage(xcb_window_t w) {
 	fitclient(c);
 
 #if SLOPPY_FOCUS
-	uint32_t values[] = {CLIENT_EVENT_MASK};
-	xcb_change_window_attributes(conn, w, XCB_CW_EVENT_MASK, values);
+	xcb_change_window_attributes(conn, w, XCB_CW_EVENT_MASK, (uint32_t []){CLIENT_EVENT_MASK});
 #endif
 
 	if (c->ws == selws)
 		xcb_map_window(conn, w);
 
+	ewmh_update_client_list(clients);
 	focus(NULL);
 }
 
@@ -347,30 +372,25 @@ savegeometry(Client *c) {
 	c->old_geom.width = c->geom.width;
 }
 
-bool
-sendevent(Client *c, xcb_atom_t proto) {
+void
+send_client_message(Client *c, xcb_atom_t proto) {
 	xcb_client_message_event_t ev;
-	xcb_get_property_cookie_t cookie;
-	xcb_icccm_get_wm_protocols_reply_t reply;
-	bool exists = false;
-	cookie = xcb_icccm_get_wm_protocols(conn, c->win, ewmh->WM_PROTOCOLS);
-	if (xcb_icccm_get_wm_protocols_reply(conn, cookie, &reply, NULL) == 1) {
-		for (unsigned int i = 0; i < reply.atoms_len && !exists; i++)
-			if (reply.atoms[i] == proto)
-				exists = true;
-		xcb_icccm_get_wm_protocols_reply_wipe(&reply);
-	}
-	if (exists) {
-		ev.response_type = XCB_CLIENT_MESSAGE;
-		ev.format = 32;
-		ev.sequence = 0;
-		ev.window = c->win;
-		ev.type = ewmh->WM_PROTOCOLS;
-		ev.data.data32[0] = proto;
-		ev.data.data32[1] = XCB_CURRENT_TIME;
-		xcb_send_event(conn, true, c->win, XCB_EVENT_MASK_NO_EVENT, (char*)&ev);
-	}
-	return exists;
+#if DEBUG
+	char *name;
+
+	name = get_atom_name(proto);
+	PRINTF("send_client_message: %s to win %#x, \n", name, c->win);
+	free(name);
+#endif
+	memset(&ev, '\0', sizeof ev);
+	ev.response_type = XCB_CLIENT_MESSAGE;
+	ev.format = 32;
+	ev.sequence = 0;
+	ev.window = c->win;
+	ev.type = ewmh->WM_PROTOCOLS;
+	ev.data.data32[0] = proto;
+	ev.data.data32[1] = XCB_CURRENT_TIME;
+	xcb_send_event(conn, 0, c->win, XCB_EVENT_MASK_NO_EVENT, (char*)&ev);
 }
 
 void
@@ -489,10 +509,10 @@ teleport(const Arg *arg) {
 
 void
 unmanage(Client *c) {
-	sendevent(c, WM_DELETE_WINDOW);
 	detach(c);
 	detachstack(c);
 	free(c);
+	ewmh_update_client_list(clients);
 	focus(NULL);
 }
 

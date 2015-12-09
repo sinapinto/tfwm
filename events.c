@@ -95,7 +95,7 @@ clientmessage(xcb_generic_event_t *ev) {
 #ifdef DEBUG
 	char *name;
 	name = get_atom_name(e->type);
-	PRINTF("Event: client message win %#x, atom %s (%u)\n", e->window, name, e->type);
+	PRINTF("Event: client message: %s win %#x\n", name, e->window);
 	free(name);
 #endif
 
@@ -113,11 +113,13 @@ clientmessage(xcb_generic_event_t *ev) {
 				maximizeclient(c, !c->ismax);
 		}
 	} else if (e->type == ewmh->_NET_ACTIVE_WINDOW) {
-		focus(c);
+        if (c->can_focus)
+            focus(c);
 	} else if (e->type == ewmh->_NET_WM_DESKTOP) {
 	} else if (e->type == ewmh->_NET_MOVERESIZE_WINDOW) {
 	} else if (e->type == ewmh->_NET_CLOSE_WINDOW) {
-		unmanage(c);
+        if (c->can_delete)
+            send_client_message(c, WM_DELETE_WINDOW);
 	}
 }
 
@@ -358,10 +360,10 @@ requesterror(xcb_generic_event_t *ev) {
 void
 unmapnotify(xcb_generic_event_t *ev) {
 	xcb_unmap_notify_event_t *e = (xcb_unmap_notify_event_t *)ev;
+	Client *c;
 
 	PRINTF("Event: unmap notify: %#x\n", e->window);
 
-	Client *c;
 	if (e->window == screen->root)
 		return;
 	if ((c = wintoclient(e->window)))

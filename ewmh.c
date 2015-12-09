@@ -84,10 +84,8 @@ ewmh_teardown() {
 		free(pr);
 	}
 
-
 	xcb_ewmh_connection_wipe(ewmh);
-	if (ewmh)
-		free(ewmh);
+	free(ewmh);
 }
 
 bool
@@ -104,4 +102,17 @@ ewmh_remove_wm_state(Client *c, xcb_atom_t state) {
 	return false;
 }
 
+void
+ewmh_update_client_list(Client *list) {
+	Client *t;
+	int count = 0;
+
+	for (t = list; t; t = t->next, count++);
+
+	if (count == 0)
+		return;
+
+	PRINTF("ewmh_update_client_list: %d windows\n", count);
+	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root, ewmh->_NET_CLIENT_LIST, XCB_ATOM_WINDOW, 32, count, list);
+}
 

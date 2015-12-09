@@ -31,7 +31,7 @@ static const char *voltoggle[] = { "amixer", "-q", "set", "Master", "toggle", NU
 #define MOD    XCB_MOD_MASK_1
 #define SHIFT  XCB_MOD_MASK_SHIFT
 #define CTRL   XCB_MOD_MASK_CONTROL
-Key keys[62] = {
+Key keys[61] = {
 	/* modifier     key                       function       argument */
 	{ MOD,          XK_Return,                spawn,         {.com=terminal}    },
 	{ MOD,          XK_t,                     spawn,         {.com=terminal2}   },

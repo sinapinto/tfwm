@@ -20,7 +20,7 @@ void reparent(Client *c);
 void resize(const Arg *arg);
 void resizewin(xcb_window_t win, int w, int h);
 void savegeometry(Client *c);
-bool sendevent(Client *c, xcb_atom_t proto);
+void send_client_message(Client *c, xcb_atom_t proto);
 void sendtows(const Arg *arg);
 void setborder(Client *c, bool focus);
 void setborderwidth(Client *c, int width);

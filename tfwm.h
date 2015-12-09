@@ -69,21 +69,27 @@ typedef struct {
 	const Arg arg;
 } Button;
 
-#define EWMH_MAXIMIZED_VERT    0x001
-#define EWMH_MAXIMIZED_HORZ    0x002
-#define EWMH_BELOW             0x004
-#define EWMH_ABOVE             0x008
-#define EWMH_FULLSCREEN        0x020
-/* #define EWMH_FULLSCREEN        (EWMH_MAXIMIZED_VERT | EWMH_MAXIMIZED_HORZ) */
+/* ewmh flags */
+/* #define EWMH_MAXIMIZED_VERT    (1 << 0) */
+/* #define EWMH_MAXIMIZED_HORZ    (1 << 1) */
+/* #define EWMH_FULLSCREEN        (1 << 2) */
+/* #define EWMH_BELOW             (1 << 3) */
+/* #define EWMH_ABOVE             (1 << 4) */
 
 typedef struct Client Client;
-struct Client{
+struct Client {
 	xcb_rectangle_t geom;
 	xcb_rectangle_t old_geom;
 	xcb_size_hints_t size_hints;
+	xcb_icccm_wm_hints_t wm_hints;
 	uint32_t ewmh_flags;
+
+	// TODO: remove these in favor of ewmh_flags
 	bool ismax, isvertmax, ishormax;
 	bool isfixed, noborder;
+
+	bool can_focus;
+	bool can_delete;
 	xcb_window_t frame;
 	Client *next;
 	Client *snext;
@@ -148,7 +154,7 @@ void quit(const Arg *arg);
 void restart(const Arg *arg);
 
 extern const Rule rules[2];
-extern Key keys[62];
+extern Key keys[61];
 extern Button buttons[2];
 extern xcb_connection_t *conn;
 extern xcb_screen_t *screen;
@@ -159,6 +165,8 @@ extern xcb_ewmh_connection_t *ewmh;
 extern uint32_t focuscol, unfocuscol, outercol;
 extern bool dorestart;
 extern xcb_atom_t WM_DELETE_WINDOW;
+extern xcb_atom_t WM_TAKE_FOCUS;
+extern xcb_atom_t WM_PROTOCOLS;
 extern Display *display;
 extern cursor_t cursors[XC_MAX];
 
@@ -178,7 +186,7 @@ void raisewindow(xcb_drawable_t win);
 void resize(const Arg *arg);
 void resizewin(xcb_window_t win, int w, int h);
 void savegeometry(Client *c);
-bool sendevent(Client *c, xcb_atom_t proto);
+void send_client_message(Client *c, xcb_atom_t proto);
 void sendtows(const Arg *arg);
 void setborder(Client *c, bool focus);
 void setborderwidth(Client *c, int width);

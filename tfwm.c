@@ -36,6 +36,8 @@ xcb_ewmh_connection_t *ewmh;
 uint32_t focuscol, unfocuscol, outercol;
 bool dorestart;
 xcb_atom_t WM_DELETE_WINDOW;
+xcb_atom_t WM_TAKE_FOCUS;
+xcb_atom_t WM_PROTOCOLS;
 Display *display;
 cursor_t cursors[XC_MAX] = {
 	{"left_ptr",            XC_left_ptr,            XCB_CURSOR_NONE},
@@ -163,6 +165,19 @@ run(void) {
 	}
 }
 
+
+void
+sigcatch(int sig) {
+	sigcode = sig;
+}
+
+void
+sigchld() {
+	if (signal(SIGCHLD, sigchld) == SIG_ERR)
+		err("can't install SIGCHLD handler.");
+	while (0 < waitpid(-1, NULL, WNOHANG));
+}
+
 void
 setup(void) {
 	/* init screen */
@@ -180,6 +195,8 @@ setup(void) {
 
 	/* init atoms */
 	getatom(&WM_DELETE_WINDOW, "WM_DELETE_WINDOW");
+	getatom(&WM_TAKE_FOCUS, "WM_TAKE_FOCUS");
+	getatom(&WM_PROTOCOLS, "WM_PROTOCOLS");
 
 	/* init ewmh */
 	ewmh_setup();
@@ -195,22 +212,9 @@ setup(void) {
 
 	/* init cursors */
 	load_cursors();
-	values[0] = cursors[XC_LEFT_PTR].cid;
-	xcb_change_window_attributes_checked(conn, screen->root, XCB_CW_CURSOR, values);
+	xcb_change_window_attributes_checked(conn, screen->root, XCB_CW_CURSOR, (uint32_t[]){cursors[XC_LEFT_PTR].cid});
 
 	focus(NULL);
-}
-
-void
-sigcatch(int sig) {
-	sigcode = sig;
-}
-
-void
-sigchld() {
-	if (signal(SIGCHLD, sigchld) == SIG_ERR)
-		err("can't install SIGCHLD handler.");
-	while (0 < waitpid(-1, NULL, WNOHANG));
 }
 
 int
