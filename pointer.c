@@ -85,8 +85,8 @@ mousemotion(const Arg *arg) {
 					movewin(sel->win, nx, ny);
 				}
 				else {
-					nw = MAX(sel->geom.width + e->root_x - pointer->root_x, sel->minw + 40);
-					nh = MAX(sel->geom.height + e->root_y - pointer->root_y, sel->minh + 40);
+					nw = MAX(sel->geom.width + e->root_x - pointer->root_x, sel->size_hints.min_width + 40);
+					nh = MAX(sel->geom.height + e->root_y - pointer->root_y, sel->size_hints.min_height + 40);
 					resizewin(sel->win, nw, nh);
 				}
 				break;

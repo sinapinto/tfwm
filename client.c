@@ -53,10 +53,11 @@ applyrules(Client *c) {
 		xcb_ewmh_get_atoms_reply_wipe(&win_state);
 	}
 
+	/* ICCCM size hints */
 	xcb_size_hints_t size_hints;
 	if (xcb_icccm_get_wm_normal_hints_reply(conn, xcb_icccm_get_wm_normal_hints(conn, c->win), &size_hints, NULL) == 1) {
-		c->minw = size_hints.min_width;
-		c->minh = size_hints.min_height;
+		c->size_hints.min_width = size_hints.min_width;
+		c->size_hints.min_height = size_hints.min_height;
 	}
 
 	/* custom rules */
@@ -124,14 +125,24 @@ manage(xcb_window_t w) {
 	geom = xcb_get_geometry_reply(conn, xcb_get_geometry(conn, w), NULL);
 	if (!geom)
 		err("geometry reply failed.");
-	c->geom.x = c->oldgeom.x = geom->x;
-	c->geom.y = c->oldgeom.y = geom->y;
-	c->geom.width = c->oldgeom.width = geom->width;
-	c->geom.height = c->oldgeom.height = geom->height;
+	c->geom.x = c->old_geom.x = geom->x;
+	c->geom.y = c->old_geom.y = geom->y;
+	c->geom.width = c->old_geom.width = geom->width;
+	c->geom.height = c->old_geom.height = geom->height;
 	free(geom);
 	c->ws = selws;
-	c->minw = c->minh = c->basew = c->baseh = c->incw = c->inch = 0;
-	c->ismax = c->isvertmax = c->ishormax = c->isfixed = c->isurgent = c->noborder = false;
+	c->size_hints.flags = 0;
+	c->size_hints.x = c->size_hints.y = 0;
+	c->size_hints.width = c->size_hints.height = 0;
+	c->size_hints.min_width = c->size_hints.min_height = 0;
+	c->size_hints.max_width = c->size_hints.max_height = 0;
+	c->size_hints.width_inc = c->size_hints.height_inc = 0;
+	c->size_hints.min_aspect_num = c->size_hints.min_aspect_den = 0;
+	c->size_hints.max_aspect_num = c->size_hints.max_aspect_den = 0;
+	c->size_hints.base_width = c->size_hints.base_height = 0;
+	c->size_hints.win_gravity = 0;
+	c->ismax = c->isvertmax = c->ishormax = c->isfixed =  c->noborder = false;
+	/* reparent(c); */
 	applyrules(c);
 	attach(c);
 	attachstack(c);
@@ -214,10 +225,10 @@ maximizeclient(Client *c, bool doit) {
 		setborderwidth(c, 0);
 	}
 	else {
-		c->geom.x = c->isvertmax ? c->geom.x : MAX(0, c->oldgeom.x);
-		c->geom.y = c->ishormax ? c->geom.y : MAX(0, c->oldgeom.y);
-		c->geom.width = c->oldgeom.width;
-		c->geom.height = c->oldgeom.height;
+		c->geom.x = c->isvertmax ? c->geom.x : MAX(0, c->old_geom.x);
+		c->geom.y = c->ishormax ? c->geom.y : MAX(0, c->old_geom.y);
+		c->geom.width = c->old_geom.width;
+		c->geom.height = c->old_geom.height;
 		c->ismax = c->ishormax = c->isvertmax = false;
 		PRINTF("x %d y %d w %d h %d\n", c->geom.x, c->geom.y, c->geom.width, c->geom.height);
 		moveresize(c, c->geom.x, c->geom.y, c->geom.width, c->geom.height);
@@ -267,15 +278,35 @@ raisewindow(xcb_drawable_t win) {
 }
 
 void
+reparent(Client *c) {
+	xcb_rectangle_t f;
+
+	f.width = c->geom.width;
+	f.height = c->geom.height;
+	f.x = c->geom.x;
+	f.y = c->geom.y;
+
+	c->frame = xcb_generate_id(conn);
+	xcb_create_window(conn, XCB_COPY_FROM_PARENT, c->frame, screen->root, f.x, f.y, f.width, f.height, 0,
+					  XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT, XCB_NONE, NULL);
+
+
+	const uint32_t value[] = { 0 } ;
+	xcb_configure_window(conn, c->win, XCB_CONFIG_WINDOW_BORDER_WIDTH, value);
+	/* XResizeWindow(dpy, c->win, c->geom.w, c->geom.h); */
+	/* XReparentWindow(dpy, c->win, c->frame, 0, frame_height(c)); */
+}
+
+void
 resize(const Arg *arg) {
 	int iw = RESIZE_STEP, ih = RESIZE_STEP;
 	if (!sel)
 		return;
 
-	if (sel->incw > 7 && sel->incw < screen->width_in_pixels)
-		iw = sel->incw;
-	if (sel->inch > 7 && sel->inch < screen->height_in_pixels)
-		ih = sel->inch;
+	if (sel->size_hints.width_inc > 7 && sel->size_hints.width_inc < screen->width_in_pixels)
+		iw = sel->size_hints.width_inc;
+	if (sel->size_hints.height_inc > 7 && sel->size_hints.height_inc < screen->height_in_pixels)
+		ih = sel->size_hints.height_inc;
 
 	if (arg->i == GrowHeight || arg->i == GrowBoth) {
 		sel->geom.height = sel->geom.height + ih;
@@ -284,11 +315,11 @@ resize(const Arg *arg) {
 		sel->geom.width = sel->geom.width + iw;
 	}
 	if (arg->i == ShrinkHeight || arg->i == ShrinkBoth) {
-		if (sel->geom.height - ih > sel->minh)
+		if (sel->geom.height - ih > sel->size_hints.min_height)
 			sel->geom.height = sel->geom.height - ih;
 	}
 	if (arg->i == ShrinkWidth || arg->i == ShrinkBoth) {
-		if (sel->geom.width - iw > sel->minw)
+		if (sel->geom.width - iw > sel->size_hints.min_width)
 			sel->geom.width = sel->geom.width - iw;
 	}
 	resizewin(sel->win, sel->geom.width, sel->geom.height);
@@ -310,10 +341,10 @@ resizewin(xcb_window_t win, int w, int h) {
 
 void
 savegeometry(Client *c) {
-	c->oldgeom.x = c->geom.x;
-	c->oldgeom.y = c->geom.y;
-	c->oldgeom.height = c->geom.height;
-	c->oldgeom.width = c->geom.width;
+	c->old_geom.x = c->geom.x;
+	c->old_geom.y = c->geom.y;
+	c->old_geom.height = c->geom.height;
+	c->old_geom.width = c->geom.width;
 }
 
 bool
@@ -418,22 +449,6 @@ showhide(Client *c) {
 		showhide(c->snext);
 		// TODO: set iconic state
 		movewin(c->win, WIDTH(c) * -2, c->geom.y);
-	}
-}
-
-// FIXME
-void
-sticky(const Arg *arg) {
-	(void)arg;
-	if (!sel)
-		return;
-	if (sel->isfixed) {
-		sel->isfixed = false;
-		sel->ws = selws;
-	}
-	else {
-		sel->isfixed = true;
-		raisewindow(sel->win);
 	}
 }
 

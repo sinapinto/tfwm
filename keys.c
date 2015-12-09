@@ -68,7 +68,6 @@ Key keys[62] = {
 	{ MOD,          XK_a,                     maximize,      {.i=NULL}          },
 	{ MOD,          XK_m,                     maximizeaxis,  {.i=MaxVertical}   },
 	{ MOD | SHIFT,  XK_m,                     maximizeaxis,  {.i=MaxHorizontal} },
-	{ MOD | CTRL,   XK_s,                     sticky,        {.i=NULL}          },
 	{ MOD,          XK_q,                     killselected,  {.i=NULL}          },
 	{ MOD,          XK_grave,                 selectrws,     {.i=LastWorkspace} },
 	{ MOD,          XK_bracketleft,           selectrws,     {.i=PrevWorkspace} },

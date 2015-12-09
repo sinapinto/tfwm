@@ -7,8 +7,6 @@
 
 void
 ewmh_setup() {
-	xcb_drawable_t root = screen->root;
-
 	ewmh = malloc(sizeof(xcb_ewmh_connection_t));
 	if (xcb_ewmh_init_atoms_replies(ewmh, xcb_ewmh_init_atoms(conn, ewmh), NULL) == 0)
 		err("can't initialize ewmh.");
@@ -23,16 +21,14 @@ ewmh_setup() {
 		ewmh->_NET_WM_DESKTOP,
 		ewmh->_NET_ACTIVE_WINDOW,
 		ewmh->_NET_CLOSE_WINDOW,
+		ewmh->_NET_CLIENT_LIST,
+		ewmh->_NET_CLIENT_LIST_STACKING,
 		ewmh->_NET_WM_STATE,
 		ewmh->_NET_WM_STATE_FULLSCREEN,
-		/* ewmh->_NET_CLIENT_LIST, */
-		/* ewmh->_NET_CLIENT_LIST_STACKING, */
 		ewmh->_NET_WM_STATE_MAXIMIZED_VERT,
 		ewmh->_NET_WM_STATE_MAXIMIZED_HORZ,
 		ewmh->_NET_WM_STATE_BELOW,
 		ewmh->_NET_WM_STATE_ABOVE,
-		ewmh->_NET_WM_STATE_STICKY,
-		ewmh->_NET_WM_STATE_DEMANDS_ATTENTION,
 		ewmh->_NET_WM_WINDOW_TYPE,
 		ewmh->_NET_WM_WINDOW_TYPE_DOCK,
 		ewmh->_NET_WM_WINDOW_TYPE_DESKTOP,
@@ -44,7 +40,7 @@ ewmh_setup() {
 	xcb_ewmh_set_supported(ewmh, scrno, LENGTH(net_atoms), net_atoms);
 
 	xcb_window_t recorder = xcb_generate_id(conn);
-	xcb_create_window(conn, XCB_COPY_FROM_PARENT, recorder, root, 0, 0,
+	xcb_create_window(conn, XCB_COPY_FROM_PARENT, recorder, screen->root, 0, 0,
 			screen->width_in_pixels, screen->height_in_pixels, 0,
 			XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT, XCB_NONE, NULL);
 
@@ -70,11 +66,11 @@ ewmh_setup() {
 
 void
 ewmh_teardown() {
-	/* delete supporting wm check window */
 	xcb_window_t id;
 	xcb_get_property_cookie_t pc;
 	xcb_get_property_reply_t *pr;
 
+	/* delete supporting wm check window */
 	pc = xcb_get_property(conn, 0, screen->root, ewmh->_NET_SUPPORTING_WM_CHECK, XCB_ATOM_WINDOW, 0, 1);
 	pr = xcb_get_property_reply(conn, pc, NULL);
 	if (pr) {
@@ -93,4 +89,19 @@ ewmh_teardown() {
 	if (ewmh)
 		free(ewmh);
 }
+
+bool
+ewmh_add_wm_state(Client *c, xcb_atom_t state) {
+	(void)c;
+	(void)state;
+	return false;
+}
+
+bool
+ewmh_remove_wm_state(Client *c, xcb_atom_t state) {
+	(void)c;
+	(void)state;
+	return false;
+}
+
 

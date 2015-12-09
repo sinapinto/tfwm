@@ -2,6 +2,7 @@
 #ifndef TFWM_H
 #define TFWM_H
 #include <xcb/xcb_ewmh.h>
+#include <xcb/xcb_icccm.h>
 #include <xcb/xcb_keysyms.h>
 #include <X11/Xlib-xcb.h>
 #include <stdbool.h>
@@ -29,6 +30,7 @@
 #define MIN(X, Y)        ((X) < (Y) ? (X) : (Y))
 #define WIDTH(C)         ((C)->geom.width + 2 * BORDER_WIDTH)
 #define ISVISIBLE(C)     ((C)->ws == selws || (C)->isfixed)
+#define MAX_ATOMS        4
 
 #define DOUBLE_BORDER        false
 #define BORDER_WIDTH         2
@@ -67,14 +69,22 @@ typedef struct {
 	const Arg arg;
 } Button;
 
+#define EWMH_MAXIMIZED_VERT    0x001
+#define EWMH_MAXIMIZED_HORZ    0x002
+#define EWMH_BELOW             0x004
+#define EWMH_ABOVE             0x008
+#define EWMH_FULLSCREEN        0x020
+/* #define EWMH_FULLSCREEN        (EWMH_MAXIMIZED_VERT | EWMH_MAXIMIZED_HORZ) */
+
 typedef struct Client Client;
 struct Client{
 	xcb_rectangle_t geom;
-	xcb_rectangle_t oldgeom;
-	int32_t basew, baseh, minw, minh, incw, inch;
+	xcb_rectangle_t old_geom;
+	xcb_size_hints_t size_hints;
+	uint32_t ewmh_flags;
 	bool ismax, isvertmax, ishormax;
-	bool isfixed, isurgent, noborder;
-	// TODO xcb_window_t *frame;
+	bool isfixed, noborder;
+	xcb_window_t frame;
 	Client *next;
 	Client *snext;
 	xcb_window_t win;
@@ -111,7 +121,7 @@ void maprequest(xcb_generic_event_t *ev);
 char * get_atom_name(xcb_atom_t atom);
 #endif
 
-/* keys.c */
+/* pointer.c */
 void load_cursors(void);
 void free_cursors(void);
 
@@ -173,7 +183,6 @@ void sendtows(const Arg *arg);
 void setborder(Client *c, bool focus);
 void setborderwidth(Client *c, int width);
 void showhide(Client *c);
-void sticky(const Arg *arg);
 void teleport(const Arg *arg);
 void unmanage(Client *c);
 Client *wintoclient(xcb_window_t w);

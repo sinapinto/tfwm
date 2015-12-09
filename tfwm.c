@@ -171,13 +171,12 @@ setup(void) {
 		err("can't find screen.");
 
 	/* subscribe to handler */
-	unsigned int values[] = { ROOT_EVENT_MASK };
+	uint32_t values[] = { ROOT_EVENT_MASK };
 	xcb_generic_error_t *e = xcb_request_check(conn, xcb_change_window_attributes_checked(conn, screen->root, XCB_CW_EVENT_MASK, values));
 	if (e) {
 		xcb_disconnect(conn);
 	   	err("another window manager is running.");
 	}
-	xcb_flush(conn);
 
 	/* init atoms */
 	getatom(&WM_DELETE_WINDOW, "WM_DELETE_WINDOW");

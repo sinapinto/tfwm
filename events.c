@@ -218,8 +218,8 @@ configurerequest(xcb_generic_event_t *ev) {
 		evt.y = c->geom.y;
 		evt.width = c->geom.width;
 		evt.height = c->geom.height;
-		evt.border_width = c->noborder ? 0 : BORDER_WIDTH;
-		evt.override_redirect = false;
+		evt.border_width = 0;
+		evt.override_redirect = 0;
 
 		xcb_send_event(conn, false, c->win, XCB_EVENT_MASK_STRUCTURE_NOTIFY, (const char *)&evt);
 	}
@@ -336,24 +336,12 @@ propertynotify(xcb_generic_event_t *ev) {
 	if (!(c = wintoclient(e->window)))
 		return;
 
-	if (e->atom == XCB_ATOM_WM_HINTS) { /* update urgency */
-		xcb_icccm_wm_hints_t hints;
-		if (xcb_icccm_get_wm_hints_reply(conn, xcb_icccm_get_wm_hints(conn, e->window), &hints, NULL) == 1 &&
-			hints.flags & XCB_ICCCM_WM_HINT_X_URGENCY) {
-			if ((c->isurgent = xcb_icccm_wm_hints_get_urgency(&hints)) &&
-				c != sel) {
-				/* set red border */
-				const uint32_t value[] = { 0xff0000 } ;
-				xcb_change_window_attributes(conn, c->win, XCB_CW_BORDER_PIXEL, value);
-			}
-		}
-	}
-	else if (e->atom == XCB_ATOM_WM_NORMAL_HINTS) { /* update size hints */
-		xcb_size_hints_t hints;
-		if (xcb_icccm_get_wm_normal_hints_reply(conn, xcb_icccm_get_wm_normal_hints(conn, e->window), &hints, NULL) == 1 &&
-			hints.flags & XCB_ICCCM_SIZE_HINT_P_MIN_SIZE) {
-			c->minw = hints.min_width;
-			c->minh = hints.min_height;
+	if (e->atom == XCB_ATOM_WM_NORMAL_HINTS) { /* update size hints */
+		xcb_size_hints_t size_hints;
+		if (xcb_icccm_get_wm_normal_hints_reply(conn, xcb_icccm_get_wm_normal_hints(conn, e->window), &size_hints, NULL) == 1 &&
+			size_hints.flags & XCB_ICCCM_SIZE_HINT_P_MIN_SIZE) {
+			c->size_hints.min_width = size_hints.min_width;
+			c->size_hints.min_height = size_hints.min_height;
 		}
 	}
 }
