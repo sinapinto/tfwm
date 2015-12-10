@@ -74,8 +74,8 @@ buttonpress(xcb_generic_event_t *ev) {
 	}
 	for (unsigned int i = 0; i < LENGTH(buttons); i++)
 		if (buttons[i].button == e->detail &&
-			CLEANMASK(buttons[i].mask) == CLEANMASK(e->state) &&
-			buttons[i].func)
+		    CLEANMASK(buttons[i].mask) == CLEANMASK(e->state) &&
+		    buttons[i].func)
 			if (sel != NULL && e->event != screen->root)
 				buttons[i].func(&buttons[i].arg);
 }
@@ -104,7 +104,7 @@ clientmessage(xcb_generic_event_t *ev) {
 
 	if (e->type == ewmh->_NET_WM_STATE) {
 		if (e->data.data32[1] == ewmh->_NET_WM_STATE_FULLSCREEN ||
-			e->data.data32[2] == ewmh->_NET_WM_STATE_FULLSCREEN) {
+		    e->data.data32[2] == ewmh->_NET_WM_STATE_FULLSCREEN) {
 			if (e->data.data32[0] == XCB_EWMH_WM_STATE_ADD)
 				maximizeclient(c, true);
 			else if (e->data.data32[0] == XCB_EWMH_WM_STATE_REMOVE)
@@ -113,13 +113,13 @@ clientmessage(xcb_generic_event_t *ev) {
 				maximizeclient(c, !c->ismax);
 		}
 	} else if (e->type == ewmh->_NET_ACTIVE_WINDOW) {
-        if (c->can_focus)
-            focus(c);
+		if (c->can_focus)
+			focus(c);
 	} else if (e->type == ewmh->_NET_WM_DESKTOP) {
 	} else if (e->type == ewmh->_NET_MOVERESIZE_WINDOW) {
 	} else if (e->type == ewmh->_NET_CLOSE_WINDOW) {
-        if (c->can_delete)
-            send_client_message(c, WM_DELETE_WINDOW);
+		if (c->can_delete)
+			send_client_message(c, WM_DELETE_WINDOW);
 	}
 }
 
@@ -177,9 +177,9 @@ configurerequest(xcb_generic_event_t *ev) {
 
 	if ((c = wintoclient(e->window))) {
 		/* if (e->value_mask & XCB_CONFIG_WINDOW_X) */
-		/* 	v[i++] = e->x; */
+		/*	v[i++] = e->x; */
 		/* if (e->value_mask & XCB_CONFIG_WINDOW_Y) */
-		/* 	v[i++] = e->y; */
+		/*	v[i++] = e->y; */
 		if (e->value_mask & XCB_CONFIG_WINDOW_WIDTH) {
 			if (!c->ismax && !c->ishormax) {
 				mask |= XCB_CONFIG_WINDOW_WIDTH;
@@ -293,8 +293,8 @@ keypress(xcb_generic_event_t *ev) {
 	xcb_keysym_t keysym = getkeysym(e->detail);
 	for (unsigned int i = 0; i < LENGTH(keys); i++) {
 		if (keysym == keys[i].keysym &&
-			CLEANMASK(keys[i].mod) == CLEANMASK(e->state) &&
-			keys[i].func) {
+		    CLEANMASK(keys[i].mod) == CLEANMASK(e->state) &&
+		    keys[i].func) {
 			keys[i].func(&keys[i].arg);
 			break;
 		}
@@ -341,7 +341,7 @@ propertynotify(xcb_generic_event_t *ev) {
 	if (e->atom == XCB_ATOM_WM_NORMAL_HINTS) { /* update size hints */
 		xcb_size_hints_t size_hints;
 		if (xcb_icccm_get_wm_normal_hints_reply(conn, xcb_icccm_get_wm_normal_hints(conn, e->window), &size_hints, NULL) == 1 &&
-			size_hints.flags & XCB_ICCCM_SIZE_HINT_P_MIN_SIZE) {
+		    size_hints.flags & XCB_ICCCM_SIZE_HINT_P_MIN_SIZE) {
 			c->size_hints.min_width = size_hints.min_width;
 			c->size_hints.min_height = size_hints.min_height;
 		}
@@ -352,9 +352,9 @@ void
 requesterror(xcb_generic_event_t *ev) {
 	xcb_request_error_t *e = (xcb_request_error_t *)ev;
 	warn("Event: failed request: %s, %s: %d\n",
-		 xcb_event_get_request_label(e->major_opcode),
-		 xcb_event_get_error_label(e->error_code),
-		 e->bad_value);
+	     xcb_event_get_request_label(e->major_opcode),
+	     xcb_event_get_error_label(e->error_code),
+	     e->bad_value);
 }
 
 void

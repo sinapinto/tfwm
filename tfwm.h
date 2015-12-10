@@ -29,7 +29,7 @@
 #define MAX(X, Y)        ((X) > (Y) ? (X) : (Y))
 #define MIN(X, Y)        ((X) < (Y) ? (X) : (Y))
 #define WIDTH(C)         ((C)->geom.width + 2 * BORDER_WIDTH)
-#define ISVISIBLE(C)     ((C)->ws == selws || (C)->isfixed)
+#define ISVISIBLE(C)     ((C)->ws == selws)
 #define MAX_ATOMS        4
 
 #define DOUBLE_BORDER        false
@@ -70,11 +70,13 @@ typedef struct {
 } Button;
 
 /* ewmh flags */
-/* #define EWMH_MAXIMIZED_VERT    (1 << 0) */
-/* #define EWMH_MAXIMIZED_HORZ    (1 << 1) */
-/* #define EWMH_FULLSCREEN        (1 << 2) */
-/* #define EWMH_BELOW             (1 << 3) */
-/* #define EWMH_ABOVE             (1 << 4) */
+/* enum { */
+/*	EWMH_MAXIMIZED_VERT =  (1 << 0); */
+/*	EWMH_MAXIMIZED_HORZ =  (1 << 1); */
+/*	EWMH_FULLSCREEN     =  (1 << 2); */
+/*	EWMH_BELOW          =  (1 << 3); */
+/*	EWMH_ABOVE          =  (1 << 4); */
+/* } */
 
 typedef struct Client Client;
 struct Client {
@@ -82,11 +84,11 @@ struct Client {
 	xcb_rectangle_t old_geom;
 	xcb_size_hints_t size_hints;
 	xcb_icccm_wm_hints_t wm_hints;
-	uint32_t ewmh_flags;
+	/* uint32_t ewmh_flags; */
 
 	// TODO: remove these in favor of ewmh_flags
 	bool ismax, isvertmax, ishormax;
-	bool isfixed, noborder;
+	bool noborder;
 
 	bool can_focus;
 	bool can_delete;

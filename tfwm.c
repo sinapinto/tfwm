@@ -190,7 +190,7 @@ setup(void) {
 	xcb_generic_error_t *e = xcb_request_check(conn, xcb_change_window_attributes_checked(conn, screen->root, XCB_CW_EVENT_MASK, values));
 	if (e) {
 		xcb_disconnect(conn);
-	   	err("another window manager is running.");
+		err("another window manager is running.");
 	}
 
 	/* init atoms */

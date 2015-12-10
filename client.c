@@ -313,7 +313,7 @@ reparent(Client *c) {
 
 	c->frame = xcb_generate_id(conn);
 	xcb_create_window(conn, XCB_COPY_FROM_PARENT, c->frame, screen->root, f.x, f.y, f.width, f.height, 0,
-					  XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT, XCB_NONE, NULL);
+			  XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT, XCB_NONE, NULL);
 
 
 	const uint32_t value[] = { 0 } ;
@@ -361,7 +361,7 @@ void
 resizewin(xcb_window_t win, int w, int h) {
 	unsigned int values[2] = { w, h };
 	xcb_configure_window(conn, win, XCB_CONFIG_WINDOW_WIDTH |
-						 XCB_CONFIG_WINDOW_HEIGHT, values);
+			     XCB_CONFIG_WINDOW_HEIGHT, values);
 }
 
 void
@@ -418,7 +418,7 @@ setborder(Client *c, bool focus) {
 	xcb_pixmap_t pmap = xcb_generate_id(conn);
 	xcb_gcontext_t gc = xcb_generate_id(conn);
 	xcb_create_pixmap(conn, screen->root_depth, pmap, screen->root,
-					  c->geom.width+BORDER_WIDTH*2, c->geom.height+BORDER_WIDTH*2);
+			  c->geom.width+BORDER_WIDTH*2, c->geom.height+BORDER_WIDTH*2);
 	xcb_create_gc(conn, gc, pmap, 0, NULL);
 
 	values[0] = outercol;
