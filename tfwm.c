@@ -45,8 +45,20 @@ cursor_t cursors[XC_MAX] = {
 	{"fleur",               XC_fleur,               XCB_CURSOR_NONE},
 	{"bottom_right_corner", XC_bottom_right_corner, XCB_CURSOR_NONE}
 };
-/* config */
-int double_border = 1;
+/* config defaults */
+bool double_border      = false;
+int border_width       = 4;
+int outer_border_width = 4;
+/* char *focus_color      = "sky blue"; */
+/* char *outer_color      = "black"; */
+/* char *unfocus_color    = "slate gray"; */
+char *focus_color;
+char *outer_color;
+char *unfocus_color;
+int move_step          = 30;
+int resize_step        = 30;
+bool sloppy_focus       = false;
+bool java_workaround    = true;
 
 void
 cleanup(void) {
@@ -209,9 +221,9 @@ setup(void) {
 	grabkeys();
 
 	/* init colors */
-	focuscol = getcolor(FOCUS_COLOR);
-	unfocuscol = getcolor(UNFOCUS_COLOR);
-	outercol = getcolor(OUTER_COLOR);
+	focuscol = getcolor(focus_color);
+	unfocuscol = getcolor(unfocus_color);
+	outercol = getcolor(outer_color);
 
 	/* init cursors */
 	load_cursors();
@@ -222,10 +234,12 @@ setup(void) {
 
 int
 main(int argc, char **argv) {
+	char *rc_path = NULL;
 	(void)argc;
 
 	warn("welcome to tfwm %s\n", VERSION);
 
+	/* set up shared XLib/XCB connection */
 	if ((display = XOpenDisplay(NULL)) == NULL)
 		err("can't open display.");
 
@@ -235,20 +249,24 @@ main(int argc, char **argv) {
 
 	XSetEventQueueOwner(display, XCBOwnsEventQueue);
 
+	/* reap children */
 	sigchld();
+
+	/* set up signal handlers */
 	signal(SIGINT, sigcatch);
 	signal(SIGTERM, sigcatch);
 
 	scrno = 0;
 
-	/* config */
-	char *rc_path = NULL;
-	rc_path = find_config("tfwmrc");
-	if (!rc_path)
-		return 1;
-	parse_config(rc_path);
-	free(rc_path);
+	/* load config */
+	if ((rc_path = find_config("tfwmrc"))) {
+		parse_config(rc_path);
+		free(rc_path);
+	} else {
+		warn("no config file found. using default settings\n");
+	}
 
+	/* set up and run */
 	setup();
 	run();
 	cleanup();

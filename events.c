@@ -183,13 +183,13 @@ configurerequest(xcb_generic_event_t *ev) {
 		if (e->value_mask & XCB_CONFIG_WINDOW_WIDTH) {
 			if (!c->ismax && !c->ishormax) {
 				mask |= XCB_CONFIG_WINDOW_WIDTH;
-				v[i++] = c->geom.width = MIN(e->width, screen->width_in_pixels-2*BORDER_WIDTH);
+				v[i++] = c->geom.width = MIN(e->width, screen->width_in_pixels-2*border_width);
 			}
 		}
 		if (e->value_mask & XCB_CONFIG_WINDOW_HEIGHT) {
 			if (!c->ismax && !c->isvertmax) {
 				mask |= XCB_CONFIG_WINDOW_HEIGHT;
-				v[i++] = c->geom.height = MIN(e->height, screen->height_in_pixels-2*BORDER_WIDTH);
+				v[i++] = c->geom.height = MIN(e->height, screen->height_in_pixels-2*border_width);
 			}
 		}
 		if (e->value_mask & XCB_CONFIG_WINDOW_SIBLING) {

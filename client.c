@@ -85,12 +85,12 @@ fitclient(Client *c) {
 
 	if (c->noborder)
 		return;
-	if (c->geom.width >= screen->width_in_pixels-2*BORDER_WIDTH) {
-		c->geom.width = screen->width_in_pixels - BORDER_WIDTH * 2;
+	if (c->geom.width >= screen->width_in_pixels-2*border_width) {
+		c->geom.width = screen->width_in_pixels - border_width * 2;
 		update = true;
 	}
-	if (c->geom.height >= screen->height_in_pixels-2*BORDER_WIDTH) {
-		c->geom.height = screen->height_in_pixels - BORDER_WIDTH * 2;
+	if (c->geom.height >= screen->height_in_pixels-2*border_width) {
+		c->geom.height = screen->height_in_pixels - border_width * 2;
 		update = true;
 	}
 	if (update) {
@@ -174,9 +174,8 @@ manage(xcb_window_t w) {
 	sel = c;
 	fitclient(c);
 
-#if SLOPPY_FOCUS
-	xcb_change_window_attributes(conn, w, XCB_CW_EVENT_MASK, (uint32_t []){CLIENT_EVENT_MASK});
-#endif
+	if (sloppy_focus)
+		xcb_change_window_attributes(conn, w, XCB_CW_EVENT_MASK, (uint32_t []){CLIENT_EVENT_MASK});
 
 	if (c->ws == selws)
 		xcb_map_window(conn, w);
@@ -206,8 +205,8 @@ maximizeaxis(const Arg *arg) {
 	uint16_t tw = screen->width_in_pixels;
 	uint16_t th = screen->height_in_pixels;
 	if (!sel->noborder) {
-		tw -= BORDER_WIDTH * 2;
-		th -= BORDER_WIDTH * 2;
+		tw -= border_width * 2;
+		th -= border_width * 2;
 	}
 	if (arg->i == MaxVertical) {
 		sel->geom.y = 0;
@@ -257,7 +256,7 @@ maximizeclient(Client *c, bool doit) {
 		c->ismax = c->ishormax = c->isvertmax = false;
 		PRINTF("x %d y %d w %d h %d\n", c->geom.x, c->geom.y, c->geom.width, c->geom.height);
 		moveresize(c, c->geom.x, c->geom.y, c->geom.width, c->geom.height);
-		setborderwidth(sel, BORDER_WIDTH);
+		setborderwidth(sel, border_width);
 		setborder(sel, true);
 	}
 }
@@ -267,10 +266,10 @@ move(const Arg *arg) {
 	if (!sel || sel->win == screen->root)
 		return;
 	switch (arg->i) {
-		case MoveDown:  sel->geom.y += MOVE_STEP; break;
-		case MoveRight: sel->geom.x += MOVE_STEP; break;
-		case MoveUp:    sel->geom.y -= MOVE_STEP; break;
-		case MoveLeft:  sel->geom.x -= MOVE_STEP; break;
+		case MoveDown:  sel->geom.y += move_step; break;
+		case MoveRight: sel->geom.x += move_step; break;
+		case MoveUp:    sel->geom.y -= move_step; break;
+		case MoveLeft:  sel->geom.x -= move_step; break;
 	}
 	movewin(sel->win, sel->geom.x, sel->geom.y);
 }
@@ -324,7 +323,7 @@ reparent(Client *c) {
 
 void
 resize(const Arg *arg) {
-	int iw = RESIZE_STEP, ih = RESIZE_STEP;
+	int iw = resize_step, ih = resize_step;
 	if (!sel)
 		return;
 
@@ -351,7 +350,7 @@ resize(const Arg *arg) {
 
 	if (sel->ismax) {
 		sel->ismax = false;
-		setborderwidth(sel, BORDER_WIDTH);
+		setborderwidth(sel, border_width);
 	}
 	sel->ishormax = sel->isvertmax = false;
 	setborder(sel, true);
@@ -407,8 +406,8 @@ setborder(Client *c, bool focus) {
 	if (c->ismax || c->noborder)
 		return;
 	uint32_t values[1];
-	int half = OUTER_BORDER_WIDTH;
-	values[0] = BORDER_WIDTH;
+	int half = outer_border_width;
+	values[0] = border_width;
 	xcb_configure_window(conn, c->win, XCB_CONFIG_WINDOW_BORDER_WIDTH, values);
 	if (!double_border) {
 		values[0] = focus ? focuscol : unfocuscol;
@@ -418,16 +417,16 @@ setborder(Client *c, bool focus) {
 	xcb_pixmap_t pmap = xcb_generate_id(conn);
 	xcb_gcontext_t gc = xcb_generate_id(conn);
 	xcb_create_pixmap(conn, screen->root_depth, pmap, screen->root,
-			  c->geom.width+BORDER_WIDTH*2, c->geom.height+BORDER_WIDTH*2);
+			  c->geom.width+border_width*2, c->geom.height+border_width*2);
 	xcb_create_gc(conn, gc, pmap, 0, NULL);
 
 	values[0] = outercol;
 	xcb_change_gc(conn, gc, XCB_GC_FOREGROUND, &values[0]);
 	xcb_rectangle_t rect_outer[] = {
-		{ c->geom.width+BORDER_WIDTH-half, 0, half, c->geom.height+BORDER_WIDTH*2 },
-		{ c->geom.width+BORDER_WIDTH, 0, half, c->geom.height+BORDER_WIDTH*2 },
-		{ 0, c->geom.height+BORDER_WIDTH-half, c->geom.width+BORDER_WIDTH*2, half },
-		{ 0, c->geom.height+BORDER_WIDTH, c->geom.width+BORDER_WIDTH*2, half },
+		{ c->geom.width+border_width-half, 0, half, c->geom.height+border_width*2 },
+		{ c->geom.width+border_width, 0, half, c->geom.height+border_width*2 },
+		{ 0, c->geom.height+border_width-half, c->geom.width+border_width*2, half },
+		{ 0, c->geom.height+border_width, c->geom.width+border_width*2, half },
 		{ 1, 1, 1, 1 }
 	};
 	xcb_poly_fill_rectangle(conn, pmap, gc, 5, rect_outer);
@@ -435,11 +434,11 @@ setborder(Client *c, bool focus) {
 	values[0] = focus ? focuscol : unfocuscol;
 	xcb_change_gc(conn, gc, XCB_GC_FOREGROUND, &values[0]);
 	xcb_rectangle_t rect_inner[] = {
-		{ c->geom.width, 0, BORDER_WIDTH-half, c->geom.height+BORDER_WIDTH-half },
-		{ c->geom.width+BORDER_WIDTH+half, 0, BORDER_WIDTH-half, c->geom.height+BORDER_WIDTH-half },
-		{ 0, c->geom.height, c->geom.width+BORDER_WIDTH-half, BORDER_WIDTH-half },
-		{ 0, c->geom.height+BORDER_WIDTH+half, c->geom.width+BORDER_WIDTH-half, BORDER_WIDTH-half },
-		{ c->geom.width+BORDER_WIDTH+half, BORDER_WIDTH+c->geom.height+half, BORDER_WIDTH, BORDER_WIDTH }
+		{ c->geom.width, 0, border_width-half, c->geom.height+border_width-half },
+		{ c->geom.width+border_width+half, 0, border_width-half, c->geom.height+border_width-half },
+		{ 0, c->geom.height, c->geom.width+border_width-half, border_width-half },
+		{ 0, c->geom.height+border_width+half, c->geom.width+border_width-half, border_width-half },
+		{ c->geom.width+border_width+half, border_width+c->geom.height+half, border_width, border_width }
 	};
 	xcb_poly_fill_rectangle(conn, pmap, gc, 5, rect_inner);
 
@@ -479,8 +478,8 @@ teleport(const Arg *arg) {
 	uint16_t tw = sel->geom.width;
 	uint16_t th = sel->geom.height;
 	if (!sel->noborder) {
-		tw +=  BORDER_WIDTH * 2;
-		th +=  BORDER_WIDTH * 2;
+		tw +=  border_width * 2;
+		th +=  border_width * 2;
 	}
 	switch (arg->i) {
 		case Center:

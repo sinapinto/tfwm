@@ -48,11 +48,10 @@ ewmh_setup() {
 	xcb_ewmh_set_wm_pid(ewmh, recorder, getpid());
 
 	/* set up _NET_WM_NAME */
-#if JAVA_WORKAROUND
-	xcb_ewmh_set_wm_name(ewmh, screen->root, strlen("LG3D"), "LG3D");
-#else
-	xcb_ewmh_set_wm_name(ewmh, screen->root, strlen("tfwm"), "tfwm");
-#endif
+	if (java_workaround)
+		xcb_ewmh_set_wm_name(ewmh, screen->root, strlen("LG3D"), "LG3D");
+	else
+		xcb_ewmh_set_wm_name(ewmh, screen->root, strlen("tfwm"), "tfwm");
 
 	/* set up _NET_SUPPORTING_WM_CHECK */
 	xcb_ewmh_set_supporting_wm_check(ewmh, recorder, recorder);

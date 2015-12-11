@@ -9,7 +9,7 @@
 
 #ifdef DEBUG
 # include <stdio.h>
-# define PRINTF(...)     do { fprintf(stderr, __VA_ARGS__); } while(0)
+# define PRINTF(...)  do { fprintf(stderr, __VA_ARGS__); } while(0)
 #else
 # define PRINTF(...)
 #endif
@@ -24,26 +24,13 @@
                             XCB_EVENT_MASK_BUTTON_MOTION         |\
                             XCB_EVENT_MASK_POINTER_MOTION)
 
-#define CLEANMASK(mask)  (mask & ~(numlockmask|XCB_MOD_MASK_LOCK))
-#define LENGTH(X)        (sizeof(X)/sizeof(*X))
-#define MAX(X, Y)        ((X) > (Y) ? (X) : (Y))
-#define MIN(X, Y)        ((X) < (Y) ? (X) : (Y))
-#define WIDTH(C)         ((C)->geom.width + 2 * BORDER_WIDTH)
-#define ISVISIBLE(C)     ((C)->ws == selws)
-#define MAX_ATOMS        4
-
-#define BORDER_WIDTH         2
-#define OUTER_BORDER_WIDTH   4
-#define FOCUS_COLOR          "tomato"
-#define OUTER_COLOR          "black"
-#define UNFOCUS_COLOR        "slate gray"
-#define MOVE_STEP            30
-#define RESIZE_STEP          30
-#define SLOPPY_FOCUS         false
-#define JAVA_WORKAROUND      true
-
-/* config */
-extern int double_border;
+#define CLEANMASK(mask) (mask & ~(numlockmask|XCB_MOD_MASK_LOCK))
+#define LENGTH(X)       (sizeof(X)/sizeof(*X))
+#define MAX(X, Y)       ((X) > (Y) ? (X) : (Y))
+#define MIN(X, Y)       ((X) < (Y) ? (X) : (Y))
+#define WIDTH(C)        ((C)->geom.width + 2 * border_width)
+#define ISVISIBLE(C)    ((C)->ws == selws)
+#define MAX_ATOMS       4
 
 typedef union {
 	const char **com;
@@ -71,14 +58,13 @@ typedef struct {
 	const Arg arg;
 } Button;
 
-/* ewmh flags */
-/* enum { */
-/*	EWMH_MAXIMIZED_VERT =  (1 << 0); */
-/*	EWMH_MAXIMIZED_HORZ =  (1 << 1); */
-/*	EWMH_FULLSCREEN     =  (1 << 2); */
-/*	EWMH_BELOW          =  (1 << 3); */
-/*	EWMH_ABOVE          =  (1 << 4); */
-/* } */
+ /* enum { */ 
+	/* EWMH_MAXIMIZED_VERT = (1 << 0), */
+	/* EWMH_MAXIMIZED_HORZ = (1 << 1), */
+	/* EWMH_FULLSCREEN     = (1 << 2), */
+	/* EWMH_BELOW          = (1 << 3), */
+	/* EWMH_ABOVE          = (1 << 4) */
+ /* }; */
 
 typedef struct Client Client;
 struct Client {
@@ -173,7 +159,16 @@ extern xcb_atom_t WM_TAKE_FOCUS;
 extern xcb_atom_t WM_PROTOCOLS;
 extern Display *display;
 extern cursor_t cursors[XC_MAX];
-
+extern bool double_border;
+extern int border_width;
+extern int outer_border_width;
+extern char *focus_color;
+extern char *outer_color;
+extern char *unfocus_color;
+extern int move_step;
+extern int resize_step;
+extern bool sloppy_focus;
+extern bool java_workaround;
 
 /* client.c */
 void applyrules(Client *c);
