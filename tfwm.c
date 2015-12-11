@@ -17,6 +17,7 @@
 #include "keys.h"
 #include "pointer.h"
 #include "ewmh.h"
+#include "config.h"
 
 static void cleanup(void);
 static bool connection_has_error(void);
@@ -44,6 +45,8 @@ cursor_t cursors[XC_MAX] = {
 	{"fleur",               XC_fleur,               XCB_CURSOR_NONE},
 	{"bottom_right_corner", XC_bottom_right_corner, XCB_CURSOR_NONE}
 };
+/* config */
+int double_border = 1;
 
 void
 cleanup(void) {
@@ -237,6 +240,14 @@ main(int argc, char **argv) {
 	signal(SIGTERM, sigcatch);
 
 	scrno = 0;
+
+	/* config */
+	char *rc_path = NULL;
+	rc_path = find_config("tfwmrc");
+	if (!rc_path)
+		return 1;
+	parse_config(rc_path);
+	free(rc_path);
 
 	setup();
 	run();

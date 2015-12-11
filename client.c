@@ -410,7 +410,7 @@ setborder(Client *c, bool focus) {
 	int half = OUTER_BORDER_WIDTH;
 	values[0] = BORDER_WIDTH;
 	xcb_configure_window(conn, c->win, XCB_CONFIG_WINDOW_BORDER_WIDTH, values);
-	if (! DOUBLE_BORDER) {
+	if (!double_border) {
 		values[0] = focus ? focuscol : unfocuscol;
 		xcb_change_window_attributes(conn, c->win, XCB_CW_BORDER_PIXEL, values);
 		return;

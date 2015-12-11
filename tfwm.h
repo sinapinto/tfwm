@@ -32,7 +32,6 @@
 #define ISVISIBLE(C)     ((C)->ws == selws)
 #define MAX_ATOMS        4
 
-#define DOUBLE_BORDER        false
 #define BORDER_WIDTH         2
 #define OUTER_BORDER_WIDTH   4
 #define FOCUS_COLOR          "tomato"
@@ -42,6 +41,9 @@
 #define RESIZE_STEP          30
 #define SLOPPY_FOCUS         false
 #define JAVA_WORKAROUND      true
+
+/* config */
+extern int double_border;
 
 typedef union {
 	const char **com;
