@@ -1,16 +1,12 @@
 /* See LICENSE file for copyright and license details. */
 #include <string.h>
 #include <xcb/xcb_icccm.h>
-#ifdef SHAPE
-# include <xcb/shape.h>
-# include <xcb/xcb_image.h>
-# include "corner.xbm"
-#endif
 #include "tfwm.h"
 #include "list.h"
 #include "client.h"
 #include "keys.h"
 #include "ewmh.h"
+#include "events.h"
 
 unsigned int selws = 0;
 unsigned int prevws = 0;
@@ -167,6 +163,10 @@ manage(xcb_window_t w) {
 
 	/* reparent the window */
 	/* reparent(c); */
+
+#ifdef SHAPE
+	roundcorners(c);
+#endif
 
 	applyrules(c);
 	attach(c);
@@ -378,7 +378,7 @@ send_client_message(Client *c, xcb_atom_t proto) {
 	char *name;
 
 	name = get_atom_name(proto);
-	PRINTF("send_client_message: %s to win %#x, \n", name, c->win);
+	PRINTF("send_client_message: %s to win %#x\n", name, c->win);
 	free(name);
 #endif
 	memset(&ev, '\0', sizeof ev);
@@ -524,31 +524,4 @@ wintoclient(xcb_window_t w) {
 			return c;
 	return NULL;
 }
-
-#ifdef SHAPE
-void
-check_shape_extension() {
-	xcb_query_extension_reply_t const* ereply = xcb_get_extension_data(conn, &xcb_shape_id);
-	if (!ereply)
-		err("can't get shape extension data.");
-	if (!ereply->present)
-		warn("SHAPE extension isn't available");
-	xcb_shape_query_version_cookie_t vcookie = xcb_shape_query_version_unchecked(conn);
-	xcb_shape_query_version_reply_t* vreply = xcb_shape_query_version_reply(conn, vcookie, 0);
-	if (!vreply)
-		err("can't get shape extension version.");
-	free(vreply);
-}
-
-
-void
-roundcorners(Client *c) {
-	xcb_pixmap_t pmap = xcb_create_pixmap_from_bitmap_data(conn, screen->root, corner_bits, corner_width, corner_height, 1, 0, 1, NULL);
-	if (pmap == XCB_NONE)
-		err("xcb_create_pixmap_from_bitmap_data() failed.");
-
-	xcb_shape_mask(conn, XCB_SHAPE_SO_SUBTRACT, XCB_SHAPE_SK_BOUNDING, c->win, 0, 0, pmap);
-	xcb_free_pixmap(conn, pmap);
-}
-#endif
 

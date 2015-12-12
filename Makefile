@@ -13,10 +13,15 @@ CFLAGS += -I$(PREFIX)/include -DVERSION=\"$(VERSION)\"
 LIBS    = -lX11 -lX11-xcb -lXcursor -lxcb-keysyms -lxcb-icccm -lxcb-ewmh -lxcb-util -lxcb
 
 # uncomment to enable shape extension
-# CFLAGS += -DSHAPE
-# LIBS   += -lxcb-shape -lxcb-image -lxcb-shm
+# SHAPE = 1
 
 OBJ = tfwm.o util.o events.o client.o list.o workspace.o keys.o pointer.o ewmh.o config.o
+
+ifeq ($(SHAPE),1)
+  CFLAGS += -DSHAPE
+  LIBS   += -lxcb-shape -lxcb-image -lxcb-shm
+  OBJ += shape.o
+endif
 
 all: CFLAGS += -Os
 all: tfwm
@@ -26,13 +31,14 @@ debug: tfwm
 
 tfwm.o: tfwm.c list.h client.h workspace.h events.h keys.h pointer.h ewmh.h config.h
 events.o: events.c tfwm.h client.h list.h events.h
-client.o: client.c tfwm.h list.h client.h keys.h ewmh.h
+client.o: client.c tfwm.h list.h client.h keys.h ewmh.h events.h
 list.o: list.c tfwm.h client.h list.h
 workspace.o: workspace.c tfwm.h list.h client.h
 keys.o: keys.c tfwm.h list.h client.h events.h workspace.h pointer.h
 pointer.o: pointer.c tfwm.h events.h
 ewmh.o: ewmh.c tfwm.h
 config.o: config.c tfwm.h
+shape.o: shape.c tfwm.h
 
 %.o: %.c
 	$(CC) -c $(CFLAGS) -o $@ $<

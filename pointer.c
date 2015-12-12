@@ -33,8 +33,11 @@ load_cursors(void) {
 void
 free_cursors(void) {
 	unsigned int i;
-	for (i = 0; i < LENGTH(cursors); ++i)
+
+	for (i = 0; i < LENGTH(cursors); ++i) {
+		PRINTF("freeing cursor %d\n", i);
 		xcb_free_cursor(conn, cursors[i].cid);
+	}
 }
 
 void

@@ -18,6 +18,9 @@
 #include "pointer.h"
 #include "ewmh.h"
 #include "config.h"
+#ifdef SHAPE
+#include "shape.h"
+#endif
 
 static void cleanup(void);
 static bool connection_has_error(void);
@@ -59,8 +62,14 @@ bool java_workaround    = true;
 
 void
 cleanup(void) {
-	while (stack)
+	while (stack) {
+		PRINTF("freeing win %#x\n", stack->win);
+		if (stack->can_delete)
+			send_client_message(stack, WM_DELETE_WINDOW);
+		else
+			xcb_kill_client(conn, stack->win);
 		unmanage(stack);
+	}
 
 	ewmh_teardown();
 
@@ -73,6 +82,7 @@ cleanup(void) {
 	xcb_set_input_focus(conn, XCB_NONE, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
 	xcb_flush(conn);
 	xcb_disconnect(conn);
+	warn("bye\n");
 }
 
 bool
@@ -230,13 +240,16 @@ setup(void) {
 	load_cursors();
 	xcb_change_window_attributes_checked(conn, screen->root, XCB_CW_CURSOR, (uint32_t[]){cursors[XC_LEFT_PTR].cid});
 
+#ifdef SHAPE
+	check_shape_extension();
+#endif
 	focus(NULL);
 }
 
 int
 main(int argc, char **argv) {
-	char *rc_path = NULL;
 	(void)argc;
+	char *rc_path = NULL;
 
 	warn("welcome to tfwm %s\n", VERSION);
 

@@ -75,7 +75,7 @@ ewmh_teardown() {
 	if (pr) {
 		if (pr->format == ewmh->_NET_SUPPORTING_WM_CHECK) {
 			id = *((xcb_window_t *)xcb_get_property_value(pr));
-
+			PRINTF("deleting supporting wm check window %#x\n", id);
 			xcb_destroy_window(conn, id);
 			xcb_delete_property(conn, screen->root, ewmh->_NET_SUPPORTING_WM_CHECK);
 			xcb_delete_property(conn, screen->root, ewmh->_NET_SUPPORTED);

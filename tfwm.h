@@ -199,4 +199,8 @@ extern unsigned int prevws;
 extern Client *clients;
 extern Client *sel;
 
+#ifdef SHAPE
+void roundcorners(Client *c);
 #endif
+
+#endif /* TFWM_H */
