@@ -1,51 +1,45 @@
 /* See LICENSE file for copyright and license details. */
-#include <sys/types.h>
 #include <sys/stat.h>
-#include <linux/limits.h>
-#include <pwd.h>
 #include <string.h>
 #include <strings.h> /* strncasecmp() */
 #include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <ctype.h>
+#include <stdbool.h>
 #include "tfwm.h"
 #include "config.h"
 
-char *find_config(char *);
-int parse_config(char *);
+#define PATH_MAX 4096
+#define LINE_MAX 4096
+
+static void setopt(char *key, char *val);
+static bool is_regular_file(char *path);
+
+bool
+is_regular_file(char *path) {
+	struct stat statbuf;
+
+	if (stat(path, &statbuf) == 0)
+		if (S_ISREG(statbuf.st_mode))
+			return true;
+	return false;
+}
 
 char *
 find_config(char *file) {
-	struct stat statbuf;
-	char *full;
-	char *prefix;
+	char *path;
 
-	full = (char *)malloc(PATH_MAX);
+	path = (char *)malloc(PATH_MAX);
 
-	if ((prefix = getenv("XDG_CONFIG_HOME"))) {
-		snprintf(full, PATH_MAX, "%s/.%s", prefix, file);
-		if (stat(full, &statbuf) == 0)
-			if (S_ISREG(statbuf.st_mode))
-				return full;
+	if (getenv("HOME")) {
+		snprintf(path, PATH_MAX, "%s/.%s", getenv("HOME"), file);
+		if (is_regular_file(path))
+			return path;
 	}
 
-	if ((prefix = getenv("HOME"))) {
-		snprintf(full, PATH_MAX, "%s/.%s", prefix, file);
-		if (stat(full, &statbuf) == 0)
-			if (S_ISREG(statbuf.st_mode))
-				return full;
+	if (getenv("XDG_CONFIG_HOME")) {
+		snprintf(path, PATH_MAX, "%s/.%s", getenv("HOME"), file);
+		if (is_regular_file(path))
+			return path;
 	}
-
-        /* the home directory listed in the password db can be different
-         * than $HOME i.e. if the user sets a custom $HOME */
-	if ((prefix = getpwuid(getuid())->pw_dir)) {
-		snprintf(full, PATH_MAX, "%s/.%s", prefix, file);
-		if (stat(full, &statbuf) == 0)
-			if (S_ISREG(statbuf.st_mode))
-				return full;
-	}
-
 	return NULL;
 }
 
@@ -120,24 +114,24 @@ struct {
 int
 parse_config(char *fname) {
 	FILE *file = NULL;
-	char line[MAX_CANON];
+	char line[LINE_MAX];
 	char *p = NULL;
 	size_t token_len = 0;
 	int cfg_idx = -1;
 	char *val = NULL;
 	unsigned int i;
-	int line_no = 0;
+	int line_num = 0;
 
 	if (!fname)
 		return 1;
 	if (!(file = fopen(fname, "r")))
 		return 1;
 
-	while (fgets(line, MAX_CANON, file)) {
-		line_no++;
+	while (fgets(line, LINE_MAX, file)) {
+		line_num++;
 		p = line;
 
-		while (*p && isspace(*p))
+		while (*p && (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r'))
 			p++;
 
 		if (p[0] == '\0' || p[0] == '#')
@@ -155,7 +149,7 @@ parse_config(char *fname) {
 		}
 		
 		if (cfg_idx == -1) {
-			warn("%s: couldn't match setting on line %d\n", fname, line_no);
+			warn("%s: couldn't match setting on line %d\n", fname, line_num);
 			return 1;
 		}
 
@@ -165,7 +159,7 @@ parse_config(char *fname) {
 		val = p;
 		if (strlen(val) == 0) {
 			warn("%s: missing value for %s on line %d\n",
-			     fname, config[cfg_idx].key, line_no);
+			     fname, config[cfg_idx].key, line_num);
 			continue;
 		}
 		/* trim trailing newline */

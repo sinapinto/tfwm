@@ -18,10 +18,10 @@ LIBS    = -lX11 -lX11-xcb -lXcursor -lxcb-keysyms -lxcb-icccm -lxcb-ewmh -lxcb-u
 
 OBJ = tfwm.o util.o events.o client.o list.o workspace.o keys.o pointer.o ewmh.o config.o
 
-all: CFLAGS+= -Os
+all: CFLAGS += -Os
 all: tfwm
 
-debug: CFLAGS+= -O0 -g -DDEBUG
+debug: CFLAGS += -O0 -g -DDEBUG
 debug: tfwm
 
 tfwm.o: tfwm.c list.h client.h workspace.h events.h keys.h pointer.h ewmh.h config.h
@@ -52,3 +52,4 @@ clean:
 	rm -f $(OBJ) tfwm
 
 .PHONY: all debug install uninstall clean
+

@@ -106,7 +106,8 @@ ewmh_update_client_list(Client *list) {
 	Client *t;
 	int count = 0;
 
-	for (t = list; t; t = t->next, count++);
+	for (t = list; t; t = t->next)
+		count++;
 
 	if (count == 0)
 		return;

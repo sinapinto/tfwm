@@ -49,9 +49,6 @@ cursor_t cursors[XC_MAX] = {
 bool double_border      = false;
 int border_width       = 4;
 int outer_border_width = 4;
-/* char *focus_color      = "sky blue"; */
-/* char *outer_color      = "black"; */
-/* char *unfocus_color    = "slate gray"; */
 char *focus_color;
 char *outer_color;
 char *unfocus_color;
@@ -68,6 +65,10 @@ cleanup(void) {
 	ewmh_teardown();
 
 	free_cursors();
+
+	free(focus_color);
+	free(outer_color);
+	free(unfocus_color);
 
 	xcb_set_input_focus(conn, XCB_NONE, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
 	xcb_flush(conn);
