@@ -43,7 +43,7 @@ find_config(char *file) {
 	return NULL;
 }
 
-#define OPT(opt) (strcmp(opt, key) == 0)
+#define OPT(_opt) (strcmp(_opt, key) == 0)
 
 void setopt(char *key, char *val) {
 	PRINTF("Config: %s: %s\n", key, val);

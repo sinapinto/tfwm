@@ -13,24 +13,29 @@ typedef enum {
 
 static void draw_corner(Client *c, corner_t corner, unsigned char bits[]);
 
-void
+bool
 check_shape_extension(void) {
 	xcb_query_extension_reply_t const* ereply;
 	xcb_shape_query_version_cookie_t vcookie;
 	xcb_shape_query_version_reply_t* vreply;
 
 	ereply = xcb_get_extension_data(conn, &xcb_shape_id);
-	if (!ereply)
-		err("can't get shape extension data.");
+	if (!ereply) {
+		warn("can't get shape extension data.");
+		return false;
+	}
 	if (!ereply->present)
 		warn("SHAPE extension isn't available");
 
 	vcookie = xcb_shape_query_version_unchecked(conn);
 	vreply = xcb_shape_query_version_reply(conn, vcookie, 0);
-	if (!vreply)
-		err("can't get shape extension version.");
+	if (!vreply) {
+		warn("can't get shape extension version.");
+		return false;
+	}
 	PRINTF("Info: using shape extension version %d.%d\n", vreply->major_version, vreply->minor_version);
 	free(vreply);
+	return true;
 }
 
 void

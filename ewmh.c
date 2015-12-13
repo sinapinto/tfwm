@@ -58,8 +58,7 @@ ewmh_setup() {
 	xcb_ewmh_set_supporting_wm_check(ewmh, screen->root, recorder);
 
 	/* set up _NET_NUMBER_OF_DESKTOPS */
-	static const uint8_t numdesktops = 10;
-	xcb_ewmh_set_number_of_desktops(ewmh, scrno, numdesktops);
+	xcb_ewmh_set_number_of_desktops(ewmh, scrno, 10);
 	xcb_ewmh_set_current_desktop(ewmh, scrno, 0);
 }
 
@@ -112,7 +111,7 @@ ewmh_update_client_list(Client *list) {
 	if (count == 0)
 		return;
 
-	PRINTF("ewmh_update_client_list: %d windows\n", count);
+	PRINTF("EWMH: update client list: %d windows\n", count);
 	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root, ewmh->_NET_CLIENT_LIST, XCB_ATOM_WINDOW, 32, count, list);
 }
 

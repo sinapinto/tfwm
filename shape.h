@@ -2,7 +2,7 @@
 #ifndef SHAPE_H
 #define SHAPE_H
 
-void check_shape_extension(void);
+bool check_shape_extension(void);
 void roundcorners(Client *c);
 
 #endif

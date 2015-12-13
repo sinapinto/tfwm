@@ -36,3 +36,12 @@ gotows(unsigned int i) {
 	showhide(stack);
 }
 
+void
+sendtows(const Arg *arg) {
+	if (arg->i == selws)
+		return;
+	sel->ws = arg->i;
+	showhide(stack);
+	focus(NULL);
+}
+

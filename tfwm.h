@@ -17,12 +17,19 @@
 #define ROOT_EVENT_MASK    (XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY   |\
                             XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT |\
                             XCB_EVENT_MASK_BUTTON_PRESS)
+
 #define CLIENT_EVENT_MASK  (XCB_EVENT_MASK_ENTER_WINDOW          |\
                             XCB_EVENT_MASK_PROPERTY_CHANGE)
+
 #define POINTER_EVENT_MASK (XCB_EVENT_MASK_BUTTON_PRESS          |\
                             XCB_EVENT_MASK_BUTTON_RELEASE        |\
                             XCB_EVENT_MASK_BUTTON_MOTION         |\
                             XCB_EVENT_MASK_POINTER_MOTION)
+
+#define FRAME_EVENT_MASK   (POINTER_EVENT_MASK                   |\
+			    XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY   |\
+			    XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT |\
+			    XCB_EVENT_MASK_ENTER_WINDOW)
 
 #define CLEANMASK(mask) (mask & ~(numlockmask|XCB_MOD_MASK_LOCK))
 #define LENGTH(X)       (sizeof(X)/sizeof(*X))
@@ -114,7 +121,7 @@ void handleevent(xcb_generic_event_t *ev);
 void mousemotion(const Arg *arg);
 void maprequest(xcb_generic_event_t *ev);
 #ifdef DEBUG
-char * get_atom_name(xcb_atom_t atom);
+char *get_atom_name(xcb_atom_t atom);
 #endif
 
 /* pointer.c */
@@ -154,6 +161,7 @@ extern Client *stack;
 extern xcb_ewmh_connection_t *ewmh;
 extern uint32_t focuscol, unfocuscol, outercol;
 extern bool dorestart;
+extern bool has_shape;
 extern xcb_atom_t WM_DELETE_WINDOW;
 extern xcb_atom_t WM_TAKE_FOCUS;
 extern xcb_atom_t WM_PROTOCOLS;

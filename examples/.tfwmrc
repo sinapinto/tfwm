@@ -1,7 +1,7 @@
 double_border      = 0
 outer_border_width = 4
 border_width       = 3
-focus_color        = tomato
+focus_color        = lime green
 outer_color        = black
 unfocus_color      = slate gray
 move_step          = 30

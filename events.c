@@ -123,31 +123,6 @@ clientmessage(xcb_generic_event_t *ev) {
 	}
 }
 
-#ifdef DEBUG
-char *
-get_atom_name(xcb_atom_t atom) {
-	char *name = NULL;
-	xcb_get_atom_name_reply_t *reply;
-	int len;
-
-	reply = xcb_get_atom_name_reply(conn, xcb_get_atom_name(conn, atom), NULL);
-	if (!reply)
-		return NULL;
-
-	len = xcb_get_atom_name_name_length(reply);
-	if (len) {
-		if (!(name = malloc(len + 1)))
-			err("can't allocate memory.");
-		memcpy(name, xcb_get_atom_name_name(reply), len);
-		name[len] = '\0';
-	}
-
-	free(reply);
-
-	return name;
-}
-#endif
-
 void
 configurerequest(xcb_generic_event_t *ev) {
 	xcb_configure_request_event_t *e = (xcb_configure_request_event_t *)ev;
@@ -351,7 +326,7 @@ propertynotify(xcb_generic_event_t *ev) {
 void
 requesterror(xcb_generic_event_t *ev) {
 	xcb_request_error_t *e = (xcb_request_error_t *)ev;
-	warn("Event: failed request: %s, %s: %d\n",
+	warn("Event: FAILED REQUEST: %s, %s: %d\n",
 	     xcb_event_get_request_label(e->major_opcode),
 	     xcb_event_get_error_label(e->error_code),
 	     e->bad_value);

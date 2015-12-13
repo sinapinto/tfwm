@@ -51,6 +51,7 @@ focus(Client *c) {
 		if (sel && sel != c)
 			setborder(sel, false);
 		setborder(c, true);
+		PRINTF("focus win %#x\n", c->win);
 		xcb_set_input_focus(conn, XCB_INPUT_FOCUS_POINTER_ROOT,
 				c->win, XCB_CURRENT_TIME);
 		xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root,
@@ -58,8 +59,7 @@ focus(Client *c) {
 	}
 	else {
 		xcb_delete_property(conn, screen->root, ewmh->_NET_ACTIVE_WINDOW);
-		xcb_set_input_focus(conn, XCB_NONE,
-				XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
+		xcb_set_input_focus(conn, XCB_NONE, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
 	}
 	sel = c;
 }

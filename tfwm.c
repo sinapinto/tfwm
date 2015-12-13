@@ -39,6 +39,7 @@ int sigcode;
 xcb_ewmh_connection_t *ewmh;
 uint32_t focuscol, unfocuscol, outercol;
 bool dorestart;
+bool has_shape;
 xcb_atom_t WM_DELETE_WINDOW;
 xcb_atom_t WM_TAKE_FOCUS;
 xcb_atom_t WM_PROTOCOLS;
@@ -49,21 +50,46 @@ cursor_t cursors[XC_MAX] = {
 	{"bottom_right_corner", XC_bottom_right_corner, XCB_CURSOR_NONE}
 };
 /* config defaults */
-bool double_border      = false;
+bool double_border     = false;
 int border_width       = 4;
 int outer_border_width = 4;
+int move_step          = 30;
+int resize_step        = 30;
+bool sloppy_focus      = false;
+bool java_workaround   = true;
 char *focus_color;
 char *outer_color;
 char *unfocus_color;
-int move_step          = 30;
-int resize_step        = 30;
-bool sloppy_focus       = false;
-bool java_workaround    = true;
+
+#ifdef DEBUG
+char *
+get_atom_name(xcb_atom_t atom) {
+	char *name = NULL;
+	xcb_get_atom_name_reply_t *reply;
+	int len;
+
+	reply = xcb_get_atom_name_reply(conn, xcb_get_atom_name(conn, atom), NULL);
+	if (!reply)
+		return NULL;
+
+	len = xcb_get_atom_name_name_length(reply);
+	if (len) {
+		if (!(name = malloc(len + 1)))
+			err("can't allocate memory.");
+		memcpy(name, xcb_get_atom_name_name(reply), len);
+		name[len] = '\0';
+	}
+
+	free(reply);
+
+	return name;
+}
+#endif
 
 void
 cleanup(void) {
 	while (stack) {
-		PRINTF("freeing win %#x\n", stack->win);
+		PRINTF("freeing win %#x...\n", stack->win);
 		if (stack->can_delete)
 			send_client_message(stack, WM_DELETE_WINDOW);
 		else
@@ -241,7 +267,7 @@ setup(void) {
 	xcb_change_window_attributes_checked(conn, screen->root, XCB_CW_CURSOR, (uint32_t[]){cursors[XC_LEFT_PTR].cid});
 
 #ifdef SHAPE
-	check_shape_extension();
+	has_shape = check_shape_extension();
 #endif
 	focus(NULL);
 }

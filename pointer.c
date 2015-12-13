@@ -34,10 +34,9 @@ void
 free_cursors(void) {
 	unsigned int i;
 
-	for (i = 0; i < LENGTH(cursors); ++i) {
-		PRINTF("freeing cursor %d\n", i);
+	for (i = 0; i < LENGTH(cursors); ++i)
 		xcb_free_cursor(conn, cursors[i].cid);
-	}
+	PRINTF("freeing %d cursors\n", i);
 }
 
 void
