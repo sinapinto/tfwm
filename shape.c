@@ -49,19 +49,19 @@ draw_corner(Client *c, corner_t corner, unsigned char bits[]) {
 	switch (corner) {
 		case TOP_LEFT:
 			xcb_shape_mask(conn, XCB_SHAPE_SO_SUBTRACT, XCB_SHAPE_SK_BOUNDING,
-					c->win, 0, 0, pmap);
+					c->frame, 0, 0, pmap);
 			break;
 		case TOP_RIGHT:
 			xcb_shape_mask(conn, XCB_SHAPE_SO_SUBTRACT, XCB_SHAPE_SK_BOUNDING,
-					c->win, c->geom.width - 8, 0, pmap);
+					c->frame, c->geom.width - 8, 0, pmap);
 			break;
 		case BOTTOM_LEFT:
 			xcb_shape_mask(conn, XCB_SHAPE_SO_SUBTRACT, XCB_SHAPE_SK_BOUNDING,
-					c->win, 0, c->geom.height - 8, pmap);
+					c->frame, 0, c->geom.height - 8, pmap);
 			break;
 		case BOTTOM_RIGHT:
 			xcb_shape_mask(conn, XCB_SHAPE_SO_SUBTRACT, XCB_SHAPE_SK_BOUNDING,
-					c->win, c->geom.width - 8, c->geom.height - 8, pmap);
+					c->frame, c->geom.width - 8, c->geom.height - 8, pmap);
 			break;
 	}
 	xcb_free_pixmap(conn, pmap);

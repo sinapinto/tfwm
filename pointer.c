@@ -46,6 +46,7 @@ mousemotion(const Arg *arg) {
 	if (!sel || sel->win == screen->root)
 		return;
 	xcb_time_t lasttime = 0;
+	raisewindow(sel->frame);
 	raisewindow(sel->win);
 	xcb_query_pointer_reply_t *pointer;
 	pointer = xcb_query_pointer_reply(conn, xcb_query_pointer(conn, screen->root), 0);
@@ -84,12 +85,12 @@ mousemotion(const Arg *arg) {
 				if (arg->i == MouseMove) {
 					nx = sel->geom.x + e->root_x - pointer->root_x;
 					ny = sel->geom.y + e->root_y - pointer->root_y;
-					movewin(sel->win, nx, ny);
+					movewin(sel->frame, nx, ny);
 				}
 				else {
 					nw = MAX(sel->geom.width + e->root_x - pointer->root_x, sel->size_hints.min_width + 40);
 					nh = MAX(sel->geom.height + e->root_y - pointer->root_y, sel->size_hints.min_height + 40);
-					resizewin(sel->win, nw, nh);
+					resizewin(sel->frame, nw, nh);
 				}
 				break;
 			case XCB_BUTTON_RELEASE:

@@ -16,7 +16,7 @@ const Rule rules[2] = {
 
 static const char *terminal[]  = { "urxvt", NULL };
 static const char *terminal2[] = { "termite", NULL };
-static const char *browser[]   = { "chromium", NULL };
+static const char *browser[]   = { "sh", "-c", "chromium", "2>/dev/null",  NULL };
 static const char *browser2[]  = { "firefox", NULL };
 static const char *launcher[]  = { "rofi", "-show", "run",  NULL };
 static const char *mpctoggle[] = { "mpc", "-q", "toggle", NULL };

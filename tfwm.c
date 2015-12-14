@@ -39,7 +39,7 @@ int sigcode;
 xcb_ewmh_connection_t *ewmh;
 uint32_t focuscol, unfocuscol, outercol;
 bool dorestart;
-bool has_shape;
+bool shape_ext;
 xcb_atom_t WM_DELETE_WINDOW;
 xcb_atom_t WM_TAKE_FOCUS;
 xcb_atom_t WM_PROTOCOLS;
@@ -267,7 +267,7 @@ setup(void) {
 	xcb_change_window_attributes_checked(conn, screen->root, XCB_CW_CURSOR, (uint32_t[]){cursors[XC_LEFT_PTR].cid});
 
 #ifdef SHAPE
-	has_shape = check_shape_extension();
+	shape_ext = check_shape_extension();
 #endif
 	focus(NULL);
 }

@@ -1,6 +1,6 @@
 double_border      = 0
-outer_border_width = 4
-border_width       = 3
+# outer_border_width = 4
+border_width       = 8
 focus_color        = lime green
 outer_color        = black
 unfocus_color      = slate gray

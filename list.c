@@ -86,6 +86,7 @@ focusstack(bool next) {
 	}
 	if (c) {
 		focus(c);
+		raisewindow(sel->frame);
 		raisewindow(sel->win);
 	}
 }

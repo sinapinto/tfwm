@@ -19,7 +19,7 @@ OBJ = tfwm.o util.o events.o client.o list.o workspace.o keys.o pointer.o ewmh.o
 
 ifeq ($(SHAPE),1)
   CFLAGS += -DSHAPE
-  LIBS   += -lxcb-shape -lxcb-image -lxcb-shm
+  LIBS += -lxcb-shape -lxcb-image -lxcb-shm
   OBJ += shape.o
 endif
 

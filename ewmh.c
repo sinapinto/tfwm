@@ -111,7 +111,7 @@ ewmh_update_client_list(Client *list) {
 	if (count == 0)
 		return;
 
-	PRINTF("EWMH: update client list: %d windows\n", count);
+	PRINTF("EWMH: client list: %d windows\n", count);
 	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root, ewmh->_NET_CLIENT_LIST, XCB_ATOM_WINDOW, 32, count, list);
 }
 

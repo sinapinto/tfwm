@@ -256,6 +256,7 @@ enternotify(xcb_generic_event_t *ev) {
 		if (sel && e->event == sel->win)
 			return;
 		if ((c = wintoclient(e->event))) {
+			raisewindow(c->frame);
 			raisewindow(c->win);
 			focus(c);
 		}
