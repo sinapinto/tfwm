@@ -62,6 +62,7 @@ int move_step          = 30;
 int resize_step        = 30;
 bool sloppy_focus      = false;
 bool java_workaround   = true;
+int cursor_position    = 0;
 char *focus_color;
 char *outer_color;
 char *unfocus_color;

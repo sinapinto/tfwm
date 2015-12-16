@@ -55,6 +55,7 @@ focus(Client *c) {
 				c->win, XCB_CURRENT_TIME);
 		xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root,
 				ewmh->_NET_ACTIVE_WINDOW, XCB_ATOM_WINDOW, 32, 1,&c->win);
+		warp_pointer(c);
 	}
 	else {
 		xcb_delete_property(conn, screen->root, ewmh->_NET_ACTIVE_WINDOW);

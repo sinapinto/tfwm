@@ -5,6 +5,7 @@
 void mousemotion(const Arg *arg);
 void load_cursors(void);
 void free_cursors(void);
+void warp_pointer(Client *c);
 
 #endif
 

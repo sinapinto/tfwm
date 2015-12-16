@@ -157,20 +157,17 @@ manage(xcb_window_t w) {
 		}
 		xcb_icccm_get_wm_protocols_reply_wipe(&pr);
 	}
-
 	reparent(c);
 	applyrules(c);
 	attach(c);
 	attachstack(c);
 	sel = c;
 	fitclient(c);
-
 	if (sloppy_focus)
 		xcb_change_window_attributes(conn, w, XCB_CW_EVENT_MASK, (uint32_t[]){CLIENT_EVENT_MASK});
-
 	if (c->ws == selws)
 		xcb_map_window(conn, w);
-
+	warp_pointer(c);
 	ewmh_update_client_list(clients);
 	focus(NULL);
 }
@@ -244,6 +241,7 @@ maximizeaxis(const Arg *arg) {
 		sel->ishormax = true;
 	}
 	setborder(sel, true);
+	warp_pointer(sel);
 }
 
 void
@@ -280,6 +278,7 @@ maximizeclient(Client *c, bool doit) {
 		moveresize_win(c->win, 0, 0, c->geom.width, c->geom.height);
 		/* setborder(c, true); */
 	}
+	warp_pointer(c);
 }
 
 void
@@ -294,6 +293,7 @@ move(const Arg *arg) {
 		case MoveLeft:  sel->geom.x -= move_step; break;
 	}
 	movewin(sel->frame, sel->geom.x, sel->geom.y);
+	warp_pointer(sel);
 }
 
 void
@@ -357,6 +357,7 @@ resize(const Arg *arg) {
 	}
 	sel->ishormax = sel->isvertmax = false;
 	setborder(sel, true);
+	warp_pointer(sel);
 }
 
 void
@@ -502,6 +503,7 @@ teleport(const Arg *arg) {
 	}
 	PRINTF("teleport win %#x to (%d,%d)\n", sel->frame, sel->geom.x, sel->geom.y);
 	movewin(sel->frame, sel->geom.x, sel->geom.y);
+	warp_pointer(sel);
 }
 
 void

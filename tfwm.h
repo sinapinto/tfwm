@@ -155,6 +155,7 @@ void teleport(const Arg *arg);
 void unmanage(Client *c);
 void updatenumlockmask(void);
 void warn(const char *fmt, ...);
+void warp_pointer(Client *c);
 Client *wintoclient(xcb_window_t w);
 
 /* globals */
@@ -189,5 +190,6 @@ extern int move_step;
 extern int resize_step;
 extern bool sloppy_focus;
 extern bool java_workaround;
+extern int cursor_position;
 
 #endif /* TFWM_H */

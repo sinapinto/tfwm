@@ -8,3 +8,4 @@ move_step          = 30
 resize_step        = 30
 sloppy_focus       = 0
 java_workaround    = 1
+cursor_position    = 4

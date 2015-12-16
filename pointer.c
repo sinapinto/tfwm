@@ -42,15 +42,18 @@ free_cursors(void) {
 void
 mousemotion(const Arg *arg) {
 	xcb_cursor_t cursor = XCB_NONE;
+	xcb_time_t lasttime = 0;
+	xcb_generic_event_t *ev;
+	xcb_motion_notify_event_t *e;
+	bool ungrab = false;
+	int nx, ny, nw, nh;
 
 	if (!sel || sel->win == screen->root)
 		return;
-	xcb_time_t lasttime = 0;
 	raisewindow(sel->frame);
 	raisewindow(sel->win);
 	xcb_query_pointer_reply_t *pointer;
 	pointer = xcb_query_pointer_reply(conn, xcb_query_pointer(conn, screen->root), 0);
-
 	if (arg->i == MouseMove)
 		cursor = cursors[XC_FLEUR].cid;
 	else
@@ -63,13 +66,10 @@ mousemotion(const Arg *arg) {
 	}
 	free(grab_reply);
 
-	xcb_generic_event_t *ev;
-	xcb_motion_notify_event_t *e;
-	bool ungrab = false;
-	int nx = sel->geom.x;
-	int ny = sel->geom.y;
-	int nw = sel->geom.width;
-	int nh = sel->geom.height;
+	nx = sel->geom.x;
+	ny = sel->geom.y;
+	nw = sel->geom.width;
+	nh = sel->geom.height;
 	while ((ev = xcb_wait_for_event(conn)) && !ungrab) {
 		switch (ev->response_type & ~0x80) {
 			case XCB_CONFIGURE_REQUEST:
@@ -88,8 +88,10 @@ mousemotion(const Arg *arg) {
 					movewin(sel->frame, nx, ny);
 				}
 				else {
-					nw = MAX(sel->geom.width + e->root_x - pointer->root_x, sel->size_hints.min_width + 40);
-					nh = MAX(sel->geom.height + e->root_y - pointer->root_y, sel->size_hints.min_height + 40);
+					nw = MAX(sel->geom.width + e->root_x - pointer->root_x,
+						 sel->size_hints.min_width + 40);
+					nh = MAX(sel->geom.height + e->root_y - pointer->root_y,
+						 sel->size_hints.min_height + 40);
 					resizewin(sel->frame, nw, nh);
 				}
 				break;
@@ -112,5 +114,29 @@ mousemotion(const Arg *arg) {
 	free(ev);
 	free(pointer);
 	xcb_ungrab_pointer(conn, XCB_CURRENT_TIME);
+}
+
+void
+warp_pointer(Client *c) {
+	int16_t x = 0;
+	int16_t y = 0;
+
+	switch(cursor_position) {
+		case 0: return;
+		case 1: break;
+		case 2: x += c->geom.width; break;
+		case 3: y += c->geom.height; break;
+		case 4:
+			x += c->geom.width;
+			y += c->geom.height;
+			break;
+		case 5:
+			x = c->geom.width / 2;
+			y = c->geom.height / 2;
+			break;
+		default:
+			warn("warp_pointer: bad setting: %d\n", cursor_position);
+	}
+	xcb_warp_pointer(conn, XCB_NONE, c->win, 0, 0, 0, 0, x, y);
 }
 

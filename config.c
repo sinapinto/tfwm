@@ -89,6 +89,11 @@ void setopt(char *key, char *val) {
 	else if (OPT("java_workaround")) {
 		java_workaround = (atoi(val) != 0);
 	}
+	else if (OPT("cursor_position")) {
+		cursor_position = atoi(val);
+		if (cursor_position < 0)
+			cursor_position = 0;
+	}
 	else {
 		warn("setopt: no handler for %s\n", key);
 	}
@@ -108,6 +113,7 @@ struct {
 	{ "resize_step",        setopt },
 	{ "sloppy_focus",       setopt },
 	{ "java_workaround",    setopt },
+	{ "cursor_position",    setopt },
 };
 
 
