@@ -86,7 +86,7 @@ fitclient(Client *c) {
 	}
 	if (update) {
 		c->geom.x = c->geom.y = 0;
-		moveresize(c, c->geom.x, c->geom.y, c->geom.width, c->geom.height);
+		moveresize_win(c->win, c->geom.x, c->geom.y, c->geom.width, c->geom.height);
 	}
 }
 
@@ -143,7 +143,7 @@ manage(xcb_window_t w) {
 	c->size_hints.base_width = c->size_hints.base_height = 0;
 	c->size_hints.win_gravity = 0;
 	c->ismax = c->isvertmax = c->ishormax = c->can_focus = c->can_delete =  c->noborder = false;
-	c->frame = 0;
+	c->frame = XCB_NONE;
 	c->ws = selws;
 
 	/* get size hints */
@@ -182,20 +182,21 @@ manage(xcb_window_t w) {
 
 void
 reparent(Client *c) {
-	xcb_rectangle_t f;
+	int16_t x, y;
+	uint16_t width, height;
 
-	f.x = c->geom.x;
-	f.y = c->geom.y;
-	f.width = c->geom.width + 2 * border_width;
-	f.height = c->geom.height + 2 * border_width;
+	x = c->geom.x;
+	y = c->geom.y;
+	width = c->geom.width;
+	height = c->geom.height;
 
 	c->frame = xcb_generate_id(conn);
-	xcb_create_window(conn, XCB_COPY_FROM_PARENT, c->frame, screen->root, f.x, f.y, f.width, f.height,
+	xcb_create_window(conn, XCB_COPY_FROM_PARENT, c->frame, screen->root, x, y, width, height,
 			  border_width, XCB_WINDOW_CLASS_INPUT_OUTPUT, XCB_COPY_FROM_PARENT,
 			  XCB_CW_BORDER_PIXEL | XCB_CW_OVERRIDE_REDIRECT,
 			  (uint32_t[]){ focuscol, true });
 	xcb_configure_window(conn, c->win, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT,
-			     (uint32_t[]){ f.width, f.height });
+			     (uint32_t[]){ c->geom.width, c->geom.height });
 	xcb_map_window(conn, c->frame);
 #ifdef SHAPE
 	if (shape_ext)
@@ -234,8 +235,8 @@ maximizeaxis(const Arg *arg) {
 		sel->geom.height = th;
 		values[0] = sel->geom.y;
 		values[1] = sel->geom.height;
-		xcb_configure_window(conn, sel->win, XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_HEIGHT, values);
 		xcb_configure_window(conn, sel->frame, XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_HEIGHT, values);
+		xcb_configure_window(conn, sel->win, XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_HEIGHT, values);
 		sel->isvertmax = true;
 	}
 	else if (arg->i == MaxHorizontal) {
@@ -243,8 +244,8 @@ maximizeaxis(const Arg *arg) {
 		sel->geom.width = tw;
 		values[0] = sel->geom.x;
 		values[1] = sel->geom.width;
-		xcb_configure_window(conn, sel->win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_WIDTH, values);
 		xcb_configure_window(conn, sel->frame, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_WIDTH, values);
+		xcb_configure_window(conn, sel->win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_WIDTH, values);
 		sel->ishormax = true;
 	}
 	setborder(sel, true);
@@ -256,8 +257,8 @@ maximizeclient(Client *c, bool doit) {
 		return;
 	if (c->ismax && doit)
 		return;
+	PRINTF("maximizeclient: %s to ", doit ? "maximizing" : "unmaximizing");
 
-	PRINTF("maximizeclient: %s, ", doit ? "maximizing" : "unmaximizing");
 	if (doit) {
 		savegeometry(c);
 		c->ismax = true;
@@ -266,10 +267,11 @@ maximizeclient(Client *c, bool doit) {
 		c->geom.y = 0;
 		c->geom.width = screen->width_in_pixels;
 		c->geom.height = screen->height_in_pixels;
-		PRINTF("x %d y %d w %d h %d\n", c->geom.x, c->geom.y, c->geom.width, c->geom.height);
-		moveresize(c, c->geom.x, c->geom.y, c->geom.width, c->geom.height);
+		PRINTF("(%d,%d) %dx%d\n", c->geom.x, c->geom.y, c->geom.width, c->geom.height);
+		setborderwidth(c->frame, 0);
+		moveresize_win(c->frame, c->geom.x, c->geom.y, c->geom.width, c->geom.height);
+		moveresize_win(c->win, 0, 0, c->geom.width, c->geom.height);
 		focus(NULL);
-		setborderwidth(c, 0);
 	}
 	else {
 		c->geom.x = c->isvertmax ? c->geom.x : MAX(0, c->old_geom.x);
@@ -277,10 +279,11 @@ maximizeclient(Client *c, bool doit) {
 		c->geom.width = c->old_geom.width;
 		c->geom.height = c->old_geom.height;
 		c->ismax = c->ishormax = c->isvertmax = false;
-		PRINTF("x %d y %d w %d h %d\n", c->geom.x, c->geom.y, c->geom.width, c->geom.height);
-		moveresize(c, c->geom.x, c->geom.y, c->geom.width, c->geom.height);
-		setborderwidth(sel, border_width);
-		setborder(sel, true);
+		PRINTF("(%d,%d) %dx%d\n", c->geom.x, c->geom.y, c->geom.width, c->geom.height);
+		setborderwidth(c->frame, border_width);
+		moveresize_win(c->frame, c->geom.x, c->geom.y, c->geom.width, c->geom.height);
+		moveresize_win(c->win, 0, 0, c->geom.width, c->geom.height);
+		/* setborder(c, true); */
 	}
 }
 
@@ -299,24 +302,20 @@ move(const Arg *arg) {
 }
 
 void
-movewin(xcb_window_t win, int x, int y) {
+movewin(xcb_window_t win, int16_t x, int16_t y) {
 	const uint32_t values[] = { x, y };
 	xcb_configure_window(conn, win, XCB_CONFIG_WINDOW_X|XCB_CONFIG_WINDOW_Y, values);
 }
 
 void
-moveresize(Client *c, int x, int y, int w, int h) {
-	uint32_t mask = 0;
+moveresize_win(xcb_window_t win, int16_t x, int16_t y, uint16_t w, uint16_t h) {
+	uint32_t mask;
 
-	if (!c || !c->frame)
-		return;
-
-	mask |= XCB_CONFIG_WINDOW_X
+	mask = XCB_CONFIG_WINDOW_X
 		| XCB_CONFIG_WINDOW_Y
 		| XCB_CONFIG_WINDOW_WIDTH
 		| XCB_CONFIG_WINDOW_HEIGHT;
-	xcb_configure_window(conn, c->frame, mask, (uint32_t[]){ x, y, w, h });
-	xcb_configure_window(conn, c->win, mask, (uint32_t[]){ x-border_width, y-border_width, w, h });
+	xcb_configure_window(conn, win, mask, (uint32_t[]){ x, y, w, h });
 }
 
 
@@ -359,15 +358,15 @@ resize(const Arg *arg) {
 
 	if (sel->ismax) {
 		sel->ismax = false;
-		setborderwidth(sel, border_width);
+		setborderwidth(sel->frame, border_width);
 	}
 	sel->ishormax = sel->isvertmax = false;
 	setborder(sel, true);
 }
 
 void
-resizewin(xcb_window_t win, int w, int h) {
-	unsigned int values[2] = { w, h };
+resizewin(xcb_window_t win, uint16_t w, uint16_t h) {
+	const uint32_t values[] = { w, h };
 	xcb_configure_window(conn, win, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, values);
 }
 
@@ -450,11 +449,9 @@ setborder(Client *c, bool focus) {
 }
 
 void
-setborderwidth(Client *c, int width) {
-	if (c->noborder)
-		return;
-	uint32_t value[1] = { width };
-	xcb_configure_window(conn, c->win, XCB_CONFIG_WINDOW_BORDER_WIDTH, value);
+setborderwidth(xcb_window_t win, uint16_t bw) {
+	const uint32_t value[] = { bw };
+	xcb_configure_window(conn, win, XCB_CONFIG_WINDOW_BORDER_WIDTH, value);
 }
 
 void
@@ -483,8 +480,8 @@ teleport(const Arg *arg) {
 	tw = sel->geom.width;
 	th = sel->geom.height;
 	if (!sel->noborder) {
-		tw += border_width * 4;
-		th += border_width * 4;
+		tw += border_width * 2;
+		th += border_width * 2;
 	}
 	switch (arg->i) {
 		case Center:

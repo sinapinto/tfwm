@@ -14,22 +14,22 @@
 # define PRINTF(...)
 #endif
 
-#define ROOT_EVENT_MASK    (XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY   |\
-                            XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT |\
-                            XCB_EVENT_MASK_BUTTON_PRESS)
+#define ROOT_EVENT_MASK    (XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY      \
+                            | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT  \
+                            | XCB_EVENT_MASK_BUTTON_PRESS)
 
-#define CLIENT_EVENT_MASK  (XCB_EVENT_MASK_ENTER_WINDOW          |\
-                            XCB_EVENT_MASK_PROPERTY_CHANGE)
+#define CLIENT_EVENT_MASK  (XCB_EVENT_MASK_ENTER_WINDOW             \
+                            | XCB_EVENT_MASK_PROPERTY_CHANGE)
 
-#define POINTER_EVENT_MASK (XCB_EVENT_MASK_BUTTON_PRESS          |\
-                            XCB_EVENT_MASK_BUTTON_RELEASE        |\
-                            XCB_EVENT_MASK_BUTTON_MOTION         |\
-                            XCB_EVENT_MASK_POINTER_MOTION)
+#define POINTER_EVENT_MASK (XCB_EVENT_MASK_BUTTON_PRESS             \
+                            | XCB_EVENT_MASK_BUTTON_RELEASE         \
+                            | XCB_EVENT_MASK_BUTTON_MOTION          \
+                            | XCB_EVENT_MASK_POINTER_MOTION)
 
-#define FRAME_EVENT_MASK   (POINTER_EVENT_MASK                   |\
-			    XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY   |\
-			    XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT |\
-			    XCB_EVENT_MASK_ENTER_WINDOW)
+#define FRAME_EVENT_MASK   (POINTER_EVENT_MASK                      \
+			    | XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY    \
+			    | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT  \
+			    | XCB_EVENT_MASK_ENTER_WINDOW)
 
 #define CLEANMASK(mask) (mask & ~(numlockmask|XCB_MOD_MASK_LOCK))
 #define LENGTH(X)       (sizeof(X)/sizeof(*X))
@@ -37,7 +37,6 @@
 #define MIN(X, Y)       ((X) < (Y) ? (X) : (Y))
 #define WIDTH(C)        ((C)->geom.width + 2 * border_width)
 #define ISVISIBLE(C)    ((C)->ws == selws)
-#define MAX_ATOMS       4
 
 /* types */
 typedef union {
@@ -136,12 +135,12 @@ void maximizeclient(Client *c, bool doit);
 void maximize(const Arg *arg);
 void mousemotion(const Arg *arg);
 void move(const Arg *arg);
-void moveresize(Client *c, int w, int h, int x, int y);
-void movewin(xcb_window_t win, int x, int y);
+void moveresize_win(xcb_window_t win, int16_t x, int16_t y, uint16_t w, uint16_t h);
+void movewin(xcb_window_t win, int16_t x, int16_t y);
 void quit(const Arg *arg);
 void raisewindow(xcb_drawable_t win);
 void resize(const Arg *arg);
-void resizewin(xcb_window_t win, int w, int h);
+void resizewin(xcb_window_t win, uint16_t w, uint16_t h);
 void restart(const Arg *arg);
 #ifdef SHAPE
 void roundcorners(Client *c);
@@ -150,7 +149,7 @@ void savegeometry(Client *c);
 void send_client_message(Client *c, xcb_atom_t proto);
 void sendtows(const Arg *arg);
 void setborder(Client *c, bool focus);
-void setborderwidth(Client *c, int width);
+void setborderwidth(xcb_window_t win, uint16_t bw);
 void showhide(Client *c);
 void spawn(const Arg *arg);
 void teleport(const Arg *arg);
