@@ -7,10 +7,6 @@
 #include "keys.h"
 #include "ewmh.h"
 
-unsigned int selws = 0;
-unsigned int prevws = 0;
-Client *sel;
-
 void
 applyrules(Client *c) {
 	unsigned int i;

@@ -39,6 +39,7 @@
 #define ISVISIBLE(C)    ((C)->ws == selws)
 #define MAX_ATOMS       4
 
+/* types */
 typedef union {
 	const char **com;
 	const unsigned int i;
@@ -100,7 +101,6 @@ typedef struct cursor_t {
 	xcb_cursor_t cid;
 } cursor_t;
 
-
 enum { MoveDown, MoveRight, MoveUp, MoveLeft };
 enum { GrowHeight, GrowWidth, ShrinkHeight, ShrinkWidth, GrowBoth, ShrinkBoth };
 enum { Center, TopLeft, TopRight, BottomLeft, BottomRight };
@@ -108,48 +108,58 @@ enum { MouseMove, MouseResize };
 enum { MaxVertical, MaxHorizontal };
 enum { LastWorkspace, PrevWorkspace, NextWorkspace };
 enum { PrevWindow, NextWindow };
-enum {
-	XC_LEFT_PTR,
-	XC_FLEUR,
-	XC_BOTTOM_RIGHT_CORNER,
-	XC_MAX
-};
+enum { XC_LEFT_PTR, XC_FLEUR, XC_BOTTOM_RIGHT_CORNER, XC_MAX };
 
-
-/* events.c */
-void handleevent(xcb_generic_event_t *ev);
-void mousemotion(const Arg *arg);
-void maprequest(xcb_generic_event_t *ev);
-#ifdef DEBUG
-char *get_atom_name(xcb_atom_t atom);
-#endif
-
-/* pointer.c */
-void load_cursors(void);
-void free_cursors(void);
-
-/* keys.c */
-void updatenumlockmask(void);
-
-/* util.c */
-void warn(const char *fmt, ...);
-void err(const char *fmt, ...);
-void spawn(const Arg *arg);
-
-/* list.c */
+/* functions */
+void applyrules(Client *c);
 void attach(Client *c);
 void attachstack(Client *c);
 void detach(Client *c);
 void detachstack(Client *c);
+void err(const char *fmt, ...);
+void fitclient(Client *c);
 void focus(Client *c);
 void focusstack(bool next);
-
-/* tfwm.c */
+void free_cursors(void);
+#ifdef DEBUG
+char *get_atom_name(xcb_atom_t atom);
+#endif
 xcb_keysym_t getkeysym(xcb_keycode_t keycode);
 void grabkeys(void);
+void handleevent(xcb_generic_event_t *ev);
+void killselected(const Arg *arg);
+void load_cursors(void);
+void manage(xcb_window_t w);
+void maprequest(xcb_generic_event_t *ev);
+void maximizeaxis(const Arg *arg);
+void maximizeclient(Client *c, bool doit);
+void maximize(const Arg *arg);
+void mousemotion(const Arg *arg);
+void move(const Arg *arg);
+void moveresize(Client *c, int w, int h, int x, int y);
+void movewin(xcb_window_t win, int x, int y);
 void quit(const Arg *arg);
+void raisewindow(xcb_drawable_t win);
+void resize(const Arg *arg);
+void resizewin(xcb_window_t win, int w, int h);
 void restart(const Arg *arg);
+#ifdef SHAPE
+void roundcorners(Client *c);
+#endif
+void savegeometry(Client *c);
+void send_client_message(Client *c, xcb_atom_t proto);
+void sendtows(const Arg *arg);
+void setborder(Client *c, bool focus);
+void setborderwidth(Client *c, int width);
+void showhide(Client *c);
+void spawn(const Arg *arg);
+void teleport(const Arg *arg);
+void unmanage(Client *c);
+void updatenumlockmask(void);
+void warn(const char *fmt, ...);
+Client *wintoclient(xcb_window_t w);
 
+/* globals */
 extern const Rule rules[2];
 extern Key keys[61];
 extern Button buttons[2];
@@ -167,6 +177,10 @@ extern xcb_atom_t WM_TAKE_FOCUS;
 extern xcb_atom_t WM_PROTOCOLS;
 extern Display *display;
 extern cursor_t cursors[XC_MAX];
+extern unsigned int selws;
+extern unsigned int prevws;
+extern Client *clients;
+extern Client *sel;
 extern bool double_border;
 extern int border_width;
 extern int outer_border_width;
@@ -177,38 +191,5 @@ extern int move_step;
 extern int resize_step;
 extern bool sloppy_focus;
 extern bool java_workaround;
-
-/* client.c */
-void applyrules(Client *c);
-void fitclient(Client *c);
-void killselected(const Arg *arg);
-void manage(xcb_window_t w);
-void maximize(const Arg *arg);
-void maximizeaxis(const Arg *arg);
-void maximizeclient(Client *c, bool doit);
-void move(const Arg *arg);
-void movewin(xcb_window_t win, int x, int y);
-void moveresize(Client *c, int w, int h, int x, int y);
-void raisewindow(xcb_drawable_t win);
-void resize(const Arg *arg);
-void resizewin(xcb_window_t win, int w, int h);
-void savegeometry(Client *c);
-void send_client_message(Client *c, xcb_atom_t proto);
-void sendtows(const Arg *arg);
-void setborder(Client *c, bool focus);
-void setborderwidth(Client *c, int width);
-void showhide(Client *c);
-void teleport(const Arg *arg);
-void unmanage(Client *c);
-Client *wintoclient(xcb_window_t w);
-
-extern unsigned int selws;
-extern unsigned int prevws;
-extern Client *clients;
-extern Client *sel;
-
-#ifdef SHAPE
-void roundcorners(Client *c);
-#endif
 
 #endif /* TFWM_H */

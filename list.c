@@ -2,7 +2,6 @@
 #include "tfwm.h"
 #include "list.h"
 
-Client *clients;
 static void grabbuttons(Client *c);
 
 void

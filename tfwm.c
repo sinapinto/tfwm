@@ -49,6 +49,11 @@ cursor_t cursors[XC_MAX] = {
 	{"fleur",               XC_fleur,               XCB_CURSOR_NONE},
 	{"bottom_right_corner", XC_bottom_right_corner, XCB_CURSOR_NONE}
 };
+unsigned int selws = 0;
+unsigned int prevws = 0;
+Client *sel;
+Client *clients;
+
 /* config defaults */
 bool double_border     = false;
 int border_width       = 4;
