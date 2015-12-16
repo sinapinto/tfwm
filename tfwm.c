@@ -93,6 +93,8 @@ get_atom_name(xcb_atom_t atom) {
 
 void
 cleanup(void) {
+	PRINTF("shutting down..\n");
+
 	while (stack) {
 		PRINTF("freeing win %#x...\n", stack->win);
 		if (stack->can_delete)

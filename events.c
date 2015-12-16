@@ -118,6 +118,10 @@ clientmessage(xcb_generic_event_t *ev) {
 	} else if (e->type == ewmh->_NET_WM_DESKTOP) {
 	} else if (e->type == ewmh->_NET_MOVERESIZE_WINDOW) {
 	} else if (e->type == ewmh->_NET_CLOSE_WINDOW) {
+		if (c->frame) {
+			xcb_reparent_window(conn, sel->win, screen->root, sel->geom.x, sel->geom.y);
+			xcb_destroy_window(conn, sel->frame);
+		}
 		if (c->can_delete)
 			send_client_message(c, WM_DELETE_WINDOW);
 	}
@@ -235,17 +239,6 @@ configurerequest(xcb_generic_event_t *ev) {
 }
 
 void
-destroynotify(xcb_generic_event_t *ev) {
-	xcb_destroy_notify_event_t *e = (xcb_destroy_notify_event_t *)ev;
-	Client *c;
-
-	PRINTF("Event: destroy notify: win %#x\n", e->window);
-
-	if ((c = wintoclient(e->window)))
-		unmanage(c);
-}
-
-void
 enternotify(xcb_generic_event_t *ev) {
 	xcb_enter_notify_event_t *e = (xcb_enter_notify_event_t *)ev;
 	Client *c;
@@ -327,7 +320,7 @@ propertynotify(xcb_generic_event_t *ev) {
 void
 requesterror(xcb_generic_event_t *ev) {
 	xcb_request_error_t *e = (xcb_request_error_t *)ev;
-	warn("Event: FAILED REQUEST: %s, %s: %d\n",
+	warn("Event: FAILED REQUEST: %s, %s: %#x\n",
 	     xcb_event_get_request_label(e->major_opcode),
 	     xcb_event_get_error_label(e->error_code),
 	     e->bad_value);
@@ -338,11 +331,28 @@ unmapnotify(xcb_generic_event_t *ev) {
 	xcb_unmap_notify_event_t *e = (xcb_unmap_notify_event_t *)ev;
 	Client *c;
 
-	PRINTF("Event: unmap notify: %#x\n", e->window);
+	PRINTF("Event: unmap notify: %#x ", e->window);
 
-	if (e->window == screen->root)
-		return;
-	if ((c = wintoclient(e->window)))
+	if ((c = wintoclient(e->window))) {
+		PRINTF("\n");
 		unmanage(c);
+	} else {
+		PRINTF("(not found)\n");
+	}
+}
+
+void
+destroynotify(xcb_generic_event_t *ev) {
+	xcb_destroy_notify_event_t *e = (xcb_destroy_notify_event_t *)ev;
+	Client *c;
+
+	PRINTF("Event: destroy notify: win %#x ", e->window);
+
+	if ((c = wintoclient(e->window))) {
+		PRINTF("\n");
+		unmanage(c);
+	} else {
+		PRINTF("(not found)\n");
+	}
 }
 

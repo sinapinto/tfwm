@@ -27,9 +27,8 @@
                             | XCB_EVENT_MASK_POINTER_MOTION)
 
 #define FRAME_EVENT_MASK   (POINTER_EVENT_MASK                      \
-			    | XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY    \
-			    | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT  \
-			    | XCB_EVENT_MASK_ENTER_WINDOW)
+                            | XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY    \
+                            | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT)
 
 #define CLEANMASK(mask) (mask & ~(numlockmask|XCB_MOD_MASK_LOCK))
 #define LENGTH(X)       (sizeof(X)/sizeof(*X))

@@ -96,11 +96,6 @@ killselected(const Arg *arg) {
 	if (!sel)
 		return;
 
-	if (sel->frame) {
-		xcb_reparent_window(conn, sel->win, screen->root, sel->geom.x, sel->geom.y);
-		xcb_destroy_window(conn, sel->frame);
-	}
-
 	if (sel->can_delete)
 		send_client_message(sel, WM_DELETE_WINDOW);
 	else
@@ -193,8 +188,8 @@ reparent(Client *c) {
 	c->frame = xcb_generate_id(conn);
 	xcb_create_window(conn, XCB_COPY_FROM_PARENT, c->frame, screen->root, x, y, width, height,
 			  border_width, XCB_WINDOW_CLASS_INPUT_OUTPUT, XCB_COPY_FROM_PARENT,
-			  XCB_CW_BORDER_PIXEL | XCB_CW_OVERRIDE_REDIRECT,
-			  (uint32_t[]){ focuscol, true });
+			  XCB_CW_BORDER_PIXEL | XCB_CW_OVERRIDE_REDIRECT | XCB_CW_EVENT_MASK,
+			  (uint32_t[]){ focuscol, true, FRAME_EVENT_MASK });
 	xcb_configure_window(conn, c->win, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT,
 			     (uint32_t[]){ c->geom.width, c->geom.height });
 	xcb_map_window(conn, c->frame);
@@ -511,8 +506,12 @@ teleport(const Arg *arg) {
 
 void
 unmanage(Client *c) {
+	PRINTF("unmanage: win %#x\n", c->win);
 	detach(c);
 	detachstack(c);
+	if (c->frame) {
+		xcb_destroy_window(conn, c->frame);
+	}
 	free(c);
 	ewmh_update_client_list(clients);
 	focus(NULL);
