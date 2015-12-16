@@ -116,15 +116,14 @@ manage(xcb_window_t w) {
 
 	/* geometry */
 	gr = xcb_get_geometry_reply(conn, xcb_get_geometry(conn, w), NULL);
-	if (!gr) {
-		warn("xcb_get_geometry failed.");
-		return;
-	}
-	c->geom.x = c->old_geom.x = gr->x;
-	c->geom.y = c->old_geom.y = gr->y;
-	c->geom.width = c->old_geom.width = gr->width;
-	c->geom.height = c->old_geom.height = gr->height;
-	free(gr);
+	if (gr) {
+		c->geom.x = c->old_geom.x = gr->x;
+		c->geom.y = c->old_geom.y = gr->y;
+		c->geom.width = c->old_geom.width = gr->width;
+		c->geom.height = c->old_geom.height = gr->height;
+		free(gr);
+	} else
+		warn("xcb_get_geometry failed for win %#x.", w);
 
 	/* init members */
 	c->size_hints.flags = 0;
@@ -157,8 +156,8 @@ manage(xcb_window_t w) {
 		}
 		xcb_icccm_get_wm_protocols_reply_wipe(&pr);
 	}
-	reparent(c);
 	applyrules(c);
+	reparent(c);
 	attach(c);
 	attachstack(c);
 	sel = c;
@@ -184,7 +183,7 @@ reparent(Client *c) {
 
 	c->frame = xcb_generate_id(conn);
 	xcb_create_window(conn, XCB_COPY_FROM_PARENT, c->frame, screen->root, x, y, width, height,
-			  border_width, XCB_WINDOW_CLASS_INPUT_OUTPUT, XCB_COPY_FROM_PARENT,
+			  c->noborder ? 0 : border_width, XCB_WINDOW_CLASS_INPUT_OUTPUT, XCB_COPY_FROM_PARENT,
 			  XCB_CW_BORDER_PIXEL | XCB_CW_OVERRIDE_REDIRECT | XCB_CW_EVENT_MASK,
 			  (uint32_t[]){ focuscol, true, FRAME_EVENT_MASK });
 	xcb_configure_window(conn, c->win, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT,
