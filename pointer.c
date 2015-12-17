@@ -5,6 +5,7 @@
 #include "tfwm.h"
 #include "events.h"
 #include "pointer.h"
+#include "ewmh.h"
 
 void
 load_cursors(void) {
@@ -110,7 +111,7 @@ mousemotion(const Arg *arg) {
 		free(ev);
 		xcb_flush(conn);
 	}
-	sel->ismax = false;
+	change_ewmh_flags(sel, XCB_EWMH_WM_STATE_REMOVE, EWMH_FULLSCREEN);
 	free(ev);
 	free(pointer);
 	xcb_ungrab_pointer(conn, XCB_CURRENT_TIME);

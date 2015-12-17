@@ -23,6 +23,7 @@ ewmh_setup() {
 		ewmh->_NET_CLOSE_WINDOW,
 		ewmh->_NET_CLIENT_LIST,
 		ewmh->_NET_CLIENT_LIST_STACKING,
+		ewmh->_NET_MOVERESIZE_WINDOW,
 		ewmh->_NET_WM_STATE,
 		/* ewmh->_NET_WM_STATE_MODAL, */
 		/* ewmh->_NET_WM_STATE_STICKY, */
@@ -53,8 +54,8 @@ ewmh_setup() {
 
 	xcb_window_t recorder = xcb_generate_id(conn);
 	xcb_create_window(conn, XCB_COPY_FROM_PARENT, recorder, screen->root, 0, 0,
-			screen->width_in_pixels, screen->height_in_pixels, 0,
-			XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT, XCB_NONE, NULL);
+			  screen->width_in_pixels, screen->height_in_pixels, 0,
+			  XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT, XCB_NONE, NULL);
 
 	/* _NET_WM_PID */
 	xcb_ewmh_set_wm_pid(ewmh, recorder, getpid());
@@ -69,7 +70,7 @@ ewmh_setup() {
 	xcb_ewmh_set_supporting_wm_check(ewmh, recorder, recorder);
 	xcb_ewmh_set_supporting_wm_check(ewmh, screen->root, recorder);
 
-	/* _NET_NUMBER_OF_DESKTOPS */
+	/* _NET_NUMBER_ODESKTOPS */
 	xcb_ewmh_set_number_of_desktops(ewmh, scrno, 10);
 	xcb_ewmh_set_current_desktop(ewmh, scrno, 0);
 }
@@ -80,7 +81,7 @@ ewmh_teardown() {
 	xcb_get_property_cookie_t pc;
 	xcb_get_property_reply_t *pr;
 
-	/* delete _NET_SUPPORTING_WM_CHECK window */
+	/* delete _NET_SUPPORTING_WM_CHECK */
 	pc = xcb_get_property(conn, 0, screen->root, ewmh->_NET_SUPPORTING_WM_CHECK, XCB_ATOM_WINDOW, 0, 1);
 	pr = xcb_get_property_reply(conn, pc, NULL);
 	if (pr) {
@@ -98,33 +99,107 @@ ewmh_teardown() {
 	free(ewmh);
 }
 
-bool
-ewmh_add_wm_state(Client *c, xcb_atom_t state) {
-	(void)c;
-	(void)state;
-	return false;
-}
-
-bool
-ewmh_remove_wm_state(Client *c, xcb_atom_t state) {
-	(void)c;
-	(void)state;
-	return false;
+void
+change_ewmh_flags(Client *c, xcb_ewmh_wm_state_action_t op, uint32_t mask) {
+	switch (op) {
+		case XCB_EWMH_WM_STATE_ADD:
+			c->ewmh_flags |= mask;
+			break;
+		case XCB_EWMH_WM_STATE_REMOVE:
+			c->ewmh_flags &= ~mask;
+			break;
+		case XCB_EWMH_WM_STATE_TOGGLE:
+			c->ewmh_flags ^= mask;
+			break;
+	}
 }
 
 void
-ewmh_update_client_list(Client *list) {
-	Client *t;
-	int count = 0;
-
-	for (t = list; t; t = t->next)
-		count++;
-
-	if (count == 0)
+handle_wm_state(Client *c, xcb_atom_t state, xcb_ewmh_wm_state_action_t action) {
+#ifdef DEBUG
+	char *name = get_atom_name(state);
+	PRINTF("EWMH: change_wm_state: win %#x, state: %s, action: %d\n", c->win, name, action);
+	free(name);
+#endif
+	if (!c->win)
 		return;
 
-	PRINTF("EWMH: client list: %d windows\n", count);
-	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root, ewmh->_NET_CLIENT_LIST, XCB_ATOM_WINDOW, 32, count, list);
+	if (state == ewmh->_NET_WM_STATE_MAXIMIZED_VERT) {
+		if (action == XCB_EWMH_WM_STATE_ADD) {
+		}
+		else if (action == XCB_EWMH_WM_STATE_REMOVE) {
+		}
+		else if (action == XCB_EWMH_WM_STATE_TOGGLE) {
+		}
+	}
+	else if (state == ewmh->_NET_WM_STATE_MAXIMIZED_HORZ) {
+		if (action == XCB_EWMH_WM_STATE_ADD) {
+		}
+		else if (action == XCB_EWMH_WM_STATE_REMOVE) {
+		}
+		else if (action == XCB_EWMH_WM_STATE_TOGGLE) {
+		}
+	}
+	else if (state == ewmh->_NET_WM_STATE_HIDDEN) {
+		if (action == XCB_EWMH_WM_STATE_ADD) {
+		}
+		else if (action == XCB_EWMH_WM_STATE_REMOVE) {
+		}
+		else if (action == XCB_EWMH_WM_STATE_TOGGLE) {
+		}
+	}
+	else if (state == ewmh->_NET_WM_STATE_FULLSCREEN) {
+		if (action == XCB_EWMH_WM_STATE_ADD) {
+			maximizeclient(c, true);
+		}
+		else if (action == XCB_EWMH_WM_STATE_REMOVE) {
+			maximizeclient(c, false);
+		}
+		else if (action == XCB_EWMH_WM_STATE_TOGGLE) {
+			maximizeclient(c, c->ewmh_flags & EWMH_FULLSCREEN);
+		}
+	}
+	else if (state == ewmh->_NET_WM_STATE_ABOVE) {
+		if (action == XCB_EWMH_WM_STATE_ADD) {
+		}
+		else if (action == XCB_EWMH_WM_STATE_REMOVE) {
+		}
+		else if (action == XCB_EWMH_WM_STATE_TOGGLE) {
+		}
+	}
+	else if (state == ewmh->_NET_WM_STATE_BELOW) {
+		if (action == XCB_EWMH_WM_STATE_ADD) {
+		}
+		else if (action == XCB_EWMH_WM_STATE_REMOVE) {
+		}
+		else if (action == XCB_EWMH_WM_STATE_TOGGLE) {
+		}
+	}
+}
+
+void
+ewmh_update_wm_state(Client *c) {
+	xcb_atom_t v[MAX_ACTIONS];
+	int i = 0;
+
+	if (ISMAXVERT(c))
+		v[i++] = ewmh->_NET_WM_STATE_MAXIMIZED_VERT;
+	if (ISMAXHORZ(c))
+		v[i++] = ewmh->_NET_WM_STATE_MAXIMIZED_HORZ;
+	if (ISFULLSCREEN(c))
+		v[i++] = ewmh->_NET_WM_STATE_FULLSCREEN;
+	if (ISHIDDEN(c))
+		v[i++] = ewmh->_NET_WM_STATE_HIDDEN;
+	if (ISBELOW(c))
+		v[i++] = ewmh->_NET_WM_STATE_BELOW;
+	if (ISABOVE(c))
+		v[i++] = ewmh->_NET_WM_STATE_ABOVE;
+
+	if (i > 0)
+		xcb_change_property(conn, XCB_PROP_MODE_REPLACE, c->win,
+				    ewmh->_NET_WM_STATE, XCB_ATOM_ATOM, 32, i, v);
+	else
+		xcb_delete_property(conn, c->win, ewmh->_NET_WM_STATE);
 }
 
 void
@@ -150,6 +225,21 @@ ewmh_get_wm_state(Client *c) {
 }
 
 void
+ewmh_update_client_list(Client *list) {
+	Client *t;
+	int count = 0;
+
+	for (t = list; t; t = t->next)
+		count++;
+
+	if (count == 0)
+		return;
+
+	PRINTF("EWMH: client list: %d windows\n", count);
+	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root, ewmh->_NET_CLIENT_LIST, XCB_ATOM_WINDOW, 32, count, list);
+}
+
+void
 ewmh_get_wm_window_type(Client *c) {
 	unsigned int i;
 	xcb_ewmh_get_atoms_reply_t win_type;
@@ -168,3 +258,4 @@ ewmh_get_wm_window_type(Client *c) {
 		xcb_ewmh_get_atoms_reply_wipe(&win_type);
 	}
 }
+

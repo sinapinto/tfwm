@@ -104,7 +104,7 @@ manage(xcb_window_t w) {
 	c->size_hints.max_aspect_num = c->size_hints.max_aspect_den = 0;
 	c->size_hints.base_width = c->size_hints.base_height = 0;
 	c->size_hints.win_gravity = 0;
-	c->ismax = c->isvertmax = c->ishormax = c->can_focus = c->can_delete =  c->noborder = false;
+	c->can_focus = c->can_delete =  c->noborder = false;
 	c->frame = XCB_NONE;
 	c->ws = selws;
 
@@ -170,14 +170,14 @@ maximize(const Arg *arg) {
 	(void)arg;
 	if (!sel)
 		return;
-	maximizeclient(sel, !sel->ismax);
+	maximizeclient(sel, !ISFULLSCREEN(sel));
 }
 
 void
 maximizeaxis(const Arg *arg) {
-	if (!sel || sel->ismax)
+	if (!sel || ISFULLSCREEN(sel))
 		return;
-	if (sel->isvertmax || sel->ishormax) {
+	if (ISMAXVERT(sel) || ISMAXHORZ(sel)) {
 		maximizeclient(sel, false);
 		return;
 	}
@@ -196,7 +196,7 @@ maximizeaxis(const Arg *arg) {
 		values[1] = sel->geom.height;
 		xcb_configure_window(conn, sel->frame, XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_HEIGHT, values);
 		xcb_configure_window(conn, sel->win, XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_HEIGHT, values);
-		sel->isvertmax = true;
+		change_ewmh_flags(sel, XCB_EWMH_WM_STATE_ADD, EWMH_MAXIMIZED_VERT);
 	}
 	else if (arg->i == MaxHorizontal) {
 		sel->geom.x = 0;
@@ -205,7 +205,7 @@ maximizeaxis(const Arg *arg) {
 		values[1] = sel->geom.width;
 		xcb_configure_window(conn, sel->frame, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_WIDTH, values);
 		xcb_configure_window(conn, sel->win, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_WIDTH, values);
-		sel->ishormax = true;
+		change_ewmh_flags(sel, XCB_EWMH_WM_STATE_ADD, EWMH_MAXIMIZED_HORZ);
 	}
 	setborder(sel, true);
 	warp_pointer(sel);
@@ -215,14 +215,15 @@ void
 maximizeclient(Client *c, bool doit) {
 	if (!c)
 		return;
-	if (c->ismax && doit)
+	if (ISFULLSCREEN(c) && doit)
 		return;
 	PRINTF("maximizeclient: %s to ", doit ? "maximizing" : "unmaximizing");
 
 	if (doit) {
 		savegeometry(c);
-		c->ismax = true;
-		c->isvertmax = c->ishormax = false;
+		change_ewmh_flags(c, XCB_EWMH_WM_STATE_ADD, EWMH_FULLSCREEN);
+		change_ewmh_flags(c, XCB_EWMH_WM_STATE_REMOVE, EWMH_MAXIMIZED_VERT);
+		change_ewmh_flags(c, XCB_EWMH_WM_STATE_REMOVE, EWMH_MAXIMIZED_HORZ);
 		c->geom.x = 0;
 		c->geom.y = 0;
 		c->geom.width = screen->width_in_pixels;
@@ -234,11 +235,13 @@ maximizeclient(Client *c, bool doit) {
 		focus(NULL);
 	}
 	else {
-		c->geom.x = c->isvertmax ? c->geom.x : MAX(0, c->old_geom.x);
-		c->geom.y = c->ishormax ? c->geom.y : MAX(0, c->old_geom.y);
+		c->geom.x = ISMAXVERT(c) ? c->geom.x : MAX(0, c->old_geom.x);
+		c->geom.y = ISMAXHORZ(c) ? c->geom.y : MAX(0, c->old_geom.y);
 		c->geom.width = c->old_geom.width;
 		c->geom.height = c->old_geom.height;
-		c->ismax = c->ishormax = c->isvertmax = false;
+		change_ewmh_flags(c, XCB_EWMH_WM_STATE_REMOVE, EWMH_FULLSCREEN);
+		change_ewmh_flags(c, XCB_EWMH_WM_STATE_REMOVE, EWMH_MAXIMIZED_VERT);
+		change_ewmh_flags(c, XCB_EWMH_WM_STATE_REMOVE, EWMH_MAXIMIZED_HORZ);
 		PRINTF("(%d,%d) %dx%d\n", c->geom.x, c->geom.y, c->geom.width, c->geom.height);
 		setborderwidth(c->frame, border_width);
 		moveresize_win(c->frame, c->geom.x, c->geom.y, c->geom.width, c->geom.height);
@@ -319,11 +322,12 @@ resize(const Arg *arg) {
 	resizewin(sel->frame, sel->geom.width, sel->geom.height);
 	resizewin(sel->win, sel->geom.width, sel->geom.height);
 
-	if (sel->ismax) {
-		sel->ismax = false;
+	if (ISFULLSCREEN(sel)) {
+		change_ewmh_flags(sel, XCB_EWMH_WM_STATE_REMOVE, EWMH_FULLSCREEN);
 		setborderwidth(sel->frame, border_width);
 	}
-	sel->ishormax = sel->isvertmax = false;
+	change_ewmh_flags(sel, XCB_EWMH_WM_STATE_REMOVE, EWMH_MAXIMIZED_VERT);
+	change_ewmh_flags(sel, XCB_EWMH_WM_STATE_REMOVE, EWMH_MAXIMIZED_HORZ);
 	setborder(sel, true);
 	warp_pointer(sel);
 }
@@ -365,7 +369,7 @@ send_client_message(Client *c, xcb_atom_t proto) {
 
 void
 setborder(Client *c, bool focus) {
-	if (c->ismax || c->noborder)
+	if (ISFULLSCREEN(c) || c->noborder)
 		return;
 	xcb_change_window_attributes(conn, c->frame, XCB_CW_BORDER_PIXEL,
 				     (uint32_t[]){ focus ? focuscol : unfocuscol });

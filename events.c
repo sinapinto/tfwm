@@ -5,6 +5,7 @@
 #include "tfwm.h"
 #include "list.h"
 #include "events.h"
+#include "ewmh.h"
 
 static void buttonpress(xcb_generic_event_t *ev);
 static void circulaterequest(xcb_generic_event_t *ev);
@@ -93,8 +94,7 @@ clientmessage(xcb_generic_event_t *ev) {
 	Client *c;
 
 #ifdef DEBUG
-	char *name;
-	name = get_atom_name(e->type);
+	char *name = get_atom_name(e->type);
 	PRINTF("Event: client message: %s win %#x\n", name, e->window);
 	free(name);
 #endif
@@ -103,14 +103,9 @@ clientmessage(xcb_generic_event_t *ev) {
 		return;
 
 	if (e->type == ewmh->_NET_WM_STATE) {
-		if (e->data.data32[1] == ewmh->_NET_WM_STATE_FULLSCREEN ||
-		    e->data.data32[2] == ewmh->_NET_WM_STATE_FULLSCREEN) {
-			if (e->data.data32[0] == XCB_EWMH_WM_STATE_ADD)
-				maximizeclient(c, true);
-			else if (e->data.data32[0] == XCB_EWMH_WM_STATE_REMOVE)
-				maximizeclient(c, false);
-			else if (e->data.data32[0] == XCB_EWMH_WM_STATE_TOGGLE)
-				maximizeclient(c, !c->ismax);
+		if (e->data.data32[1] == ewmh->_NET_WM_STATE_FULLSCREEN
+		    || e->data.data32[2] == ewmh->_NET_WM_STATE_FULLSCREEN) {
+			handle_wm_state(c, ewmh->_NET_WM_STATE_FULLSCREEN, e->data.data32[0]);
 		}
 	} else if (e->type == ewmh->_NET_ACTIVE_WINDOW) {
 		if (c->can_focus)
@@ -118,10 +113,6 @@ clientmessage(xcb_generic_event_t *ev) {
 	} else if (e->type == ewmh->_NET_WM_DESKTOP) {
 	} else if (e->type == ewmh->_NET_MOVERESIZE_WINDOW) {
 	} else if (e->type == ewmh->_NET_CLOSE_WINDOW) {
-		if (c->frame) {
-			xcb_reparent_window(conn, sel->win, screen->root, sel->geom.x, sel->geom.y);
-			xcb_destroy_window(conn, sel->frame);
-		}
 		if (c->can_delete)
 			send_client_message(c, WM_DELETE_WINDOW);
 	}
@@ -160,13 +151,13 @@ configurerequest(xcb_generic_event_t *ev) {
 		/* if (e->value_mask & XCB_CONFIG_WINDOW_Y) */
 		/*	v[i++] = e->y; */
 		if (e->value_mask & XCB_CONFIG_WINDOW_WIDTH) {
-			if (!c->ismax && !c->ishormax) {
+			if (!ISFULLSCREEN(c) && !ISMAXHORZ(c)) {
 				mask |= XCB_CONFIG_WINDOW_WIDTH;
 				v[i++] = c->geom.width = MIN(e->width, screen->width_in_pixels-2*border_width);
 			}
 		}
 		if (e->value_mask & XCB_CONFIG_WINDOW_HEIGHT) {
-			if (!c->ismax && !c->isvertmax) {
+			if (!ISFULLSCREEN(c) && !ISMAXVERT(c)) {
 				mask |= XCB_CONFIG_WINDOW_HEIGHT;
 				v[i++] = c->geom.height = MIN(e->height, screen->height_in_pixels-2*border_width);
 			}
@@ -185,7 +176,7 @@ configurerequest(xcb_generic_event_t *ev) {
 			setborder(c, true);
 		}
 
-		if (!c->ismax && !c->isvertmax && !c->ishormax)
+		if (!ISFULLSCREEN(c) && !ISMAXVERT(c) && !ISMAXHORZ(c))
 			xcb_configure_window(conn, e->window, mask, v);
 
 		xcb_configure_notify_event_t evt;
@@ -298,8 +289,7 @@ propertynotify(xcb_generic_event_t *ev) {
 	Client *c;
 
 #ifdef DEBUG
-	char *name;
-	name = get_atom_name(e->atom);
+	char *name = get_atom_name(e->atom);
 	PRINTF("Event: property notify: win %#x atom %s", e->window, name);
 	free(name);
 #endif

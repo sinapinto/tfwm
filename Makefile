@@ -30,7 +30,7 @@ debug: CFLAGS += -O0 -g -DDEBUG
 debug: tfwm
 
 tfwm.o: tfwm.c list.h client.h workspace.h events.h keys.h pointer.h ewmh.h config.h
-events.o: events.c tfwm.h client.h list.h events.h
+events.o: events.c tfwm.h client.h list.h events.h ewmh.h
 client.o: client.c tfwm.h list.h client.h keys.h ewmh.h
 list.o: list.c tfwm.h client.h list.h
 workspace.o: workspace.c tfwm.h list.h client.h

@@ -36,6 +36,12 @@
 #define MIN(X, Y)       ((X) < (Y) ? (X) : (Y))
 #define WIDTH(C)        ((C)->geom.width + 2 * border_width)
 #define ISVISIBLE(C)    ((C)->ws == selws)
+#define ISFULLSCREEN(C) ((C)->ewmh_flags & EWMH_FULLSCREEN)
+#define ISMAXVERT(C)    ((C)->ewmh_flags & EWMH_MAXIMIZED_VERT)
+#define ISMAXHORZ(C)    ((C)->ewmh_flags & EWMH_MAXIMIZED_HORZ)
+#define ISHIDDEN(C)     ((C)->ewmh_flags & EWMH_HIDDEN)
+#define ISBELOW(C)      ((C)->ewmh_flags & EWMH_BELOW)
+#define ISABOVE(C)      ((C)->ewmh_flags & EWMH_ABOVE)
 
 /* types */
 typedef union {
@@ -72,6 +78,7 @@ typedef struct {
 	EWMH_BELOW          = 1 << 4,
 	EWMH_ABOVE          = 1 << 5
  };
+#define MAX_ACTIONS  6
 
 typedef struct Client Client;
 struct Client {
@@ -80,8 +87,6 @@ struct Client {
 	xcb_size_hints_t size_hints;
 	xcb_icccm_wm_hints_t wm_hints;
 	uint32_t ewmh_flags;
-	// TODO: remove these in favor of ewmh_flags
-	bool ismax, isvertmax, ishormax;
 	bool noborder;
 	bool can_focus;
 	bool can_delete;
