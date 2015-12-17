@@ -10,45 +10,13 @@
 void
 applyrules(Client *c) {
 	unsigned int i;
-	xcb_atom_t a = XCB_NONE;
-
-	// WM_WINDOW_TYPE_*
-	xcb_ewmh_get_atoms_reply_t win_type;
-	if (xcb_ewmh_get_wm_window_type_reply(ewmh, xcb_ewmh_get_wm_window_type(ewmh, c->win), &win_type, NULL) == 1) {
-		for (i = 0; i < win_type.atoms_len; i++) {
-			a = win_type.atoms[i];
-#ifdef DEBUG
-			char *name;
-			name = get_atom_name(a);
-			PRINTF("applyrules: win %#x, atom %s\n", c->win, name);
-			free(name);
-#endif
-		}
-		xcb_ewmh_get_atoms_reply_wipe(&win_type);
-	}
-
-	// WM_STATE_*
-	xcb_ewmh_get_atoms_reply_t win_state;
-	if (xcb_ewmh_get_wm_state_reply(ewmh, xcb_ewmh_get_wm_state(ewmh, c->win), &win_state, NULL) == 1) {
-		for (i = 0; i < win_state.atoms_len; i++) {
-			a = win_state.atoms[i];
-#ifdef DEBUG
-			char *name;
-			name = get_atom_name(a);
-			PRINTF("applyrules: win %#x, atom %s\n", c->win, name);
-			free(name);
-#endif
-			if (a == ewmh->_NET_WM_STATE_FULLSCREEN) {
-				maximizeclient(c, true);
-			}
-		}
-		xcb_ewmh_get_atoms_reply_wipe(&win_state);
-	}
-
-	/* custom rules */
 	const Rule *r;
 	xcb_icccm_get_wm_class_reply_t class_reply;
 
+	ewmh_get_wm_window_type(c);
+	ewmh_get_wm_state(c);
+
+	/* custom rules */
 	if (!xcb_icccm_get_wm_class_reply(conn, xcb_icccm_get_wm_class(conn, c->win), &class_reply, NULL))
 		return;
 
@@ -298,18 +266,19 @@ move(const Arg *arg) {
 void
 movewin(xcb_window_t win, int16_t x, int16_t y) {
 	const uint32_t values[] = { x, y };
-	xcb_configure_window(conn, win, XCB_CONFIG_WINDOW_X|XCB_CONFIG_WINDOW_Y, values);
+	const uint32_t mask = XCB_CONFIG_WINDOW_X
+		| XCB_CONFIG_WINDOW_Y;
+	xcb_configure_window(conn, win, mask, values);
 }
 
 void
 moveresize_win(xcb_window_t win, int16_t x, int16_t y, uint16_t w, uint16_t h) {
-	uint32_t mask;
-
-	mask = XCB_CONFIG_WINDOW_X
+	const uint32_t values[] = { x, y, w, h };
+	const uint32_t mask = XCB_CONFIG_WINDOW_X
 		| XCB_CONFIG_WINDOW_Y
 		| XCB_CONFIG_WINDOW_WIDTH
 		| XCB_CONFIG_WINDOW_HEIGHT;
-	xcb_configure_window(conn, win, mask, (uint32_t[]){ x, y, w, h });
+	xcb_configure_window(conn, win, mask, values);
 }
 
 
@@ -362,7 +331,9 @@ resize(const Arg *arg) {
 void
 resizewin(xcb_window_t win, uint16_t w, uint16_t h) {
 	const uint32_t values[] = { w, h };
-	xcb_configure_window(conn, win, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, values);
+	const uint32_t mask = XCB_CONFIG_WINDOW_WIDTH
+		| XCB_CONFIG_WINDOW_HEIGHT;
+	xcb_configure_window(conn, win, mask, values);
 }
 
 void
@@ -377,9 +348,7 @@ void
 send_client_message(Client *c, xcb_atom_t proto) {
 	xcb_client_message_event_t ev;
 #if DEBUG
-	char *name;
-
-	name = get_atom_name(proto);
+	char *name = get_atom_name(proto);
 	PRINTF("send_client_message: %s to win %#x\n", name, c->win);
 	free(name);
 #endif
@@ -446,7 +415,8 @@ setborder(Client *c, bool focus) {
 void
 setborderwidth(xcb_window_t win, uint16_t bw) {
 	const uint32_t value[] = { bw };
-	xcb_configure_window(conn, win, XCB_CONFIG_WINDOW_BORDER_WIDTH, value);
+	const uint32_t mask = XCB_CONFIG_WINDOW_BORDER_WIDTH;
+	xcb_configure_window(conn, win, mask, value);
 }
 
 void

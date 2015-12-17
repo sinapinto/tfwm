@@ -1,6 +1,7 @@
 /* See LICENSE file for copyright and license details. */
 #include <xcb/shape.h>
 #include <xcb/xcb_image.h>
+#include <xcb/xcb_pixel.h>
 #include "tfwm.h"
 #include "shape.h"
 
@@ -42,6 +43,7 @@ void
 draw_corner(Client *c, corner_t corner, unsigned char bits[]) {
 	xcb_pixmap_t pmap = XCB_NONE;
 
+	PRINTF("len bits: %d\n", LENGTH(bits));
 	pmap = xcb_create_pixmap_from_bitmap_data(conn, screen->root, bits, 8, 8, 1, 0, 1, NULL);
 	if (pmap == XCB_NONE)
 		err("xcb_create_pixmap_from_bitmap_data() failed.");

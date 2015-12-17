@@ -24,18 +24,30 @@ ewmh_setup() {
 		ewmh->_NET_CLIENT_LIST,
 		ewmh->_NET_CLIENT_LIST_STACKING,
 		ewmh->_NET_WM_STATE,
-		ewmh->_NET_WM_STATE_FULLSCREEN,
+		/* ewmh->_NET_WM_STATE_MODAL, */
+		/* ewmh->_NET_WM_STATE_STICKY, */
 		ewmh->_NET_WM_STATE_MAXIMIZED_VERT,
 		ewmh->_NET_WM_STATE_MAXIMIZED_HORZ,
-		ewmh->_NET_WM_STATE_BELOW,
+		ewmh->_NET_WM_STATE_HIDDEN,
+		ewmh->_NET_WM_STATE_FULLSCREEN,
 		ewmh->_NET_WM_STATE_ABOVE,
+		ewmh->_NET_WM_STATE_BELOW,
+		/* ewmh->_NET_WM_STATE_DEMANDS_ATTENTION, */
 		ewmh->_NET_WM_WINDOW_TYPE,
-		ewmh->_NET_WM_WINDOW_TYPE_DOCK,
 		ewmh->_NET_WM_WINDOW_TYPE_DESKTOP,
-		ewmh->_NET_WM_WINDOW_TYPE_NOTIFICATION,
-		ewmh->_NET_WM_WINDOW_TYPE_DIALOG,
+		ewmh->_NET_WM_WINDOW_TYPE_DOCK,
+		ewmh->_NET_WM_WINDOW_TYPE_TOOLBAR,
+		ewmh->_NET_WM_WINDOW_TYPE_MENU,
 		ewmh->_NET_WM_WINDOW_TYPE_UTILITY,
-		ewmh->_NET_WM_WINDOW_TYPE_TOOLBAR
+		ewmh->_NET_WM_WINDOW_TYPE_SPLASH,
+		ewmh->_NET_WM_WINDOW_TYPE_DIALOG,
+		ewmh->_NET_WM_WINDOW_TYPE_DROPDOWN_MENU,
+		ewmh->_NET_WM_WINDOW_TYPE_POPUP_MENU,
+		ewmh->_NET_WM_WINDOW_TYPE_TOOLTIP,
+		ewmh->_NET_WM_WINDOW_TYPE_NOTIFICATION,
+		ewmh->_NET_WM_WINDOW_TYPE_COMBO,
+		ewmh->_NET_WM_WINDOW_TYPE_DND,
+		ewmh->_NET_WM_WINDOW_TYPE_NORMAL,
 	};
 	xcb_ewmh_set_supported(ewmh, scrno, LENGTH(net_atoms), net_atoms);
 
@@ -44,20 +56,20 @@ ewmh_setup() {
 			screen->width_in_pixels, screen->height_in_pixels, 0,
 			XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT, XCB_NONE, NULL);
 
-	/* set up _NET_WM_PID */
+	/* _NET_WM_PID */
 	xcb_ewmh_set_wm_pid(ewmh, recorder, getpid());
 
-	/* set up _NET_WM_NAME */
+	/* _NET_WM_NAME */
 	if (java_workaround)
 		xcb_ewmh_set_wm_name(ewmh, screen->root, strlen("LG3D"), "LG3D");
 	else
 		xcb_ewmh_set_wm_name(ewmh, screen->root, strlen("tfwm"), "tfwm");
 
-	/* set up _NET_SUPPORTING_WM_CHECK */
+	/* _NET_SUPPORTING_WM_CHECK */
 	xcb_ewmh_set_supporting_wm_check(ewmh, recorder, recorder);
 	xcb_ewmh_set_supporting_wm_check(ewmh, screen->root, recorder);
 
-	/* set up _NET_NUMBER_OF_DESKTOPS */
+	/* _NET_NUMBER_OF_DESKTOPS */
 	xcb_ewmh_set_number_of_desktops(ewmh, scrno, 10);
 	xcb_ewmh_set_current_desktop(ewmh, scrno, 0);
 }
@@ -68,7 +80,7 @@ ewmh_teardown() {
 	xcb_get_property_cookie_t pc;
 	xcb_get_property_reply_t *pr;
 
-	/* delete supporting wm check window */
+	/* delete _NET_SUPPORTING_WM_CHECK window */
 	pc = xcb_get_property(conn, 0, screen->root, ewmh->_NET_SUPPORTING_WM_CHECK, XCB_ATOM_WINDOW, 0, 1);
 	pr = xcb_get_property_reply(conn, pc, NULL);
 	if (pr) {
@@ -115,3 +127,44 @@ ewmh_update_client_list(Client *list) {
 	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root, ewmh->_NET_CLIENT_LIST, XCB_ATOM_WINDOW, 32, count, list);
 }
 
+void
+ewmh_get_wm_state(Client *c) {
+	unsigned int i;
+	xcb_ewmh_get_atoms_reply_t win_state;
+	xcb_atom_t a = XCB_NONE;
+
+	if (xcb_ewmh_get_wm_state_reply(ewmh, xcb_ewmh_get_wm_state(ewmh, c->win), &win_state, NULL) == 1) {
+		for (i = 0; i < win_state.atoms_len; i++) {
+			a = win_state.atoms[i];
+#ifdef DEBUG
+			char *name = get_atom_name(a);
+			PRINTF("EWMH: state: win %#x, atom %s\n", c->win, name);
+			free(name);
+#endif
+			if (a == ewmh->_NET_WM_STATE_FULLSCREEN) {
+				maximizeclient(c, true);
+			}
+		}
+		xcb_ewmh_get_atoms_reply_wipe(&win_state);
+	}
+}
+
+void
+ewmh_get_wm_window_type(Client *c) {
+	unsigned int i;
+	xcb_ewmh_get_atoms_reply_t win_type;
+	xcb_atom_t a = XCB_NONE;
+
+	if (xcb_ewmh_get_wm_window_type_reply(ewmh, xcb_ewmh_get_wm_window_type(ewmh, c->win), &win_type, NULL) == 1) {
+		for (i = 0; i < win_type.atoms_len; i++) {
+			a = win_type.atoms[i];
+			(void)a; // TODO
+#ifdef DEBUG
+			char *name = get_atom_name(a);
+			PRINTF("EWMH: window type: win %#x, atom %s\n", c->win, name);
+			free(name);
+#endif
+		}
+		xcb_ewmh_get_atoms_reply_wipe(&win_type);
+	}
+}

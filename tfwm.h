@@ -64,13 +64,14 @@ typedef struct {
 	const Arg arg;
 } Button;
 
- /* enum { */ 
-	/* EWMH_MAXIMIZED_VERT = (1 << 0), */
-	/* EWMH_MAXIMIZED_HORZ = (1 << 1), */
-	/* EWMH_FULLSCREEN     = (1 << 2), */
-	/* EWMH_BELOW          = (1 << 3), */
-	/* EWMH_ABOVE          = (1 << 4) */
- /* }; */
+ enum { 
+	EWMH_MAXIMIZED_VERT = 1 << 0,
+	EWMH_MAXIMIZED_HORZ = 1 << 1,
+	EWMH_HIDDEN         = 1 << 2,
+	EWMH_FULLSCREEN     = 1 << 3,
+	EWMH_BELOW          = 1 << 4,
+	EWMH_ABOVE          = 1 << 5
+ };
 
 typedef struct Client Client;
 struct Client {
@@ -78,12 +79,10 @@ struct Client {
 	xcb_rectangle_t old_geom;
 	xcb_size_hints_t size_hints;
 	xcb_icccm_wm_hints_t wm_hints;
-	/* uint32_t ewmh_flags; */
-
+	uint32_t ewmh_flags;
 	// TODO: remove these in favor of ewmh_flags
 	bool ismax, isvertmax, ishormax;
 	bool noborder;
-
 	bool can_focus;
 	bool can_delete;
 	xcb_window_t frame;
