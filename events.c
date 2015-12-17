@@ -107,12 +107,24 @@ clientmessage(xcb_generic_event_t *ev) {
 		    || e->data.data32[2] == ewmh->_NET_WM_STATE_FULLSCREEN) {
 			handle_wm_state(c, ewmh->_NET_WM_STATE_FULLSCREEN, e->data.data32[0]);
 		}
-	} else if (e->type == ewmh->_NET_ACTIVE_WINDOW) {
+	}
+	else if (e->type == ewmh->_NET_ACTIVE_WINDOW) {
 		if (c->can_focus)
 			focus(c);
-	} else if (e->type == ewmh->_NET_WM_DESKTOP) {
-	} else if (e->type == ewmh->_NET_MOVERESIZE_WINDOW) {
-	} else if (e->type == ewmh->_NET_CLOSE_WINDOW) {
+	}
+	else if (e->type == ewmh->_NET_WM_DESKTOP) {
+	}
+	else if (e->type == ewmh->_NET_MOVERESIZE_WINDOW) {
+	}
+	else if (e->type == ewmh->_NET_REQUEST_FRAME_EXTENTS) {
+		xcb_ewmh_set_frame_extents(ewmh,
+					   c->win,
+					   border_width,
+					   border_width,
+					   border_width,
+					   border_width);
+	}
+	else if (e->type == ewmh->_NET_CLOSE_WINDOW) {
 		if (c->can_delete)
 			send_client_message(c, WM_DELETE_WINDOW);
 	}

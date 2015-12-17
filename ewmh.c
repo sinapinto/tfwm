@@ -24,6 +24,8 @@ ewmh_setup() {
 		ewmh->_NET_CLIENT_LIST,
 		ewmh->_NET_CLIENT_LIST_STACKING,
 		ewmh->_NET_MOVERESIZE_WINDOW,
+		ewmh->_NET_REQUEST_FRAME_EXTENTS,
+		ewmh->_NET_FRAME_EXTENTS,
 		ewmh->_NET_WM_STATE,
 		/* ewmh->_NET_WM_STATE_MODAL, */
 		/* ewmh->_NET_WM_STATE_STICKY, */
