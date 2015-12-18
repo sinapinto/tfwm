@@ -10,12 +10,14 @@ BINPREFIX = $(PREFIX)/bin
 CC     ?= gcc
 CFLAGS  = -std=c99 -Wall -Wextra -Wshadow -Wno-uninitialized -pedantic
 CFLAGS += -I$(PREFIX)/include -DVERSION=\"$(VERSION)\"
-LIBS    = -lX11 -lX11-xcb -lXcursor -lxcb-keysyms -lxcb-icccm -lxcb-ewmh -lxcb-util -lxcb
+LIBS    = -lxcb -lxcb-keysyms -lxcb-icccm -lxcb-ewmh -lxcb-util \
+          -lX11 -lX11-xcb -lXcursor
 
-# uncomment to enable shape extension
-# SHAPE = 1
+# set this to 1 to enable support for X's nonrectangular window shape extension
+SHAPE ?= 0
 
-OBJ = tfwm.o util.o events.o client.o list.o workspace.o keys.o pointer.o ewmh.o config.o xcb.o
+OBJ = tfwm.o util.o events.o client.o list.o workspace.o keys.o pointer.o \
+      ewmh.o config.o xcb.o
 
 ifeq ($(SHAPE),1)
   CFLAGS += -DSHAPE
@@ -29,7 +31,8 @@ all: tfwm
 debug: CFLAGS += -O0 -g -DDEBUG
 debug: tfwm
 
-tfwm.o: tfwm.c list.h client.h workspace.h events.h keys.h pointer.h ewmh.h config.h
+tfwm.o: tfwm.c list.h client.h workspace.h events.h keys.h pointer.h ewmh.h \
+        config.h
 events.o: events.c tfwm.h client.h list.h events.h ewmh.h
 client.o: client.c tfwm.h list.h client.h keys.h ewmh.h xcb.h
 list.o: list.c tfwm.h client.h list.h xcb.h
