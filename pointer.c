@@ -93,6 +93,7 @@ mousemotion(const Arg *arg) {
 						 sel->size_hints.min_width + 40);
 					nh = MAX(sel->geom.height + e->root_y - pointer->root_y,
 						 sel->size_hints.min_height + 40);
+					resizewin(sel->win, nw, nh);
 					resizewin(sel->frame, nw, nh);
 				}
 				break;
