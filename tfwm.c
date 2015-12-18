@@ -25,6 +25,7 @@
 static void cleanup(void);
 static bool connection_has_error(void);
 static void getatom(xcb_atom_t *atom, char *name);
+static void restore_windows(void);
 static void run(void);
 static void setup(void);
 static void sigchld();
@@ -98,11 +99,10 @@ cleanup(void) {
 
 	while (stack) {
 		PRINTF("freeing win %#x...\n", stack->win);
-		if (stack->can_delete)
-			send_client_message(stack, WM_DELETE_WINDOW);
-		else
-			xcb_kill_client(conn, stack->win);
-		unmanage(stack);
+
+		detach(stack);
+		detachstack(stack);
+		free(stack);
 	}
 
 	ewmh_teardown();
@@ -239,6 +239,38 @@ sigchld() {
 }
 
 void
+restore_windows(void) {
+	xcb_query_tree_cookie_t qtc;
+	xcb_query_tree_reply_t *qtr;
+	xcb_get_window_attributes_cookie_t gac;
+	xcb_get_window_attributes_reply_t *gar;
+
+
+	qtc = xcb_query_tree(conn, screen->root);
+	if ((qtr = xcb_query_tree_reply(conn, qtc, NULL))) {
+		PRINTF("parent = 0x%08x\n", qtr->parent);
+		PRINTF("root   = 0x%08x\n", qtr->root);
+		xcb_window_t *children = xcb_query_tree_children(qtr);
+
+		for (int i = 0; i < xcb_query_tree_children_length(qtr); i++) {
+			warn("restore window %#x\n", children[i]);
+			manage(children[i]);
+
+			gac = xcb_get_window_attributes(conn, children[i]);
+			gar = xcb_get_window_attributes_reply(conn, gac, NULL);
+			if (gar == NULL)
+				continue;
+			if (gar->override_redirect) {
+				PRINTF("restore_windows: skip %#x: override_redirect set\n", children[i]);
+				free(gar);
+				continue;
+			}
+		}
+		free(qtr);
+	}
+}
+
+void
 setup(void) {
 	/* init screen */
 	screen = xcb_setup_roots_iterator(xcb_get_setup(conn)).data;
@@ -252,6 +284,10 @@ setup(void) {
 		xcb_disconnect(conn);
 		err("another window manager is running.");
 	}
+
+	/* restore windows from prior session
+	 * must come before ewmh_setup to avoid managing the wm_check window */
+	restore_windows();
 
 	/* init atoms */
 	getatom(&WM_DELETE_WINDOW, "WM_DELETE_WINDOW");
@@ -277,6 +313,7 @@ setup(void) {
 #ifdef SHAPE
 	shape_ext = check_shape_extension();
 #endif
+
 	focus(NULL);
 }
 
@@ -314,9 +351,10 @@ main(int argc, char **argv) {
 		warn("no config file found. using default settings\n");
 	}
 
-	/* set up and run */
 	setup();
+
 	run();
+
 	cleanup();
 
 	if (dorestart)

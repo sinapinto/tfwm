@@ -70,15 +70,15 @@ typedef struct {
 	const Arg arg;
 } Button;
 
- enum { 
+#define MAX_ACTIONS 6
+enum { 
 	EWMH_MAXIMIZED_VERT = 1 << 0,
 	EWMH_MAXIMIZED_HORZ = 1 << 1,
 	EWMH_HIDDEN         = 1 << 2,
 	EWMH_FULLSCREEN     = 1 << 3,
 	EWMH_BELOW          = 1 << 4,
 	EWMH_ABOVE          = 1 << 5
- };
-#define MAX_ACTIONS  6
+};
 
 typedef struct Client Client;
 struct Client {

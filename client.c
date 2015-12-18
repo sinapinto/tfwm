@@ -106,6 +106,7 @@ manage(xcb_window_t w) {
 	c->size_hints.win_gravity = 0;
 	c->can_focus = c->can_delete =  c->noborder = false;
 	c->frame = XCB_NONE;
+	c->ewmh_flags = 0;
 	c->ws = selws;
 
 	/* get size hints */
@@ -124,6 +125,7 @@ manage(xcb_window_t w) {
 		}
 		xcb_icccm_get_wm_protocols_reply_wipe(&pr);
 	}
+
 	applyrules(c);
 	reparent(c);
 	attach(c);
@@ -484,9 +486,8 @@ unmanage(Client *c) {
 	PRINTF("unmanage: win %#x\n", c->win);
 	detach(c);
 	detachstack(c);
-	if (c->frame) {
+	if (c->frame)
 		xcb_destroy_window(conn, c->frame);
-	}
 	free(c);
 	ewmh_update_client_list(clients);
 	focus(NULL);

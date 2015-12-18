@@ -20,7 +20,8 @@ void
 detach(Client *c) {
 	Client **tc;
 
-	for (tc = &clients; *tc && *tc != c; tc = &(*tc)->next);
+	for (tc = &clients; *tc && *tc != c; tc = &(*tc)->next)
+		continue;
 	*tc = c->next;
 }
 
@@ -28,11 +29,13 @@ void
 detachstack(Client *c) {
 	Client **tc, *t;
 
-	for (tc = &stack; *tc && *tc != c; tc = &(*tc)->snext);
+	for (tc = &stack; *tc && *tc != c; tc = &(*tc)->snext)
+		continue;
 	*tc = c->snext;
 
 	if (c == sel) {
-		for (t = stack; t && !ISVISIBLE(t); t = t->snext);
+		for (t = stack; t && !ISVISIBLE(t); t = t->snext)
+			continue;
 		sel = t;
 	}
 }
