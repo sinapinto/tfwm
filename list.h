@@ -2,12 +2,11 @@
 #ifndef LIST_H
 #define LIST_H
 
-extern void attach(Client *c);
-extern void attachstack(Client *c);
-extern void detach(Client *c);
-extern void detachstack(Client *c);
-extern void focus(Client *c);
-extern void focusstack(bool next);
+void attach(Client *c);
+void attachstack(Client *c);
+void detach(Client *c);
+void detachstack(Client *c);
+void focusstack(bool next);
 
 #endif
 

@@ -7,6 +7,7 @@
 void applyrules(Client *c);
 void cycleclients(const Arg *arg);
 void fitclient(Client *c);
+void focus(Client *c);
 void killselected(const Arg *arg);
 void manage(xcb_window_t w);
 void maximize(const Arg *arg);

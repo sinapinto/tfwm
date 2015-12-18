@@ -15,7 +15,7 @@ LIBS    = -lX11 -lX11-xcb -lXcursor -lxcb-keysyms -lxcb-icccm -lxcb-ewmh -lxcb-u
 # uncomment to enable shape extension
 # SHAPE = 1
 
-OBJ = tfwm.o util.o events.o client.o list.o workspace.o keys.o pointer.o ewmh.o config.o
+OBJ = tfwm.o util.o events.o client.o list.o workspace.o keys.o pointer.o ewmh.o config.o xcb.o
 
 ifeq ($(SHAPE),1)
   CFLAGS += -DSHAPE
@@ -31,14 +31,15 @@ debug: tfwm
 
 tfwm.o: tfwm.c list.h client.h workspace.h events.h keys.h pointer.h ewmh.h config.h
 events.o: events.c tfwm.h client.h list.h events.h ewmh.h
-client.o: client.c tfwm.h list.h client.h keys.h ewmh.h
-list.o: list.c tfwm.h client.h list.h
+client.o: client.c tfwm.h list.h client.h keys.h ewmh.h xcb.h
+list.o: list.c tfwm.h client.h list.h xcb.h
 workspace.o: workspace.c tfwm.h list.h client.h
 keys.o: keys.c tfwm.h list.h client.h events.h workspace.h pointer.h
 pointer.o: pointer.c tfwm.h events.h
 ewmh.o: ewmh.c tfwm.h
 config.o: config.c tfwm.h
 shape.o: shape.c tfwm.h
+xcb.o: xcb.c tfwm.h
 
 %.o: %.c
 	$(CC) -c $(CFLAGS) -o $@ $<

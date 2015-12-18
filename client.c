@@ -6,6 +6,7 @@
 #include "client.h"
 #include "keys.h"
 #include "ewmh.h"
+#include "xcb.h"
 
 void
 applyrules(Client *c) {
@@ -501,5 +502,32 @@ wintoclient(xcb_window_t w) {
 		if (w == c->win)
 			return c;
 	return NULL;
+}
+
+void
+focus(Client *c) {
+	if (!c || !ISVISIBLE(c))
+		for (c = stack; c && !ISVISIBLE(c); c = c->snext)
+			if (sel && sel != c)
+				setborder(sel, false);
+	if (c) {
+		detachstack(c);
+		attachstack(c);
+		grabbuttons(c);
+		if (sel && sel != c)
+			setborder(sel, false);
+		setborder(c, true);
+		PRINTF("focus win %#x\n", c->win);
+		xcb_set_input_focus(conn, XCB_INPUT_FOCUS_POINTER_ROOT,
+				c->win, XCB_CURRENT_TIME);
+		xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root,
+				ewmh->_NET_ACTIVE_WINDOW, XCB_ATOM_WINDOW, 32, 1,&c->win);
+		warp_pointer(c);
+	}
+	else {
+		xcb_delete_property(conn, screen->root, ewmh->_NET_ACTIVE_WINDOW);
+		xcb_set_input_focus(conn, XCB_NONE, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
+	}
+	sel = c;
 }
 
