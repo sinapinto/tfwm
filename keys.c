@@ -7,8 +7,9 @@
 #include "events.h"
 #include "workspace.h"
 #include "pointer.h"
+#include "keys.h"
 
-const Rule rules[2] = {
+const Rule rules[RULE_MAX] = {
 	/* class           workspace       fullscreen       border */
 	{ "chromium",      1,              false,           false  },
 	{ "firefox",       0,              false,           false  },
@@ -31,7 +32,7 @@ static const char *voltoggle[] = { "amixer", "-q", "set", "Master", "toggle", NU
 #define MOD    XCB_MOD_MASK_1
 #define SHIFT  XCB_MOD_MASK_SHIFT
 #define CTRL   XCB_MOD_MASK_CONTROL
-Key keys[61] = {
+Key keys[KEY_MAX] = {
 	/* modifier     key                       function       argument */
 	{ MOD,          XK_Return,                spawn,         {.com=terminal}    },
 	{ MOD,          XK_t,                     spawn,         {.com=terminal2}   },
@@ -89,7 +90,7 @@ Key keys[61] = {
 	WORKSPACE(      XK_0,                                    9 )
 };
 
-Button buttons[2] = {
+Button buttons[BUTTON_MAX] = {
 	{  MOD,          XCB_BUTTON_INDEX_1,      mousemotion,   {.i=MouseMove}     },
 	{  MOD,          XCB_BUTTON_INDEX_3,      mousemotion,   {.i=MouseResize}   }
 };

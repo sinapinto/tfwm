@@ -6,6 +6,7 @@
 #include <xcb/xcb_keysyms.h>
 #include <X11/Xlib-xcb.h>
 #include <stdbool.h>
+#include "keys.h"
 
 #ifdef DEBUG
 # include <stdio.h>
@@ -163,9 +164,9 @@ void warp_pointer(Client *c);
 Client *wintoclient(xcb_window_t w);
 
 /* globals */
-extern const Rule rules[2];
-extern Key keys[61];
-extern Button buttons[2];
+extern const Rule rules[RULE_MAX];
+extern Key keys[KEY_MAX];
+extern Button buttons[BUTTON_MAX];
 extern xcb_connection_t *conn;
 extern xcb_screen_t *screen;
 extern unsigned int numlockmask;
