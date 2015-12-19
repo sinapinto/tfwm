@@ -17,7 +17,7 @@ const Rule rules[RULE_MAX] = {
 
 static const char *terminal[]  = { "urxvt", NULL };
 static const char *terminal2[] = { "termite", NULL };
-static const char *browser[]   = { "sh", "-c", "chromium", ">/dev/null",  NULL };
+static const char *browser[]   = { "chromium", NULL };
 static const char *browser2[]  = { "firefox", NULL };
 static const char *launcher[]  = { "rofi", "-show", "run",  NULL };
 static const char *mpctoggle[] = { "mpc", "-q", "toggle", NULL };
@@ -109,8 +109,10 @@ getkeycodes(xcb_keysym_t keysym) {
 xcb_keysym_t
 getkeysym(xcb_keycode_t keycode) {
 	xcb_key_symbols_t *keysyms;
+
 	if (!(keysyms = xcb_key_symbols_alloc(conn)))
 		err("can't get keysym.");
+
 	xcb_keysym_t keysym = xcb_key_symbols_get_keysym(keysyms, keycode, 0);
 	xcb_key_symbols_free(keysyms);
 	return keysym;
@@ -118,39 +120,53 @@ getkeysym(xcb_keycode_t keycode) {
 
 void
 grabkeys(void) {
-	unsigned int i, j, k;
-	unsigned int modifiers[] = { 0, XCB_MOD_MASK_LOCK, numlockmask, numlockmask|XCB_MOD_MASK_LOCK };
+	unsigned int   i, j, k;
 	xcb_keycode_t *keycode;
+	unsigned int   modifiers[] = {
+		0, XCB_MOD_MASK_LOCK, numlockmask,
+		numlockmask | XCB_MOD_MASK_LOCK };
 
 	xcb_ungrab_key(conn, XCB_GRAB_ANY, screen->root, XCB_MOD_MASK_ANY);
+
 	for (i = 0; i < LENGTH(keys); ++i) {
 		keycode = getkeycodes(keys[i].keysym);
-		for (j = 0; keycode[j] != XCB_NO_SYMBOL; j++)
-			for (k = 0; k < LENGTH(modifiers); k++)
-				xcb_grab_key(conn, 1, screen->root, keys[i].mod | modifiers[k],
-						keycode[j], XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
+
+		for (j = 0; keycode[j] != XCB_NO_SYMBOL; j++) {
+			for (k = 0; k < LENGTH(modifiers); k++) {
+				xcb_grab_key(conn, 1, screen->root,
+					     keys[i].mod | modifiers[k],
+					     keycode[j], XCB_GRAB_MODE_ASYNC,
+					     XCB_GRAB_MODE_ASYNC);
+			}
+		}
+
 		free(keycode);
 	}
 }
 
 void
 updatenumlockmask(void) {
-	unsigned int i, j, n;
-	numlockmask = 0;
-	xcb_keycode_t *modmap ;
-	xcb_get_modifier_mapping_reply_t *reply;
+	unsigned int                       i, j, n;
+	xcb_keycode_t                     *modmap;
+	xcb_get_modifier_mapping_reply_t  *mmr;
+	xcb_get_modifier_mapping_cookie_t  mmc;
+	xcb_keycode_t                      keycode;
 
-	reply = xcb_get_modifier_mapping_reply(conn, xcb_get_modifier_mapping_unchecked(conn), NULL);
-	if (!reply)
-		err("mod map reply");
-	modmap = xcb_get_modifier_mapping_keycodes(reply);
+	numlockmask = 0;
+
+	mmc = xcb_get_modifier_mapping(conn);
+	mmr = xcb_get_modifier_mapping_reply(conn, mmc, NULL);
+	if (!mmr)
+		err("mod map mmr");
+
+	modmap = xcb_get_modifier_mapping_keycodes(mmr);
 	if (!modmap)
 		err("mod map keycodes");
 
 	xcb_keycode_t *numlock = getkeycodes(XK_Num_Lock);
 	for (i = 0; i < 8; i++) {
-		for (j = 0; j < reply->keycodes_per_modifier; j++) {
-			xcb_keycode_t keycode = modmap[i * reply->keycodes_per_modifier + j];
+		for (j = 0; j < mmr->keycodes_per_modifier; j++) {
+			keycode = modmap[i * mmr->keycodes_per_modifier + j];
 			if (keycode == XCB_NO_SYMBOL)
 				continue;
 			if (numlock)
@@ -161,7 +177,7 @@ updatenumlockmask(void) {
 					}
 		}
 	}
-	free(reply);
+	free(mmr);
 	free(numlock);
 }
 

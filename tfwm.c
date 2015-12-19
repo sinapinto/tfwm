@@ -53,7 +53,6 @@ unsigned int selws = 0;
 unsigned int prevws = 0;
 Client *sel;
 Client *clients;
-
 /* config defaults */
 bool double_border     = false;
 int border_width       = 4;
@@ -80,14 +79,12 @@ cleanup(void) {
 	}
 
 	ewmh_teardown();
-
 	free_cursors();
-
 	free(focus_color);
 	free(outer_color);
 	free(unfocus_color);
-
-	xcb_set_input_focus(conn, XCB_NONE, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
+	xcb_set_input_focus(conn, XCB_NONE, XCB_INPUT_FOCUS_POINTER_ROOT,
+			    XCB_CURRENT_TIME);
 	xcb_flush(conn);
 	xcb_disconnect(conn);
 	warn("bye\n");
@@ -110,6 +107,7 @@ restart(const Arg *arg) {
 void
 run(void) {
 	xcb_generic_event_t *ev;
+
 	while (sigcode == 0) {
 		xcb_flush(conn);
 		if ((ev = xcb_wait_for_event(conn)) != NULL) {
@@ -138,10 +136,10 @@ sigchld() {
 
 void
 restore_windows(void) {
-	xcb_query_tree_cookie_t qtc;
-	xcb_query_tree_reply_t *qtr;
-	xcb_get_window_attributes_cookie_t gac;
-	xcb_get_window_attributes_reply_t *gar;
+	xcb_query_tree_cookie_t             qtc;
+	xcb_query_tree_reply_t             *qtr;
+	xcb_get_window_attributes_cookie_t  gac;
+	xcb_get_window_attributes_reply_t  *gar;
 
 
 	qtc = xcb_query_tree(conn, screen->root);
@@ -159,7 +157,8 @@ restore_windows(void) {
 			if (gar == NULL)
 				continue;
 			if (gar->override_redirect) {
-				PRINTF("restore_windows: skip %#x: override_redirect set\n", children[i]);
+				PRINTF("restore_windows: skip %#x: "
+				       "override_redirect set\n", children[i]);
 				free(gar);
 				continue;
 			}
@@ -170,48 +169,49 @@ restore_windows(void) {
 
 void
 setup(void) {
-	/* init screen */
+	xcb_generic_error_t *e;
+	xcb_void_cookie_t    wac;
+	uint32_t             vals[1];
+
 	screen = xcb_setup_roots_iterator(xcb_get_setup(conn)).data;
 	if (!screen)
 		err("can't find screen.");
 
 	/* subscribe to handler */
-	uint32_t values[] = { ROOT_EVENT_MASK };
-	xcb_generic_error_t *e = xcb_request_check(conn, xcb_change_window_attributes_checked(conn, screen->root, XCB_CW_EVENT_MASK, values));
+	vals[0] = ROOT_EVENT_MASK;
+	wac = xcb_change_window_attributes_checked(conn, screen->root,
+						   XCB_CW_EVENT_MASK, vals);
+	e = xcb_request_check(conn, wac);
 	if (e) {
 		xcb_disconnect(conn);
 		err("another window manager is running.");
 	}
 
 	/* restore windows from prior session
-	 * must come before ewmh_setup to avoid managing the wm_check window */
+	 * must come before ewmh_setup to avoid managing the wm_check window
+	 */
 	restore_windows();
 
-	/* init atoms */
 	getatom(&WM_DELETE_WINDOW, "WM_DELETE_WINDOW");
 	getatom(&WM_TAKE_FOCUS, "WM_TAKE_FOCUS");
 	getatom(&WM_PROTOCOLS, "WM_PROTOCOLS");
 
-	/* init ewmh */
 	ewmh_setup();
 
-	/* init keys */
 	updatenumlockmask();
 	grabkeys();
 
-	/* init colors */
 	focuscol = getcolor(focus_color);
 	unfocuscol = getcolor(unfocus_color);
 	outercol = getcolor(outer_color);
 
-	/* init cursors */
 	load_cursors();
-	xcb_change_window_attributes_checked(conn, screen->root, XCB_CW_CURSOR, (uint32_t[]){cursors[XC_LEFT_PTR].cid});
-
+	vals[0] = cursors[XC_LEFT_PTR].cid;
+	xcb_change_window_attributes_checked(conn, screen->root,
+					     XCB_CW_CURSOR, vals);
 #ifdef SHAPE
 	shape_ext = check_shape_extension();
 #endif
-
 	focus(NULL);
 }
 
@@ -250,9 +250,7 @@ main(int argc, char **argv) {
 	}
 
 	setup();
-
 	run();
-
 	cleanup();
 
 	if (dorestart)

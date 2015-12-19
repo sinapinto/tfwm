@@ -101,7 +101,7 @@ void setopt(char *key, char *val) {
 
 struct {
 	char * key;
-	void (*func)(char *key, char *val);
+	void (*func)(char *, char *);
 } config[] = {
 	{ "double_border",      setopt },
 	{ "border_width",       setopt },
@@ -115,7 +115,6 @@ struct {
 	{ "java_workaround",    setopt },
 	{ "cursor_position",    setopt },
 };
-
 
 int
 parse_config(char *fname) {
@@ -137,7 +136,8 @@ parse_config(char *fname) {
 		line_num++;
 		p = line;
 
-		while (*p && (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r'))
+		while (*p && (*p == ' ' || *p == '\t'
+			      || *p == '\n' || *p == '\r'))
 			p++;
 
 		if (p[0] == '\0' || p[0] == '#')
@@ -155,7 +155,8 @@ parse_config(char *fname) {
 		}
 		
 		if (cfg_idx == -1) {
-			warn("%s: couldn't match setting on line %d\n", fname, line_num);
+			warn("%s: couldn't match setting on line %d\n",
+			     fname, line_num);
 			return 1;
 		}
 

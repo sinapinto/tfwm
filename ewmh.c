@@ -7,8 +7,12 @@
 
 void
 ewmh_setup() {
+	uint8_t r;
+
 	ewmh = malloc(sizeof(xcb_ewmh_connection_t));
-	if (xcb_ewmh_init_atoms_replies(ewmh, xcb_ewmh_init_atoms(conn, ewmh), NULL) == 0)
+	r = xcb_ewmh_init_atoms_replies(ewmh,
+					xcb_ewmh_init_atoms(conn, ewmh), NULL);
+	if (r == 0)
 		err("can't initialize ewmh.");
 
 	xcb_atom_t net_atoms[] = {
@@ -55,9 +59,11 @@ ewmh_setup() {
 	xcb_ewmh_set_supported(ewmh, scrno, LENGTH(net_atoms), net_atoms);
 
 	xcb_window_t recorder = xcb_generate_id(conn);
-	xcb_create_window(conn, XCB_COPY_FROM_PARENT, recorder, screen->root, 0, 0,
-			  screen->width_in_pixels, screen->height_in_pixels, 0,
-			  XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT, XCB_NONE, NULL);
+	xcb_create_window(conn, XCB_COPY_FROM_PARENT, recorder, screen->root,
+			  0, 0, screen->width_in_pixels,
+			  screen->height_in_pixels, 0,
+			  XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT,
+			  XCB_NONE, NULL);
 
 	/* _NET_WM_PID */
 	xcb_ewmh_set_wm_pid(ewmh, recorder, getpid());
@@ -68,31 +74,35 @@ ewmh_setup() {
 	else
 		xcb_ewmh_set_wm_name(ewmh, screen->root, strlen("tfwm"), "tfwm");
 
-	/* _NET_SUPPORTING_WM_CHECK */
-	xcb_ewmh_set_supporting_wm_check(ewmh, recorder, recorder);
-	xcb_ewmh_set_supporting_wm_check(ewmh, screen->root, recorder);
-
 	/* _NET_NUMBER_ODESKTOPS */
 	xcb_ewmh_set_number_of_desktops(ewmh, scrno, 10);
 	xcb_ewmh_set_current_desktop(ewmh, scrno, 0);
+
+	/* _NET_SUPPORTING_WM_CHECK */
+	xcb_ewmh_set_supporting_wm_check(ewmh, recorder, recorder);
+	xcb_ewmh_set_supporting_wm_check(ewmh, screen->root, recorder);
 }
 
 void
 ewmh_teardown() {
-	xcb_window_t id;
-	xcb_get_property_cookie_t pc;
-	xcb_get_property_reply_t *pr;
+	xcb_window_t               id;
+	xcb_get_property_cookie_t  pc;
+	xcb_get_property_reply_t  *pr;
 
 	/* delete _NET_SUPPORTING_WM_CHECK */
-	pc = xcb_get_property(conn, 0, screen->root, ewmh->_NET_SUPPORTING_WM_CHECK, XCB_ATOM_WINDOW, 0, 1);
+	pc = xcb_get_property(conn, 0, screen->root,
+			      ewmh->_NET_SUPPORTING_WM_CHECK,
+			      XCB_ATOM_WINDOW, 0, 1);
 	pr = xcb_get_property_reply(conn, pc, NULL);
 	if (pr) {
 		if (pr->format == ewmh->_NET_SUPPORTING_WM_CHECK) {
 			id = *((xcb_window_t *)xcb_get_property_value(pr));
 			PRINTF("deleting supporting wm check window %#x\n", id);
 			xcb_destroy_window(conn, id);
-			xcb_delete_property(conn, screen->root, ewmh->_NET_SUPPORTING_WM_CHECK);
-			xcb_delete_property(conn, screen->root, ewmh->_NET_SUPPORTED);
+			xcb_delete_property(conn, screen->root,
+					    ewmh->_NET_SUPPORTING_WM_CHECK);
+			xcb_delete_property(conn, screen->root,
+					    ewmh->_NET_SUPPORTED);
 		}
 		free(pr);
 	}
@@ -120,7 +130,8 @@ void
 handle_wm_state(Client *c, xcb_atom_t state, xcb_ewmh_wm_state_action_t action) {
 #ifdef DEBUG
 	char *name = get_atom_name(state);
-	PRINTF("EWMH: change_wm_state: win %#x, state: %s, action: %d\n", c->win, name, action);
+	PRINTF("EWMH: change_wm_state: win %#x, state: %s, action: %d\n",
+	       c->win, name, action);
 	free(name);
 #endif
 	if (!c->win)
@@ -182,7 +193,7 @@ handle_wm_state(Client *c, xcb_atom_t state, xcb_ewmh_wm_state_action_t action) 
 void
 ewmh_update_wm_state(Client *c) {
 	xcb_atom_t v[MAX_ACTIONS];
-	int i = 0;
+	int        i = 0;
 
 	if (ISMAXVERT(c))
 		v[i++] = ewmh->_NET_WM_STATE_MAXIMIZED_VERT;
@@ -199,18 +210,22 @@ ewmh_update_wm_state(Client *c) {
 
 	if (i > 0)
 		xcb_change_property(conn, XCB_PROP_MODE_REPLACE, c->win,
-				    ewmh->_NET_WM_STATE, XCB_ATOM_ATOM, 32, i, v);
+				    ewmh->_NET_WM_STATE,
+				    XCB_ATOM_ATOM, 32, i, v);
 	else
 		xcb_delete_property(conn, c->win, ewmh->_NET_WM_STATE);
 }
 
 void
 ewmh_get_wm_state(Client *c) {
-	unsigned int i;
+	unsigned int               i;
+	xcb_get_property_cookie_t  pc;
 	xcb_ewmh_get_atoms_reply_t win_state;
-	xcb_atom_t a = XCB_NONE;
+	xcb_atom_t                 a = XCB_NONE;
 
-	if (xcb_ewmh_get_wm_state_reply(ewmh, xcb_ewmh_get_wm_state(ewmh, c->win), &win_state, NULL) == 1) {
+	pc = xcb_ewmh_get_wm_state(ewmh, c->win);
+
+	if (xcb_ewmh_get_wm_state_reply(ewmh, pc, &win_state, NULL) == 1) {
 		for (i = 0; i < win_state.atoms_len; i++) {
 			a = win_state.atoms[i];
 #ifdef DEBUG
@@ -229,7 +244,7 @@ ewmh_get_wm_state(Client *c) {
 void
 ewmh_update_client_list(Client *list) {
 	Client *t;
-	int count = 0;
+	int     count = 0;
 
 	for (t = list; t; t = t->next)
 		count++;
@@ -238,22 +253,28 @@ ewmh_update_client_list(Client *list) {
 		return;
 
 	PRINTF("EWMH: client list: %d windows\n", count);
-	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root, ewmh->_NET_CLIENT_LIST, XCB_ATOM_WINDOW, 32, count, list);
+	xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root,
+			    ewmh->_NET_CLIENT_LIST,
+			    XCB_ATOM_WINDOW, 32, count, list);
 }
 
 void
 ewmh_get_wm_window_type(Client *c) {
-	unsigned int i;
+	unsigned int               i;
+	xcb_get_property_cookie_t  pc;
 	xcb_ewmh_get_atoms_reply_t win_type;
-	xcb_atom_t a = XCB_NONE;
+	xcb_atom_t                 a = XCB_NONE;
 
-	if (xcb_ewmh_get_wm_window_type_reply(ewmh, xcb_ewmh_get_wm_window_type(ewmh, c->win), &win_type, NULL) == 1) {
+	pc = xcb_ewmh_get_wm_window_type(ewmh, c->win);
+
+	if (xcb_ewmh_get_wm_window_type_reply(ewmh, pc, &win_type, NULL) == 1) {
 		for (i = 0; i < win_type.atoms_len; i++) {
 			a = win_type.atoms[i];
 			(void)a; // TODO
 #ifdef DEBUG
 			char *name = get_atom_name(a);
-			PRINTF("EWMH: window type: win %#x, atom %s\n", c->win, name);
+			PRINTF("EWMH: window type: win %#x, atom %s\n",
+			       c->win, name);
 			free(name);
 #endif
 		}

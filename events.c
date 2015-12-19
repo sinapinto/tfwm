@@ -105,26 +105,19 @@ clientmessage(xcb_generic_event_t *ev) {
 	if (e->type == ewmh->_NET_WM_STATE) {
 		if (e->data.data32[1] == ewmh->_NET_WM_STATE_FULLSCREEN
 		    || e->data.data32[2] == ewmh->_NET_WM_STATE_FULLSCREEN) {
-			handle_wm_state(c, ewmh->_NET_WM_STATE_FULLSCREEN, e->data.data32[0]);
+			handle_wm_state(c, ewmh->_NET_WM_STATE_FULLSCREEN,
+					e->data.data32[0]);
 		}
-	}
-	else if (e->type == ewmh->_NET_ACTIVE_WINDOW) {
+	} else if (e->type == ewmh->_NET_ACTIVE_WINDOW) {
 		if (c->can_focus)
 			focus(c);
-	}
-	else if (e->type == ewmh->_NET_WM_DESKTOP) {
-	}
-	else if (e->type == ewmh->_NET_MOVERESIZE_WINDOW) {
-	}
-	else if (e->type == ewmh->_NET_REQUEST_FRAME_EXTENTS) {
-		xcb_ewmh_set_frame_extents(ewmh,
-					   c->win,
-					   border_width,
-					   border_width,
-					   border_width,
-					   border_width);
-	}
-	else if (e->type == ewmh->_NET_CLOSE_WINDOW) {
+	} else if (e->type == ewmh->_NET_WM_DESKTOP) {
+	} else if (e->type == ewmh->_NET_MOVERESIZE_WINDOW) {
+	} else if (e->type == ewmh->_NET_REQUEST_FRAME_EXTENTS) {
+		xcb_ewmh_set_frame_extents(ewmh, c->win,
+					   border_width, border_width,
+					   border_width, border_width);
+	} else if (e->type == ewmh->_NET_CLOSE_WINDOW) {
 		if (c->can_delete)
 			send_client_message(c, WM_DELETE_WINDOW);
 	}
@@ -133,10 +126,10 @@ clientmessage(xcb_generic_event_t *ev) {
 void
 configurerequest(xcb_generic_event_t *ev) {
 	xcb_configure_request_event_t *e = (xcb_configure_request_event_t *)ev;
-	Client *c;
-	unsigned int v[7];
-	int i = 0;
-	uint16_t mask = 0;
+	Client       *c;
+	unsigned int  v[7];
+	int           i = 0;
+	uint16_t      mask;
 
 #ifdef DEBUG
 	PRINTF("Event: configure request: win %#x: ", e->window);
@@ -204,10 +197,10 @@ configurerequest(xcb_generic_event_t *ev) {
 		evt.height = c->geom.height;
 		evt.border_width = 0;
 		evt.override_redirect = 0;
-
-		xcb_send_event(conn, false, c->win, XCB_EVENT_MASK_STRUCTURE_NOTIFY, (const char *)&evt);
-	}
-	else {
+		xcb_send_event(conn, false, c->win,
+			       XCB_EVENT_MASK_STRUCTURE_NOTIFY,
+			       (const char *)&evt);
+	} else {
 		if (e->value_mask & XCB_CONFIG_WINDOW_X) {
 			mask |= XCB_CONFIG_WINDOW_X;
 			v[i++] = e->x;
@@ -248,7 +241,8 @@ enternotify(xcb_generic_event_t *ev) {
 
 	PRINTF("Event: enter notify: win %#x\n", e->event);
 
-	if (e->mode == XCB_NOTIFY_MODE_NORMAL || e->mode == XCB_NOTIFY_MODE_UNGRAB) {
+	if (e->mode == XCB_NOTIFY_MODE_NORMAL
+	    || e->mode == XCB_NOTIFY_MODE_UNGRAB) {
 		if (sel && e->event == sel->win)
 			return;
 		if ((c = wintoclient(e->event))) {
@@ -262,11 +256,14 @@ enternotify(xcb_generic_event_t *ev) {
 void
 keypress(xcb_generic_event_t *ev) {
 	xcb_key_press_event_t *e = (xcb_key_press_event_t *)ev;
+	unsigned int i;
+
 	xcb_keysym_t keysym = getkeysym(e->detail);
-	for (unsigned int i = 0; i < LENGTH(keys); i++) {
-		if (keysym == keys[i].keysym &&
-		    CLEANMASK(keys[i].mod) == CLEANMASK(e->state) &&
-		    keys[i].func) {
+
+	for (i = 0; i < LENGTH(keys); i++) {
+		if (keysym == keys[i].keysym
+		    && CLEANMASK(keys[i].mod) == CLEANMASK(e->state)
+		    && keys[i].func) {
 			keys[i].func(&keys[i].arg);
 			break;
 		}
@@ -279,7 +276,8 @@ mappingnotify(xcb_generic_event_t *ev) {
 
 	PRINTF("Event: mapping notify\n");
 
-	if (e->request != XCB_MAPPING_MODIFIER && e->request != XCB_MAPPING_KEYBOARD)
+	if (e->request != XCB_MAPPING_MODIFIER
+	    && e->request != XCB_MAPPING_KEYBOARD)
 		return;
 	xcb_ungrab_key(conn, XCB_GRAB_ANY, screen->root, XCB_MOD_MASK_ANY);
 	grabkeys();
@@ -299,6 +297,9 @@ void
 propertynotify(xcb_generic_event_t *ev) {
 	xcb_property_notify_event_t *e = (xcb_property_notify_event_t *)ev;
 	Client *c;
+	xcb_get_property_cookie_t nhc;
+	uint8_t                   nhr;
+	xcb_size_hints_t          sh;
 
 #ifdef DEBUG
 	char *name = get_atom_name(e->atom);
@@ -309,12 +310,14 @@ propertynotify(xcb_generic_event_t *ev) {
 	if (!(c = wintoclient(e->window)))
 		return;
 
-	if (e->atom == XCB_ATOM_WM_NORMAL_HINTS) { /* update size hints */
-		xcb_size_hints_t size_hints;
-		if (xcb_icccm_get_wm_normal_hints_reply(conn, xcb_icccm_get_wm_normal_hints(conn, e->window), &size_hints, NULL) == 1 &&
-		    size_hints.flags & XCB_ICCCM_SIZE_HINT_P_MIN_SIZE) {
-			c->size_hints.min_width = size_hints.min_width;
-			c->size_hints.min_height = size_hints.min_height;
+	if (e->atom == XCB_ATOM_WM_NORMAL_HINTS) {
+		/* update size hints */
+		nhc = xcb_icccm_get_wm_normal_hints(conn, e->window);
+		nhr = xcb_icccm_get_wm_normal_hints_reply(conn, nhc, &sh, NULL);
+
+		if (nhr == 1 && sh.flags & XCB_ICCCM_SIZE_HINT_P_MIN_SIZE) {
+			c->size_hints.min_width = sh.min_width;
+			c->size_hints.min_height = sh.min_height;
 		}
 	}
 }
