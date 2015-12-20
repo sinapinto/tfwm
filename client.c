@@ -10,10 +10,10 @@
 
 void
 applyrules(Client *c) {
-	unsigned int                   i;
+	unsigned int                    i;
 	const Rule                     *rule;
-	xcb_get_property_cookie_t      cookie;
-	xcb_icccm_get_wm_class_reply_t reply;
+	xcb_get_property_cookie_t       cookie;
+	xcb_icccm_get_wm_class_reply_t  reply;
 
 	ewmh_get_wm_window_type(c);
 	ewmh_get_wm_state(c);
@@ -102,6 +102,17 @@ manage(xcb_window_t w) {
 		c->geom.y = c->old_geom.y = gr->y;
 		c->geom.width = c->old_geom.width = gr->width;
 		c->geom.height = c->old_geom.height = gr->height;
+#if DEBUG
+		PRINTF("========== geometry ==========\n");
+		if (c->geom.x)
+			PRINTF("x: %d\n", c->geom.x);
+		if (c->geom.y)
+			PRINTF("y: %d\n", c->geom.y);
+		if (c->geom.width)
+			PRINTF("width: %d\n", c->geom.width);
+		if (c->geom.height)
+			PRINTF("height: %d\n", c->geom.height);
+#endif
 		free(gr);
 	} else {
 		warn("xcb_get_geometry failed for win %#x.", w);
@@ -125,10 +136,48 @@ manage(xcb_window_t w) {
 	/* get size hints */
 	nhc = xcb_icccm_get_wm_normal_hints(conn, c->win);
 	xcb_icccm_get_wm_normal_hints_reply(conn, nhc, &c->size_hints, NULL);
+#if DEBUG
+	PRINTF("========= size hints =========\n");
+	if (c->size_hints.x)
+		PRINTF("x: %d\n", c->size_hints.x);
+	if (c->size_hints.y)
+		PRINTF("y: %d\n", c->size_hints.y);
+	if (c->size_hints.width)
+		PRINTF("width: %d\n", c->size_hints.width);
+	if (c->size_hints.height)
+		PRINTF("height: %d\n", c->size_hints.height);
+	if (c->size_hints.min_height)
+		PRINTF("min height: %d\n", c->size_hints.min_height);
+	if (c->size_hints.min_width)
+		PRINTF("min width: %d\n", c->size_hints.min_width);
+	if (c->size_hints.max_height)
+		PRINTF("max height: %d\n", c->size_hints.max_height);
+	if (c->size_hints.max_width)
+		PRINTF("max width: %d\n", c->size_hints.max_width);
+	if (c->size_hints.base_height)
+		PRINTF("base height: %d\n", c->size_hints.base_height);
+	if (c->size_hints.base_width)
+		PRINTF("base width: %d\n", c->size_hints.base_width);
+	PRINTF("-------------------------------\n");
+#endif
 
 	/* get wm hints */
+	xcb_icccm_wm_hints_t *wmh;
 	hc = xcb_icccm_get_wm_hints(conn, c->win);
-	xcb_icccm_get_wm_hints_reply(conn, hc, &c->wm_hints, NULL);
+	xcb_icccm_get_wm_hints_reply(conn, hc, wmh, NULL);
+	c->wm_hints = wmh->flags;
+	PRINTF("wmh->flags: %d\n", wmh->flags);
+	/* XCB_ICCCM_WM_HINT_INPUT */
+	/* XCB_ICCCM_WM_HINT_STATE */
+	/* XCB_ICCCM_WM_HINT_ICON_PIXMAP */
+	/* XCB_ICCCM_WM_HINT_ICON_WINDOW */
+	/* XCB_ICCCM_WM_HINT_ICON_POSITION */
+	/* XCB_ICCCM_WM_HINT_ICON_MASK */
+	/* XCB_ICCCM_WM_HINT_WINDOW_GROUP */
+	/* XCB_ICCCM_WM_HINT_X_URGENCY */
+	if (c->wm_hints & XCB_ICCCM_WM_HINT_X_URGENCY) {
+		PRINTF("ICCCM: Urgent win %#x\n", c->win);
+	}
 
 	/* get protocols */
 	pc = xcb_icccm_get_wm_protocols(conn, c->win, WM_PROTOCOLS);
@@ -188,7 +237,7 @@ reparent(Client *c) {
 			  XCB_WINDOW_CLASS_INPUT_OUTPUT, XCB_COPY_FROM_PARENT,
 			  mask, vals);
 
-	xcb_configure_window(conn, c->win,
+	xcb_configure_window(conn, c->frame,
 			     XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT,
 			     (uint32_t[]){ c->geom.width, c->geom.height });
 
@@ -241,7 +290,7 @@ maximizeaxis(const Arg *arg) {
 				     | XCB_CONFIG_WINDOW_HEIGHT, values);
 		xcb_configure_window(conn, sel->win, XCB_CONFIG_WINDOW_Y
 				     | XCB_CONFIG_WINDOW_HEIGHT, values);
-		change_ewmh_flags(sel, XCB_EWMH_WM_STATE_ADD,
+		change_ewmh_flags(sel, ADD_STATE,
 				  EWMH_MAXIMIZED_VERT);
 	} else if (arg->i == MaxHorizontal) {
 		sel->geom.x = 0;
@@ -252,7 +301,7 @@ maximizeaxis(const Arg *arg) {
 				     | XCB_CONFIG_WINDOW_WIDTH, values);
 		xcb_configure_window(conn, sel->win, XCB_CONFIG_WINDOW_X
 				     | XCB_CONFIG_WINDOW_WIDTH, values);
-		change_ewmh_flags(sel, XCB_EWMH_WM_STATE_ADD,
+		change_ewmh_flags(sel, ADD_STATE,
 				  EWMH_MAXIMIZED_HORZ);
 	}
 
@@ -270,9 +319,9 @@ maximizeclient(Client *c, bool doit) {
 
 	if (doit) {
 		savegeometry(c);
-		change_ewmh_flags(c, XCB_EWMH_WM_STATE_ADD, EWMH_FULLSCREEN);
-		change_ewmh_flags(c, XCB_EWMH_WM_STATE_REMOVE, EWMH_MAXIMIZED_VERT);
-		change_ewmh_flags(c, XCB_EWMH_WM_STATE_REMOVE, EWMH_MAXIMIZED_HORZ);
+		change_ewmh_flags(c, ADD_STATE, EWMH_FULLSCREEN);
+		change_ewmh_flags(c, REMOVE_STATE, EWMH_MAXIMIZED_VERT);
+		change_ewmh_flags(c, REMOVE_STATE, EWMH_MAXIMIZED_HORZ);
 		c->geom.x = 0;
 		c->geom.y = 0;
 		c->geom.width = screen->width_in_pixels;
@@ -289,9 +338,9 @@ maximizeclient(Client *c, bool doit) {
 		c->geom.y = ISMAXHORZ(c) ? c->geom.y : MAX(0, c->old_geom.y);
 		c->geom.width = c->old_geom.width;
 		c->geom.height = c->old_geom.height;
-		change_ewmh_flags(c, XCB_EWMH_WM_STATE_REMOVE, EWMH_FULLSCREEN);
-		change_ewmh_flags(c, XCB_EWMH_WM_STATE_REMOVE, EWMH_MAXIMIZED_VERT);
-		change_ewmh_flags(c, XCB_EWMH_WM_STATE_REMOVE, EWMH_MAXIMIZED_HORZ);
+		change_ewmh_flags(c, REMOVE_STATE, EWMH_FULLSCREEN);
+		change_ewmh_flags(c, REMOVE_STATE, EWMH_MAXIMIZED_VERT);
+		change_ewmh_flags(c, REMOVE_STATE, EWMH_MAXIMIZED_HORZ);
 		PRINTF("(%d,%d) %dx%d\n",
 		       c->geom.x, c->geom.y, c->geom.width, c->geom.height);
 		setborderwidth(c->frame, border_width);
@@ -365,11 +414,13 @@ resize(const Arg *arg) {
 		ih = sel->size_hints.height_inc;
 
 	if (arg->i == GrowHeight || arg->i == GrowBoth) {
-		sel->geom.height = sel->geom.height + ih;
+		sel->geom.height = MIN(sel->geom.height + ih,
+				       sel->size_hints.max_height);
 	}
 
 	if (arg->i == GrowWidth || arg->i == GrowBoth) {
-		sel->geom.width = sel->geom.width + iw;
+		sel->geom.width = MIN(sel->geom.width + iw,
+				      sel->size_hints.max_width);
 	}
 
 	if (arg->i == ShrinkHeight || arg->i == ShrinkBoth) {
@@ -386,12 +437,16 @@ resize(const Arg *arg) {
 	resizewin(sel->win, sel->geom.width, sel->geom.height);
 
 	if (ISFULLSCREEN(sel)) {
-		change_ewmh_flags(sel, XCB_EWMH_WM_STATE_REMOVE, EWMH_FULLSCREEN);
+		change_ewmh_flags(sel, REMOVE_STATE, EWMH_FULLSCREEN);
 		setborderwidth(sel->frame, border_width);
 	}
 
-	change_ewmh_flags(sel, XCB_EWMH_WM_STATE_REMOVE, EWMH_MAXIMIZED_VERT);
-	change_ewmh_flags(sel, XCB_EWMH_WM_STATE_REMOVE, EWMH_MAXIMIZED_HORZ);
+	if (ISMAXVERT(sel))
+		change_ewmh_flags(sel, REMOVE_STATE, EWMH_MAXIMIZED_VERT);
+
+	if (ISMAXHORZ(sel))
+		change_ewmh_flags(sel, REMOVE_STATE, EWMH_MAXIMIZED_HORZ);
+
 	setborder(sel, true);
 	warp_pointer(sel);
 }
@@ -428,7 +483,8 @@ send_client_message(Client *c, xcb_atom_t proto) {
 	ev.type = ewmh->WM_PROTOCOLS;
 	ev.data.data32[0] = proto;
 	ev.data.data32[1] = XCB_CURRENT_TIME;
-	xcb_send_event(conn, false, c->win, XCB_EVENT_MASK_NO_EVENT, (char*)&ev);
+	xcb_send_event(conn, false, c->win,
+		       XCB_EVENT_MASK_NO_EVENT, (char*)&ev);
 }
 
 void

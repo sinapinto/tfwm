@@ -24,7 +24,7 @@
 #endif
 
 static void cleanup(void);
-static void restore_windows(void);
+static void remanage_windows(void);
 static void run(void);
 static void setup(void);
 static void sigchld();
@@ -68,10 +68,17 @@ char *unfocus_color;
 
 void
 cleanup(void) {
-	PRINTF("shutting down..\n");
+	PRINTF("========= shutting down ==========\n");
 
+	xcb_set_input_focus(conn, XCB_NONE, XCB_INPUT_FOCUS_POINTER_ROOT,
+			    XCB_CURRENT_TIME);
 	while (stack) {
-		PRINTF("freeing win %#x...\n", stack->win);
+		/* unmap and then free */
+		/* xcb_reparent_window(conn, stack->win, screen->root, */
+		/* 		    stack->geom.x, stack->geom.y); */
+		/* xcb_destroy_window(conn, stack->frame); */
+		PRINTF("unmapping win %#x\n", stack->win);
+		xcb_unmap_window(conn, stack->win);
 
 		detach(stack);
 		detachstack(stack);
@@ -83,11 +90,9 @@ cleanup(void) {
 	free(focus_color);
 	free(outer_color);
 	free(unfocus_color);
-	xcb_set_input_focus(conn, XCB_NONE, XCB_INPUT_FOCUS_POINTER_ROOT,
-			    XCB_CURRENT_TIME);
 	xcb_flush(conn);
 	xcb_disconnect(conn);
-	warn("bye\n");
+	warn("-------------- bye -------------\n");
 }
 
 void
@@ -135,7 +140,7 @@ sigchld() {
 }
 
 void
-restore_windows(void) {
+remanage_windows(void) {
 	xcb_query_tree_cookie_t             qtc;
 	xcb_query_tree_reply_t             *qtr;
 	xcb_get_window_attributes_cookie_t  gac;
@@ -157,7 +162,7 @@ restore_windows(void) {
 			if (gar == NULL)
 				continue;
 			if (gar->override_redirect) {
-				PRINTF("restore_windows: skip %#x: "
+				PRINTF("remanage_windows: skip %#x: "
 				       "override_redirect set\n", children[i]);
 				free(gar);
 				continue;
@@ -190,7 +195,7 @@ setup(void) {
 	/* restore windows from prior session
 	 * must come before ewmh_setup to avoid managing the wm_check window
 	 */
-	restore_windows();
+	remanage_windows();
 
 	getatom(&WM_DELETE_WINDOW, "WM_DELETE_WINDOW");
 	getatom(&WM_TAKE_FOCUS, "WM_TAKE_FOCUS");

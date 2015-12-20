@@ -46,62 +46,65 @@
 
 /* types */
 typedef union {
-	const char **com;
-	const unsigned int i;
+	const char         **com;
+	const unsigned int   i;
 } Arg;
 
 typedef struct {
-	const char *class;
-	unsigned int workspace;
-	bool *fullscreen;
-	bool border;
+	const char   *class;
+	unsigned int  workspace;
+	bool         *fullscreen;
+	bool          border;
 } Rule;
 
 typedef struct Key {
 	unsigned int mod;
 	xcb_keysym_t keysym;
 	void (*func)(const Arg *);
-	const Arg arg;
+	const Arg    arg;
 } Key;
 
 typedef struct {
 	unsigned int mask;
 	unsigned int button;
 	void (*func)(const Arg *);
-	const Arg arg;
+	const Arg    arg;
 } Button;
 
-#define MAX_ACTIONS 6
+#define MAX_STATE    6
+#define ADD_STATE    XCB_EWMH_WM_STATE_ADD
+#define REMOVE_STATE XCB_EWMH_WM_STATE_REMOVE
+#define TOGGLE_STATE XCB_EWMH_WM_STATE_TOGGLE
 enum { 
-	EWMH_MAXIMIZED_VERT = 1 << 0,
-	EWMH_MAXIMIZED_HORZ = 1 << 1,
-	EWMH_HIDDEN         = 1 << 2,
-	EWMH_FULLSCREEN     = 1 << 3,
-	EWMH_BELOW          = 1 << 4,
-	EWMH_ABOVE          = 1 << 5
+	EWMH_MAXIMIZED_VERT = (1 << 0),
+	EWMH_MAXIMIZED_HORZ = (1 << 1),
+	EWMH_HIDDEN         = (1 << 2),
+	EWMH_FULLSCREEN     = (1 << 3),
+	EWMH_BELOW          = (1 << 4),
+	EWMH_ABOVE          = (1 << 5)
 };
 
 typedef struct Client Client;
 struct Client {
-	xcb_rectangle_t geom;
-	xcb_rectangle_t old_geom;
-	xcb_size_hints_t size_hints;
-	xcb_icccm_wm_hints_t wm_hints;
-	uint32_t ewmh_flags;
-	bool noborder;
-	bool can_focus;
-	bool can_delete;
-	xcb_window_t frame;
-	Client *next;
-	Client *snext;
-	xcb_window_t win;
-	unsigned int ws;
+	xcb_rectangle_t       geom;
+	xcb_rectangle_t       old_geom;
+	xcb_size_hints_t      size_hints;
+	int32_t               wm_hints;
+	uint32_t              ewmh_flags;
+	bool                  noborder;
+	bool                  can_focus;
+	bool                  can_delete;
+	xcb_window_t          frame;
+	Client               *next;
+	Client               *snext;
+	xcb_window_t          win;
+	unsigned int          ws;
 };
 
 typedef struct cursor_t {
-	char *name;
-	uint8_t cf_glyph;
-	xcb_cursor_t cid;
+	char         *name;
+	uint8_t       cf_glyph;
+	xcb_cursor_t  cid;
 } cursor_t;
 
 enum { MoveDown, MoveRight, MoveUp, MoveLeft };

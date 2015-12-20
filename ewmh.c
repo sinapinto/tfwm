@@ -114,13 +114,13 @@ ewmh_teardown() {
 void
 change_ewmh_flags(Client *c, xcb_ewmh_wm_state_action_t op, uint32_t mask) {
 	switch (op) {
-		case XCB_EWMH_WM_STATE_ADD:
+		case ADD_STATE:
 			c->ewmh_flags |= mask;
 			break;
-		case XCB_EWMH_WM_STATE_REMOVE:
+		case REMOVE_STATE:
 			c->ewmh_flags &= ~mask;
 			break;
-		case XCB_EWMH_WM_STATE_TOGGLE:
+		case TOGGLE_STATE:
 			c->ewmh_flags ^= mask;
 			break;
 	}
@@ -138,61 +138,61 @@ handle_wm_state(Client *c, xcb_atom_t state, xcb_ewmh_wm_state_action_t action) 
 		return;
 
 	if (state == ewmh->_NET_WM_STATE_MAXIMIZED_VERT) {
-		if (action == XCB_EWMH_WM_STATE_ADD) {
+		if (action == ADD_STATE) {
 		}
-		else if (action == XCB_EWMH_WM_STATE_REMOVE) {
+		else if (action == REMOVE_STATE) {
 		}
-		else if (action == XCB_EWMH_WM_STATE_TOGGLE) {
+		else if (action == TOGGLE_STATE) {
 		}
 	}
 	else if (state == ewmh->_NET_WM_STATE_MAXIMIZED_HORZ) {
-		if (action == XCB_EWMH_WM_STATE_ADD) {
+		if (action == ADD_STATE) {
 		}
-		else if (action == XCB_EWMH_WM_STATE_REMOVE) {
+		else if (action == REMOVE_STATE) {
 		}
-		else if (action == XCB_EWMH_WM_STATE_TOGGLE) {
+		else if (action == TOGGLE_STATE) {
 		}
 	}
 	else if (state == ewmh->_NET_WM_STATE_HIDDEN) {
-		if (action == XCB_EWMH_WM_STATE_ADD) {
+		if (action == ADD_STATE) {
 		}
-		else if (action == XCB_EWMH_WM_STATE_REMOVE) {
+		else if (action == REMOVE_STATE) {
 		}
-		else if (action == XCB_EWMH_WM_STATE_TOGGLE) {
+		else if (action == TOGGLE_STATE) {
 		}
 	}
 	else if (state == ewmh->_NET_WM_STATE_FULLSCREEN) {
-		if (action == XCB_EWMH_WM_STATE_ADD) {
+		if (action == ADD_STATE) {
 			maximizeclient(c, true);
 		}
-		else if (action == XCB_EWMH_WM_STATE_REMOVE) {
+		else if (action == REMOVE_STATE) {
 			maximizeclient(c, false);
 		}
-		else if (action == XCB_EWMH_WM_STATE_TOGGLE) {
+		else if (action == TOGGLE_STATE) {
 			maximizeclient(c, c->ewmh_flags & EWMH_FULLSCREEN);
 		}
 	}
 	else if (state == ewmh->_NET_WM_STATE_ABOVE) {
-		if (action == XCB_EWMH_WM_STATE_ADD) {
+		if (action == ADD_STATE) {
 		}
-		else if (action == XCB_EWMH_WM_STATE_REMOVE) {
+		else if (action == REMOVE_STATE) {
 		}
-		else if (action == XCB_EWMH_WM_STATE_TOGGLE) {
+		else if (action == TOGGLE_STATE) {
 		}
 	}
 	else if (state == ewmh->_NET_WM_STATE_BELOW) {
-		if (action == XCB_EWMH_WM_STATE_ADD) {
+		if (action == ADD_STATE) {
 		}
-		else if (action == XCB_EWMH_WM_STATE_REMOVE) {
+		else if (action == REMOVE_STATE) {
 		}
-		else if (action == XCB_EWMH_WM_STATE_TOGGLE) {
+		else if (action == TOGGLE_STATE) {
 		}
 	}
 }
 
 void
 ewmh_update_wm_state(Client *c) {
-	xcb_atom_t v[MAX_ACTIONS];
+	xcb_atom_t v[MAX_STATE];
 	int        i = 0;
 
 	if (ISMAXVERT(c))

@@ -126,10 +126,10 @@ clientmessage(xcb_generic_event_t *ev) {
 void
 configurerequest(xcb_generic_event_t *ev) {
 	xcb_configure_request_event_t *e = (xcb_configure_request_event_t *)ev;
-	Client       *c;
-	unsigned int  v[7];
-	int           i = 0;
-	uint16_t      mask;
+	Client   *c;
+	uint32_t  v[7];
+	int       i = 0;
+	uint16_t  mask = 0;
 
 #ifdef DEBUG
 	PRINTF("Event: configure request: win %#x: ", e->window);
@@ -230,7 +230,8 @@ configurerequest(xcb_generic_event_t *ev) {
 			v[i++] = e->border_width;
 		}
 
-		xcb_configure_window(conn, e->window, mask, v);
+		if (i > 0)
+			xcb_configure_window(conn, e->window, mask, v);
 	}
 }
 
@@ -325,7 +326,7 @@ propertynotify(xcb_generic_event_t *ev) {
 void
 requesterror(xcb_generic_event_t *ev) {
 	xcb_request_error_t *e = (xcb_request_error_t *)ev;
-	warn("Event: FAILED REQUEST: %s, %s: %#x\n",
+	warn("Event: FAILED REQUEST: %s, %s: %d\n",
 	     xcb_event_get_request_label(e->major_opcode),
 	     xcb_event_get_error_label(e->error_code),
 	     e->bad_value);
