@@ -330,12 +330,13 @@ maximizeclient(Client *c, bool doit) {
 		c->geom.y = ISMAXHORZ(c) ? c->geom.y : MAX(0, c->old_geom.y);
 		c->geom.width = c->old_geom.width;
 		c->geom.height = c->old_geom.height;
+		PRINTF("(%d,%d) %dx%d\n",
+		       c->geom.x, c->geom.y, c->geom.width, c->geom.height);
 		change_ewmh_flags(c, REMOVE_STATE, EWMH_FULLSCREEN);
 		change_ewmh_flags(c, REMOVE_STATE, EWMH_MAXIMIZED_VERT);
 		change_ewmh_flags(c, REMOVE_STATE, EWMH_MAXIMIZED_HORZ);
-		PRINTF("(%d,%d) %dx%d\n",
-		       c->geom.x, c->geom.y, c->geom.width, c->geom.height);
-		setborderwidth(c->frame, border_width);
+		if (!c->noborder)
+			setborderwidth(c->frame, border_width);
 		moveresize_win(c->frame, c->geom.x, c->geom.y,
 			       c->geom.width, c->geom.height);
 		moveresize_win(c->win, 0, 0, c->geom.width, c->geom.height);
