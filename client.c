@@ -305,11 +305,14 @@ void
 maximizeclient(Client *c, bool doit) {
 	if (!c)
 		return;
-	if (ISFULLSCREEN(c) && doit)
+	if (ISFULLSCREEN(c) && doit) {
+		savegeometry(c);
 		return;
+	}
 	PRINTF("maximizeclient: %s to ", doit ? "maximizing" : "unmaximizing");
 
 	if (doit) {
+		PRINTF("fullscreen\n");
 		savegeometry(c);
 		change_ewmh_flags(c, ADD_STATE, EWMH_FULLSCREEN);
 		change_ewmh_flags(c, REMOVE_STATE, EWMH_MAXIMIZED_VERT);
@@ -318,8 +321,6 @@ maximizeclient(Client *c, bool doit) {
 		c->geom.y = 0;
 		c->geom.width = screen->width_in_pixels;
 		c->geom.height = screen->height_in_pixels;
-		PRINTF("(%d,%d) %dx%d\n",
-		       c->geom.x, c->geom.y, c->geom.width, c->geom.height);
 		setborderwidth(c->frame, 0);
 		moveresize_win(c->frame, c->geom.x, c->geom.y,
 			       c->geom.width, c->geom.height);
@@ -462,10 +463,12 @@ resizewin(xcb_window_t win, uint16_t w, uint16_t h) {
 
 void
 savegeometry(Client *c) {
+	PRINTF("saving old_geom: (%d,%d) %dx%d\n",
+	       c->geom.x, c->geom.y, c->geom.width, c->geom.height);
 	c->old_geom.x = c->geom.x;
 	c->old_geom.y = c->geom.y;
-	c->old_geom.height = c->geom.height;
 	c->old_geom.width = c->geom.width;
+	c->old_geom.height = c->geom.height;
 }
 
 void

@@ -113,6 +113,9 @@ ewmh_teardown() {
 
 void
 change_ewmh_flags(Client *c, xcb_ewmh_wm_state_action_t op, uint32_t mask) {
+	PRINTF("EWMH: change_ewmh_flags: win %#x, mask: %d, action: %d\n",
+	       c->win, mask, op);
+
 	switch (op) {
 		case ADD_STATE:
 			c->ewmh_flags |= mask;
@@ -130,8 +133,8 @@ void
 handle_wm_state(Client *c, xcb_atom_t state, xcb_ewmh_wm_state_action_t action) {
 #ifdef DEBUG
 	char *name = get_atom_name(state);
-	PRINTF("EWMH: change_wm_state: win %#x, state: %s, action: %d\n",
-	       c->win, name, action);
+	PRINTF("EWMH: change_wm_state: win %#x, state: %s, action: %d %s\n",
+	       c->win, name, action, c->win ? "" : "(not found)");
 	free(name);
 #endif
 	if (!c->win)
@@ -139,53 +142,41 @@ handle_wm_state(Client *c, xcb_atom_t state, xcb_ewmh_wm_state_action_t action) 
 
 	if (state == ewmh->_NET_WM_STATE_MAXIMIZED_VERT) {
 		if (action == ADD_STATE) {
-		}
-		else if (action == REMOVE_STATE) {
-		}
-		else if (action == TOGGLE_STATE) {
+		} else if (action == REMOVE_STATE) {
+		} else if (action == TOGGLE_STATE) {
 		}
 	}
 	else if (state == ewmh->_NET_WM_STATE_MAXIMIZED_HORZ) {
 		if (action == ADD_STATE) {
-		}
-		else if (action == REMOVE_STATE) {
-		}
-		else if (action == TOGGLE_STATE) {
+		} else if (action == REMOVE_STATE) {
+		} else if (action == TOGGLE_STATE) {
 		}
 	}
 	else if (state == ewmh->_NET_WM_STATE_HIDDEN) {
 		if (action == ADD_STATE) {
-		}
-		else if (action == REMOVE_STATE) {
-		}
-		else if (action == TOGGLE_STATE) {
+		} else if (action == REMOVE_STATE) {
+		} else if (action == TOGGLE_STATE) {
 		}
 	}
 	else if (state == ewmh->_NET_WM_STATE_FULLSCREEN) {
 		if (action == ADD_STATE) {
 			maximizeclient(c, true);
-		}
-		else if (action == REMOVE_STATE) {
+		} else if (action == REMOVE_STATE) {
 			maximizeclient(c, false);
-		}
-		else if (action == TOGGLE_STATE) {
+		} else if (action == TOGGLE_STATE) {
 			maximizeclient(c, c->ewmh_flags & EWMH_FULLSCREEN);
 		}
 	}
 	else if (state == ewmh->_NET_WM_STATE_ABOVE) {
 		if (action == ADD_STATE) {
-		}
-		else if (action == REMOVE_STATE) {
-		}
-		else if (action == TOGGLE_STATE) {
+		} else if (action == REMOVE_STATE) {
+		} else if (action == TOGGLE_STATE) {
 		}
 	}
 	else if (state == ewmh->_NET_WM_STATE_BELOW) {
 		if (action == ADD_STATE) {
-		}
-		else if (action == REMOVE_STATE) {
-		}
-		else if (action == TOGGLE_STATE) {
+		} else if (action == REMOVE_STATE) {
+		} else if (action == TOGGLE_STATE) {
 		}
 	}
 }
