@@ -86,19 +86,19 @@ enum {
 
 typedef struct Client Client;
 struct Client {
-	xcb_rectangle_t       geom;
-	xcb_rectangle_t       old_geom;
-	xcb_size_hints_t      size_hints;
-	int32_t               wm_hints;
-	uint32_t              ewmh_flags;
-	bool                  noborder;
-	bool                  can_focus;
-	bool                  can_delete;
-	xcb_window_t          frame;
-	Client               *next;
-	Client               *snext;
-	xcb_window_t          win;
-	unsigned int          ws;
+	xcb_rectangle_t   geom;
+	xcb_rectangle_t   old_geom;
+	xcb_size_hints_t  size_hints;
+	int32_t           wm_hints;
+	uint32_t          ewmh_flags;
+	bool              noborder;
+	bool              can_focus;
+	bool              can_delete;
+	xcb_window_t      frame;
+	Client           *next;
+	Client           *snext;
+	xcb_window_t      win;
+	unsigned int      ws;
 };
 
 typedef struct cursor_t {

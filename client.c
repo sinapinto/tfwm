@@ -85,6 +85,7 @@ manage(xcb_window_t w) {
 	xcb_get_property_cookie_t           nhc;
 	xcb_get_property_cookie_t           hc;
 	xcb_get_property_cookie_t           pc;
+	xcb_icccm_wm_hints_t                wmh;
 	xcb_icccm_get_wm_protocols_reply_t  pr;
 	unsigned int                        i;
 	uint32_t                            val[1];
@@ -162,19 +163,10 @@ manage(xcb_window_t w) {
 #endif
 
 	/* get wm hints */
-	xcb_icccm_wm_hints_t *wmh;
 	hc = xcb_icccm_get_wm_hints(conn, c->win);
-	xcb_icccm_get_wm_hints_reply(conn, hc, wmh, NULL);
-	c->wm_hints = wmh->flags;
-	PRINTF("wmh->flags: %d\n", wmh->flags);
-	/* XCB_ICCCM_WM_HINT_INPUT */
-	/* XCB_ICCCM_WM_HINT_STATE */
-	/* XCB_ICCCM_WM_HINT_ICON_PIXMAP */
-	/* XCB_ICCCM_WM_HINT_ICON_WINDOW */
-	/* XCB_ICCCM_WM_HINT_ICON_POSITION */
-	/* XCB_ICCCM_WM_HINT_ICON_MASK */
-	/* XCB_ICCCM_WM_HINT_WINDOW_GROUP */
-	/* XCB_ICCCM_WM_HINT_X_URGENCY */
+	xcb_icccm_get_wm_hints_reply(conn, hc, &wmh, NULL);
+	c->wm_hints = wmh.flags;
+
 	if (c->wm_hints & XCB_ICCCM_WM_HINT_X_URGENCY) {
 		PRINTF("ICCCM: Urgent win %#x\n", c->win);
 	}
