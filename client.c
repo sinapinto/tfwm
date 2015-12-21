@@ -391,28 +391,35 @@ raisewindow(xcb_drawable_t win) {
 
 void
 resize(const Arg *arg) {
-	int iw = resize_step;
-	int ih = resize_step;
+	int32_t iw, ih;
 
 	if (!sel)
 		return;
 
-	if (sel->size_hints.width_inc > 7
-	    && sel->size_hints.width_inc < screen->width_in_pixels)
-		iw = sel->size_hints.width_inc;
+	iw = resize_step;
+	ih = resize_step;
 
-	if (sel->size_hints.height_inc > 7
-	    && sel->size_hints.height_inc < screen->height_in_pixels)
+	if (sel->size_hints.width_inc > 0)
+		iw = sel->size_hints.width_inc;
+	if (sel->size_hints.height_inc > 0)
 		ih = sel->size_hints.height_inc;
 
 	if (arg->i == GrowHeight || arg->i == GrowBoth) {
-		sel->geom.height = MIN(sel->geom.height + ih,
-				       sel->size_hints.max_height);
+		if (sel->size_hints.max_height > 0) {
+			sel->geom.height = MIN(sel->geom.height + ih,
+					       sel->size_hints.max_height);
+		} else {
+			sel->geom.height += ih;
+		}
 	}
 
 	if (arg->i == GrowWidth || arg->i == GrowBoth) {
-		sel->geom.width = MIN(sel->geom.width + iw,
-				      sel->size_hints.max_width);
+		if (sel->size_hints.max_width > 0) {
+			sel->geom.width = MIN(sel->geom.width + ih,
+					       sel->size_hints.max_width);
+		} else {
+			sel->geom.width += ih;
+		}
 	}
 
 	if (arg->i == ShrinkHeight || arg->i == ShrinkBoth) {
@@ -445,6 +452,7 @@ resize(const Arg *arg) {
 
 void
 resizewin(xcb_window_t win, uint16_t w, uint16_t h) {
+	PRINTF("reszewin win %#x %dx%d\n", win, w, h);
 	const uint32_t values[] = { w, h };
 	const uint32_t mask = XCB_CONFIG_WINDOW_WIDTH
 		| XCB_CONFIG_WINDOW_HEIGHT;
@@ -559,7 +567,7 @@ teleport(const Arg *arg) {
 
 void
 unmanage(Client *c) {
-	PRINTF("unmanage: win %#x\n", c->win);
+	PRINTF("unmanage win %#x\n", c->win);
 	detach(c);
 	detachstack(c);
 	if (c->frame)

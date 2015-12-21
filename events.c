@@ -151,21 +151,25 @@ configurerequest(xcb_generic_event_t *ev) {
 #endif
 
 	if ((c = wintoclient(e->window))) {
-		/* if (e->value_mask & XCB_CONFIG_WINDOW_X) */
-		/*	v[i++] = e->x; */
-		/* if (e->value_mask & XCB_CONFIG_WINDOW_Y) */
-		/*	v[i++] = e->y; */
+		if (e->value_mask & XCB_CONFIG_WINDOW_X) {
+			mask |= XCB_CONFIG_WINDOW_X;
+			v[i++] = e->x;
+			c->geom.x = e->x;
+		}
+		if (e->value_mask & XCB_CONFIG_WINDOW_Y) {
+			mask |= XCB_CONFIG_WINDOW_Y;
+			v[i++] = e->y;
+			c->geom.y = e->y;
+		}
 		if (e->value_mask & XCB_CONFIG_WINDOW_WIDTH) {
-			if (!ISFULLSCREEN(c) && !ISMAXHORZ(c)) {
-				mask |= XCB_CONFIG_WINDOW_WIDTH;
-				v[i++] = c->geom.width = MIN(e->width, screen->width_in_pixels-2*border_width);
-			}
+			mask |= XCB_CONFIG_WINDOW_WIDTH;
+			v[i++] = e->width;
+			c->geom.width = e->width;
 		}
 		if (e->value_mask & XCB_CONFIG_WINDOW_HEIGHT) {
-			if (!ISFULLSCREEN(c) && !ISMAXVERT(c)) {
-				mask |= XCB_CONFIG_WINDOW_HEIGHT;
-				v[i++] = c->geom.height = MIN(e->height, screen->height_in_pixels-2*border_width);
-			}
+			mask |= XCB_CONFIG_WINDOW_HEIGHT;
+			v[i++] = e->height;
+			c->geom.height = e->height;
 		}
 		if (e->value_mask & XCB_CONFIG_WINDOW_SIBLING) {
 			mask |= XCB_CONFIG_WINDOW_SIBLING;
@@ -181,8 +185,10 @@ configurerequest(xcb_generic_event_t *ev) {
 			setborder(c, true);
 		}
 
-		if (!ISFULLSCREEN(c) && !ISMAXVERT(c) && !ISMAXHORZ(c))
+		if (i > 0) {
 			xcb_configure_window(conn, e->window, mask, v);
+			xcb_configure_window(conn, c->frame, mask, v);
+		}
 
 		xcb_configure_notify_event_t evt;
 		memset(&evt, '\0', sizeof evt);
