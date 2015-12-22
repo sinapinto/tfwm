@@ -43,31 +43,21 @@ find_config(char *file) {
 	return NULL;
 }
 
-#define OPT(_opt) (strcmp(_opt, key) == 0)
-
 void setopt(char *key, char *val) {
 	PRINTF("Config: %s: %s\n", key, val);
 
-	if (OPT("double_border")) {
-		double_border = (atoi(val) != 0);
+#define OPT(_opt) (strcmp(_opt, key) == 0)
+	if (OPT("pixmap_border")) {
+		pixmap_border = (atoi(val) != 0);
 	}
 	else if (OPT("border_width")) {
 		border_width = atoi(val);
 		if (border_width < 0)
 			border_width = 0;
 	}
-	else if (OPT("outer_border_width")) {
-		outer_border_width = atoi(val);
-		if (outer_border_width < 0)
-			outer_border_width = 0;
-	}
 	else if (OPT("focus_color")) {
                 focus_color = malloc(strlen(val) + 1);
 		snprintf(focus_color, strlen(val) + 1, "%s", val);
-	}
-	else if (OPT("outer_color")) {
-                outer_color = malloc(strlen(val) + 1);
-		snprintf(outer_color, strlen(val) + 1, "%s", val);
 	}
 	else if (OPT("unfocus_color")) {
                 unfocus_color = malloc(strlen(val) + 1);
@@ -103,11 +93,9 @@ struct {
 	char * key;
 	void (*func)(char *, char *);
 } config[] = {
-	{ "double_border",      setopt },
+	{ "pixmap_border",      setopt },
 	{ "border_width",       setopt },
-	{ "outer_border_width", setopt },
 	{ "focus_color",        setopt },
-	{ "outer_color",        setopt },
 	{ "unfocus_color",      setopt },
 	{ "move_step",          setopt },
 	{ "resize_step",        setopt },

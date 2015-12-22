@@ -54,46 +54,15 @@ unsigned int prevws = 0;
 Client *sel;
 Client *clients;
 /* config defaults */
-bool double_border     = false;
+bool pixmap_border      = false;
 int border_width       = 4;
-int outer_border_width = 4;
 int move_step          = 30;
 int resize_step        = 30;
 bool sloppy_focus      = false;
 bool java_workaround   = true;
 int cursor_position    = 0;
 char *focus_color;
-char *outer_color;
 char *unfocus_color;
-
-void
-cleanup(void) {
-	PRINTF("========= shutting down ==========\n");
-
-	xcb_set_input_focus(conn, XCB_NONE, XCB_INPUT_FOCUS_POINTER_ROOT,
-			    XCB_CURRENT_TIME);
-	while (stack) {
-		/* unmap and then free */
-		/* xcb_reparent_window(conn, stack->win, screen->root, */
-		/* 		    stack->geom.x, stack->geom.y); */
-		/* xcb_destroy_window(conn, stack->frame); */
-		PRINTF("unmapping win %#x\n", stack->win);
-		xcb_unmap_window(conn, stack->win);
-
-		detach(stack);
-		detachstack(stack);
-		free(stack);
-	}
-
-	ewmh_teardown();
-	free_cursors();
-	free(focus_color);
-	free(outer_color);
-	free(unfocus_color);
-	xcb_flush(conn);
-	xcb_disconnect(conn);
-	warn("-------------- bye -------------\n");
-}
 
 void
 quit(const Arg *arg) {
@@ -107,6 +76,18 @@ restart(const Arg *arg) {
 	(void) arg;
 	dorestart = true;
 	sigcode = 1;
+}
+
+void
+sigcatch(int sig) {
+	sigcode = sig;
+}
+
+void
+sigchld() {
+	if (signal(SIGCHLD, sigchld) == SIG_ERR)
+		err("can't install SIGCHLD handler.");
+	while (0 < waitpid(-1, NULL, WNOHANG));
 }
 
 void
@@ -126,17 +107,31 @@ run(void) {
 	}
 }
 
-
 void
-sigcatch(int sig) {
-	sigcode = sig;
-}
+cleanup(void) {
+	PRINTF("========= shutting down ==========\n");
 
-void
-sigchld() {
-	if (signal(SIGCHLD, sigchld) == SIG_ERR)
-		err("can't install SIGCHLD handler.");
-	while (0 < waitpid(-1, NULL, WNOHANG));
+	xcb_set_input_focus(conn, XCB_NONE, XCB_INPUT_FOCUS_POINTER_ROOT,
+			    XCB_CURRENT_TIME);
+	while (stack) {
+		/* xcb_reparent_window(conn, stack->win, screen->root, */
+		/* 		    stack->geom.x, stack->geom.y); */
+		/* xcb_destroy_window(conn, stack->frame); */
+		PRINTF("unmap and free win %#x\n", stack->win);
+		xcb_unmap_window(conn, stack->win);
+
+		detach(stack);
+		detachstack(stack);
+		free(stack);
+	}
+
+	ewmh_teardown();
+	free_cursors();
+	free(focus_color);
+	free(unfocus_color);
+	xcb_flush(conn);
+	xcb_disconnect(conn);
+	PRINTF("bye\n\n");
 }
 
 void
@@ -145,7 +140,6 @@ remanage_windows(void) {
 	xcb_query_tree_reply_t             *qtr;
 	xcb_get_window_attributes_cookie_t  gac;
 	xcb_get_window_attributes_reply_t  *gar;
-
 
 	qtc = xcb_query_tree(conn, screen->root);
 	if ((qtr = xcb_query_tree_reply(conn, qtc, NULL))) {
@@ -159,7 +153,7 @@ remanage_windows(void) {
 
 			gac = xcb_get_window_attributes(conn, children[i]);
 			gar = xcb_get_window_attributes_reply(conn, gac, NULL);
-			if (gar == NULL)
+			if (!gar)
 				continue;
 			if (gar->override_redirect) {
 				PRINTF("remanage_windows: skip %#x: "
@@ -208,7 +202,6 @@ setup(void) {
 
 	focuscol = getcolor(focus_color);
 	unfocuscol = getcolor(unfocus_color);
-	outercol = getcolor(outer_color);
 
 	load_cursors();
 	vals[0] = cursors[XC_LEFT_PTR].cid;
