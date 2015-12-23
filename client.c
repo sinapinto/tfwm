@@ -49,17 +49,20 @@ fitclient(Client *c) {
 	if (c->noborder)
 		return;
 
-	if (c->geom.width >= screen->width_in_pixels-2*border_width) {
-		c->geom.width = screen->width_in_pixels - border_width * 2;
+	if (c->geom.width >= screen->width_in_pixels - 2 * border_width) {
+		c->geom.width = screen->width_in_pixels - 2 * border_width;
 		update = true;
 	}
 
-	if (c->geom.height >= screen->height_in_pixels-2*border_width) {
-		c->geom.height = screen->height_in_pixels - border_width * 2;
+	if (c->geom.height >= screen->height_in_pixels - 2 * border_width) {
+		c->geom.height = screen->height_in_pixels - 2 * border_width;
 		update = true;
 	}
 
 	if (update) {
+		PRINTF("fitclient win %#x to (%d,%d) %dx%d\n",
+			c->win, c->geom.x, c->geom.y,
+			c->geom.width, c->geom.height);
 		c->geom.x = c->geom.y = 0;
 		moveresize_win(c->win, c->geom.x, c->geom.y,
 			       c->geom.width, c->geom.height);
@@ -190,10 +193,11 @@ manage(xcb_window_t w) {
 	sel = c;
 	fitclient(c);
 
-	val[0] = CLIENT_EVENT_MASK;
-
-	if (sloppy_focus)
+	if (sloppy_focus) {
+		val[0] = CLIENT_EVENT_MASK;
 		xcb_change_window_attributes(conn, w, XCB_CW_EVENT_MASK, val);
+	}
+
 	if (c->ws == selws)
 		xcb_map_window(conn, w);
 

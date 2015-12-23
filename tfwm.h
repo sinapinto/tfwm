@@ -177,7 +177,6 @@ extern int scrno;
 extern Client *stack;
 extern xcb_ewmh_connection_t *ewmh;
 extern uint32_t focuscol, unfocuscol, outercol;
-extern bool dorestart;
 extern bool shape_ext;
 extern xcb_atom_t WM_DELETE_WINDOW;
 extern xcb_atom_t WM_TAKE_FOCUS;

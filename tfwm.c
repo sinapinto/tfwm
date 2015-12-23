@@ -38,7 +38,7 @@ Client *stack;
 int sigcode;
 xcb_ewmh_connection_t *ewmh;
 uint32_t focuscol, unfocuscol, outercol;
-bool dorestart;
+bool restart_wm;
 bool shape_ext;
 xcb_atom_t WM_DELETE_WINDOW;
 xcb_atom_t WM_TAKE_FOCUS;
@@ -74,13 +74,24 @@ quit(const Arg *arg) {
 void
 restart(const Arg *arg) {
 	(void) arg;
-	dorestart = true;
+	restart_wm = true;
 	sigcode = 1;
 }
 
 void
 sigcatch(int sig) {
-	sigcode = sig;
+	switch (sig) {
+	case SIGINT:
+	case SIGTERM:
+	case SIGQUIT:
+		sigcode = sig;
+		break;
+	case SIGHUP:
+	case SIGUSR1:
+		restart_wm = true;
+		sigcode = sig;
+		break;
+	}
 }
 
 void
@@ -131,7 +142,7 @@ cleanup(void) {
 	free(unfocus_color);
 	xcb_flush(conn);
 	xcb_disconnect(conn);
-	PRINTF("bye\n\n");
+	PRINTF("bye\n");
 }
 
 void
@@ -220,7 +231,7 @@ main(int argc, char **argv) {
 
 	warn("welcome to tfwm %s\n", VERSION);
 
-	/* set up shared XLib/XCB connection */
+	/* open shared XLib/XCB connection */
 	if ((display = XOpenDisplay(NULL)) == NULL)
 		err("can't open display.");
 
@@ -233,9 +244,12 @@ main(int argc, char **argv) {
 	/* reap children */
 	sigchld();
 
-	/* set up signal handlers */
+	/* add signal handlers */
 	signal(SIGINT, sigcatch);
 	signal(SIGTERM, sigcatch);
+	signal(SIGQUIT, sigcatch);
+	signal(SIGHUP, sigcatch);
+	signal(SIGUSR1, sigcatch);
 
 	scrno = 0;
 
@@ -251,7 +265,7 @@ main(int argc, char **argv) {
 	run();
 	cleanup();
 
-	if (dorestart)
+	if (restart_wm)
 		execvp(argv[0], argv);
 
 	return EXIT_SUCCESS;
