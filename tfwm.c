@@ -54,7 +54,7 @@ unsigned int prevws = 0;
 Client *sel;
 Client *clients;
 /* config defaults */
-bool pixmap_border      = false;
+bool pixmap_border     = false;
 int border_width       = 4;
 int move_step          = 30;
 int resize_step        = 30;
@@ -251,7 +251,7 @@ main(int argc, char **argv) {
 	signal(SIGHUP, sigcatch);
 	signal(SIGUSR1, sigcatch);
 
-	scrno = 0;
+	scrno = XDefaultScreen(display);
 
 	/* load config */
 	if ((rc_path = find_config("tfwmrc"))) {
