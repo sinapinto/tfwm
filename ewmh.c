@@ -31,7 +31,7 @@ ewmh_setup() {
 		ewmh->_NET_REQUEST_FRAME_EXTENTS,
 		ewmh->_NET_FRAME_EXTENTS,
 		ewmh->_NET_WM_STATE,
-		/* ewmh->_NET_WM_STATE_MODAL, */
+		ewmh->_NET_WM_STATE_MODAL,
 		/* ewmh->_NET_WM_STATE_STICKY, */
 		ewmh->_NET_WM_STATE_MAXIMIZED_VERT,
 		ewmh->_NET_WM_STATE_MAXIMIZED_HORZ,
@@ -268,6 +268,11 @@ ewmh_get_wm_window_type(Client *c) {
 			       c->win, name);
 			free(name);
 #endif
+			if (a == ewmh->_NET_WM_WINDOW_TYPE_DIALOG ||
+			    a == ewmh->_NET_WM_WINDOW_TYPE_SPLASH ||
+			    a == ewmh->_NET_WM_WINDOW_TYPE_NOTIFICATION) {
+				teleport_client(c, Center);
+			}
 		}
 		xcb_ewmh_get_atoms_reply_wipe(&win_type);
 	}

@@ -593,47 +593,52 @@ showhide(Client *c) {
 
 void
 teleport(const Arg *arg) {
+	if (!sel || sel->win == screen->root)
+		return;
+
+	teleport_client(sel, arg->i);
+}
+
+void
+teleport_client(Client *c, uint16_t location) {
 	uint16_t tw;
 	uint16_t th;
 
-	if (!sel || sel->frame == screen->root)
-		return;
+	tw = c->geom.width;
+	th = c->geom.height;
 
-	tw = sel->geom.width;
-	th = sel->geom.height;
-
-	if (!sel->noborder) {
+	if (!c->noborder) {
 		tw += border_width * 2;
 		th += border_width * 2;
 	}
 
-	switch (arg->i) {
+	switch (location) {
 		case Center:
-			sel->geom.x = (screen->width_in_pixels - tw) / 2;
-			sel->geom.y = (screen->height_in_pixels - th) / 2;
+			c->geom.x = (screen->width_in_pixels - tw) / 2;
+			c->geom.y = (screen->height_in_pixels - th) / 2;
 			break;
 		case TopLeft:
-			sel->geom.x = 0;
-			sel->geom.y = 0;
+			c->geom.x = 0;
+			c->geom.y = 0;
 			break;
 		case TopRight:
-			sel->geom.x = screen->width_in_pixels - tw;
-			sel->geom.y = 0;
+			c->geom.x = screen->width_in_pixels - tw;
+			c->geom.y = 0;
 			break;
 		case BottomLeft:
-			sel->geom.x = 0;
-			sel->geom.y = screen->height_in_pixels - th;
+			c->geom.x = 0;
+			c->geom.y = screen->height_in_pixels - th;
 			break;
 		case BottomRight:
-			sel->geom.x = screen->width_in_pixels - tw;
-			sel->geom.y = screen->height_in_pixels - th;
+			c->geom.x = screen->width_in_pixels - tw;
+			c->geom.y = screen->height_in_pixels - th;
 			break;
 	}
 
 	PRINTF("teleport win %#x to (%d,%d)\n",
-	       sel->frame, sel->geom.x, sel->geom.y);
-	movewin(sel->frame, sel->geom.x, sel->geom.y);
-	warp_pointer(sel);
+	       c->frame, c->geom.x, c->geom.y);
+	movewin(c->frame, c->geom.x, c->geom.y);
+	warp_pointer(c);
 }
 
 void

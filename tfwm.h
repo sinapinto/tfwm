@@ -162,6 +162,7 @@ void setborderwidth(xcb_window_t win, uint16_t bw);
 void showhide(Client *c);
 void spawn(const Arg *arg);
 void teleport(const Arg *arg);
+void teleport_client(Client *c, uint16_t location);
 void unmanage(Client *c);
 void updatenumlockmask(void);
 void warn(const char *fmt, ...);

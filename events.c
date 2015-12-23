@@ -107,8 +107,8 @@ clientmessage(xcb_generic_event_t *ev) {
 		return;
 
 	if (e->type == ewmh->_NET_WM_STATE) {
-		if (e->data.data32[1] == ewmh->_NET_WM_STATE_FULLSCREEN
-		    || e->data.data32[2] == ewmh->_NET_WM_STATE_FULLSCREEN) {
+		if (e->data.data32[1] == ewmh->_NET_WM_STATE_FULLSCREEN ||
+		    e->data.data32[2] == ewmh->_NET_WM_STATE_FULLSCREEN) {
 			handle_wm_state(c, ewmh->_NET_WM_STATE_FULLSCREEN,
 					e->data.data32[0]);
 		}
