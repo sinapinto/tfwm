@@ -53,16 +53,6 @@ unsigned int selws = 0;
 unsigned int prevws = 0;
 Client *sel;
 Client *clients;
-/* config defaults */
-bool pixmap_border     = false;
-int border_width       = 4;
-int move_step          = 30;
-int resize_step        = 30;
-bool sloppy_focus      = false;
-bool java_workaround   = true;
-int cursor_position    = 0;
-char *focus_color;
-char *unfocus_color;
 
 void
 quit(const Arg *arg) {
@@ -211,8 +201,15 @@ setup(void) {
 	updatenumlockmask();
 	grabkeys();
 
-	focuscol = getcolor(focus_color);
-	unfocuscol = getcolor(unfocus_color);
+	if (focus_color)
+		focuscol = getcolor(focus_color);
+	else
+		focuscol = getcolor(DEFAULT_FOCUS_COLOR);
+
+	if (unfocus_color)
+		unfocuscol = getcolor(unfocus_color);
+	else
+		unfocuscol = getcolor(DEFAULT_UNFOCUS_COLOR);
 
 	load_cursors();
 	vals[0] = cursors[XC_LEFT_PTR].cid;

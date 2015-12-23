@@ -1,8 +1,8 @@
 # ~/.tfwmrc
 
 pixmap_border   = 1
-border_width    = 2
-focus_color     = tomato
+border_width    = 4
+focus_color     = lime green
 unfocus_color   = slate gray
 
 move_step       = 30

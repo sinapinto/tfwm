@@ -7,6 +7,7 @@
 #include "keys.h"
 #include "ewmh.h"
 #include "xcb.h"
+#include "config.h"
 
 void
 applyrules(Client *c) {

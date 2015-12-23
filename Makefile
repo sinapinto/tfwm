@@ -33,13 +33,13 @@ debug: tfwm
 
 tfwm.o: tfwm.c list.h client.h workspace.h events.h keys.h pointer.h ewmh.h \
         config.h
-events.o: events.c tfwm.h client.h list.h events.h ewmh.h
-client.o: client.c tfwm.h list.h client.h keys.h ewmh.h xcb.h
+events.o: events.c tfwm.h client.h list.h events.h ewmh.h config.h
+client.o: client.c tfwm.h list.h client.h keys.h ewmh.h xcb.h config.h
 list.o: list.c tfwm.h client.h list.h xcb.h
 workspace.o: workspace.c tfwm.h list.h client.h
 keys.o: keys.c tfwm.h list.h client.h events.h workspace.h pointer.h
-pointer.o: pointer.c tfwm.h events.h
-ewmh.o: ewmh.c tfwm.h
+pointer.o: pointer.c tfwm.h events.h config.h
+ewmh.o: ewmh.c tfwm.h config.h
 config.o: config.c tfwm.h
 shape.o: shape.c tfwm.h
 xcb.o: xcb.c tfwm.h

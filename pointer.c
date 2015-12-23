@@ -6,6 +6,7 @@
 #include "events.h"
 #include "pointer.h"
 #include "ewmh.h"
+#include "config.h"
 
 void
 load_cursors(void) {

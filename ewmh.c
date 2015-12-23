@@ -4,6 +4,7 @@
 #include <xcb/xcb_ewmh.h>
 #include "tfwm.h"
 #include "ewmh.h"
+#include "config.h"
 
 void
 ewmh_setup() {

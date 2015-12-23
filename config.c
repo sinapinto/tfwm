@@ -13,6 +13,31 @@
 static void setopt(char *key, char *val);
 static bool is_regular_file(char *path);
 
+bool pixmap_border   = false;
+int border_width     = 4;
+int move_step        = 30;
+int resize_step      = 30;
+bool sloppy_focus    = false;
+bool java_workaround = true;
+int cursor_position  = 0;
+char *focus_color;
+char *unfocus_color;
+
+struct {
+	char * key;
+	void (*func)(char *, char *);
+} config[] = {
+	{ "pixmap_border",      setopt },
+	{ "border_width",       setopt },
+	{ "move_step",          setopt },
+	{ "resize_step",        setopt },
+	{ "sloppy_focus",       setopt },
+	{ "java_workaround",    setopt },
+	{ "cursor_position",    setopt },
+	{ "focus_color",        setopt },
+	{ "unfocus_color",      setopt },
+};
+
 bool
 is_regular_file(char *path) {
 	struct stat statbuf;
@@ -49,60 +74,36 @@ void setopt(char *key, char *val) {
 #define OPT(_opt) (strcmp(_opt, key) == 0)
 	if (OPT("pixmap_border")) {
 		pixmap_border = (atoi(val) != 0);
-	}
-	else if (OPT("border_width")) {
+	} else if (OPT("border_width")) {
 		border_width = atoi(val);
 		if (border_width < 0)
 			border_width = 0;
-	}
-	else if (OPT("focus_color")) {
+	} else if (OPT("focus_color")) {
                 focus_color = malloc(strlen(val) + 1);
 		snprintf(focus_color, strlen(val) + 1, "%s", val);
-	}
-	else if (OPT("unfocus_color")) {
+	} else if (OPT("unfocus_color")) {
                 unfocus_color = malloc(strlen(val) + 1);
 		snprintf(unfocus_color, strlen(val) + 1, "%s", val);
-	}
-	else if (OPT("move_step")) {
+	} else if (OPT("move_step")) {
 		move_step = atoi(val);
 		if (move_step < 0)
 			move_step = 0;
-	}
-	else if (OPT("resize_step")) {
+	} else if (OPT("resize_step")) {
 		resize_step = atoi(val);
 		if (resize_step < 0)
 			resize_step = 0;
-	}
-	else if (OPT("sloppy_focus")) {
+	} else if (OPT("sloppy_focus")) {
 		sloppy_focus = (atoi(val) != 0);
-	}
-	else if (OPT("java_workaround")) {
+	} else if (OPT("java_workaround")) {
 		java_workaround = (atoi(val) != 0);
-	}
-	else if (OPT("cursor_position")) {
+	} else if (OPT("cursor_position")) {
 		cursor_position = atoi(val);
 		if (cursor_position < 0)
 			cursor_position = 0;
-	}
-	else {
+	} else {
 		warn("setopt: no handler for %s\n", key);
 	}
 }
-
-struct {
-	char * key;
-	void (*func)(char *, char *);
-} config[] = {
-	{ "pixmap_border",      setopt },
-	{ "border_width",       setopt },
-	{ "focus_color",        setopt },
-	{ "unfocus_color",      setopt },
-	{ "move_step",          setopt },
-	{ "resize_step",        setopt },
-	{ "sloppy_focus",       setopt },
-	{ "java_workaround",    setopt },
-	{ "cursor_position",    setopt },
-};
 
 int
 parse_config(char *fname) {

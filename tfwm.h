@@ -179,7 +179,6 @@ extern unsigned int numlockmask;
 extern int scrno;
 extern Client *stack;
 extern xcb_ewmh_connection_t *ewmh;
-extern uint32_t focuscol, unfocuscol, outercol;
 extern bool shape_ext;
 extern xcb_atom_t WM_DELETE_WINDOW;
 extern xcb_atom_t WM_TAKE_FOCUS;
@@ -190,14 +189,5 @@ extern unsigned int selws;
 extern unsigned int prevws;
 extern Client *clients;
 extern Client *sel;
-extern bool pixmap_border;
-extern int border_width;
-extern char *focus_color;
-extern char *unfocus_color;
-extern int move_step;
-extern int resize_step;
-extern bool sloppy_focus;
-extern bool java_workaround;
-extern int cursor_position;
 
 #endif /* TFWM_H */
