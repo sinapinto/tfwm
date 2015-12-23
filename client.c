@@ -218,6 +218,44 @@ reparent(Client *c) {
 	width = c->geom.width;
 	height = c->geom.height;
 
+	switch (GRAVITY(c)) {
+	case XCB_GRAVITY_NORTH_WEST:
+	case XCB_GRAVITY_BIT_FORGET:
+		break;
+	case XCB_GRAVITY_NORTH:
+		x -= border_width;
+		break;
+	case XCB_GRAVITY_NORTH_EAST:
+		x -= 2 * border_width;
+		break;
+	case XCB_GRAVITY_EAST:
+		x -= 2 * border_width;
+		y -= border_width;
+		break;
+	case XCB_GRAVITY_SOUTH_EAST:
+		x -= 2 * border_width;
+		y -= 2 * border_width;
+		break;
+	case XCB_GRAVITY_SOUTH:
+		x -= border_width;
+		y -= 2 * border_width;
+		break;
+	case XCB_GRAVITY_SOUTH_WEST:
+		y -= 2 * border_width;
+		break;
+	case XCB_GRAVITY_WEST:
+		y -= border_width;
+		break;
+	case XCB_GRAVITY_STATIC:
+		y -= border_width;
+		x -= border_width;
+		break;
+	case XCB_GRAVITY_CENTER:
+		x -= border_width;
+		y -= border_width;
+		break;
+	}
+
 	c->frame = xcb_generate_id(conn);
 
 	mask = XCB_CW_BORDER_PIXEL

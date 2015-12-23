@@ -13,6 +13,7 @@ static void clientmessage(xcb_generic_event_t *ev);
 static void configurerequest(xcb_generic_event_t *ev);
 static void destroynotify(xcb_generic_event_t *ev);
 static void enternotify(xcb_generic_event_t *ev);
+static void gravitynotify(xcb_generic_event_t *ev);
 static void keypress(xcb_generic_event_t *ev);
 static void mappingnotify(xcb_generic_event_t *ev);
 static void propertynotify(xcb_generic_event_t *ev);
@@ -39,6 +40,9 @@ handleevent(xcb_generic_event_t *ev) {
 			break;
 		case XCB_ENTER_NOTIFY:
 			enternotify(ev);
+			break;
+		case XCB_GRAVITY_NOTIFY:
+			gravitynotify(ev);
 			break;
 		case XCB_KEY_PRESS:
 			keypress(ev);
@@ -258,6 +262,14 @@ enternotify(xcb_generic_event_t *ev) {
 			focus(c);
 		}
 	}
+}
+
+void
+gravitynotify(xcb_generic_event_t *ev) {
+	xcb_gravity_notify_event_t *e = (xcb_gravity_notify_event_t *)ev;
+
+	PRINTF("Event: gravity notify: win %#x\n", e->event);
+	(void)e;
 }
 
 void

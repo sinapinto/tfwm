@@ -43,6 +43,8 @@
 #define ISHIDDEN(C)     ((C)->ewmh_flags & EWMH_HIDDEN)
 #define ISBELOW(C)      ((C)->ewmh_flags & EWMH_BELOW)
 #define ISABOVE(C)      ((C)->ewmh_flags & EWMH_ABOVE)
+#define GRAVITY(C)      ((C->size_hints.flags & XCB_ICCCM_SIZE_HINT_P_WIN_GRAVITY) ? \
+                         C->size_hints.win_gravity : XCB_GRAVITY_NORTH_WEST)
 
 /* types */
 typedef union {
