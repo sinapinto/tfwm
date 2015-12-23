@@ -190,7 +190,7 @@ configurerequest(xcb_generic_event_t *ev) {
 		}
 
 		if (i > 0) {
-			xcb_configure_window(conn, e->window, mask, v);
+			xcb_configure_window(conn, c->win, mask, v);
 			xcb_configure_window(conn, c->frame, mask, v);
 		}
 

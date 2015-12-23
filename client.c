@@ -542,12 +542,12 @@ setborder(Client *c, bool focus) {
 	if (ISFULLSCREEN(c) || c->noborder)
 		return;
 
-	if (!pixmap_border) {
+	/* if (!pixmap_border) { */
 		val[0] = focus ? focuscol : unfocuscol;
 		xcb_change_window_attributes(conn, c->frame,
 					     XCB_CW_BORDER_PIXEL, val);
 		return;
-	}
+	/* } */
 
 	/* pmap = xcb_generate_id(conn); */
 	/* gc = xcb_generate_id(conn); */
@@ -637,7 +637,10 @@ teleport_client(Client *c, uint16_t location) {
 
 	PRINTF("teleport win %#x to (%d,%d)\n",
 	       c->frame, c->geom.x, c->geom.y);
-	movewin(c->frame, c->geom.x, c->geom.y);
+	if (c->frame)
+		movewin(c->frame, c->geom.x, c->geom.y);
+	else if (c->win)
+		movewin(c->win, c->geom.x, c->geom.y);
 	warp_pointer(c);
 }
 
