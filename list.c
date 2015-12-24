@@ -2,6 +2,7 @@
 #include "tfwm.h"
 #include "list.h"
 #include "xcb.h"
+#include "util.h"
 
 void
 attach(Client *c) {

@@ -4,6 +4,7 @@
 #include <xcb/xcb_pixel.h>
 #include "tfwm.h"
 #include "shape.h"
+#include "util.h"
 
 enum {
 	TOP_LEFT,

@@ -7,6 +7,7 @@
 #include "events.h"
 #include "ewmh.h"
 #include "config.h"
+#include "util.h"
 
 static void buttonpress(xcb_generic_event_t *ev);
 static void circulaterequest(xcb_generic_event_t *ev);

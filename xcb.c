@@ -3,6 +3,7 @@
 #include <string.h>
 #include "tfwm.h"
 #include "xcb.h"
+#include "util.h"
 
 #ifdef DEBUG
 char *

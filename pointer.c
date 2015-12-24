@@ -7,8 +7,9 @@
 #include "pointer.h"
 #include "ewmh.h"
 #include "config.h"
+#include "util.h"
 
-cursor_t cursors[XC_MAX] = {
+struct cursor_t cursors[XC_MAX] = {
 	{"left_ptr",            XC_left_ptr,            XCB_CURSOR_NONE},
 	{"fleur",               XC_fleur,               XCB_CURSOR_NONE},
 	{"bottom_right_corner", XC_bottom_right_corner, XCB_CURSOR_NONE}

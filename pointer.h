@@ -7,13 +7,13 @@ void load_cursors(void);
 void free_cursors(void);
 void warp_pointer(Client *c);
 
-typedef struct cursor_t {
+struct cursor_t {
 	char         *name;
 	uint8_t       cf_glyph;
 	xcb_cursor_t  cid;
-} cursor_t;
+} ;
 
-extern cursor_t cursors[XC_MAX];
+extern struct cursor_t cursors[XC_MAX];
 
 #endif
 

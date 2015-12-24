@@ -3,6 +3,7 @@
 #include "list.h"
 #include "client.h"
 #include "workspace.h"
+#include "util.h"
 
 static void gotows(unsigned int i);
 

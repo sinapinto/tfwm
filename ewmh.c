@@ -5,6 +5,7 @@
 #include "tfwm.h"
 #include "ewmh.h"
 #include "config.h"
+#include "util.h"
 
 void
 ewmh_setup() {
@@ -296,6 +297,19 @@ ewmh_get_wm_window_type(Client *c) {
 			    a == ewmh->_NET_WM_WINDOW_TYPE_SPLASH ||
 			    a == ewmh->_NET_WM_WINDOW_TYPE_NOTIFICATION) {
 				teleport_client(c, Center);
+			}
+
+			if (a == ewmh->_NET_WM_WINDOW_TYPE_DESKTOP ||
+			    ewmh->_NET_WM_WINDOW_TYPE_DOCK ||
+			    ewmh->_NET_WM_WINDOW_TYPE_TOOLBAR ||
+			    ewmh->_NET_WM_WINDOW_TYPE_MENU ||
+			    ewmh->_NET_WM_WINDOW_TYPE_UTILITY ||
+			    ewmh->_NET_WM_WINDOW_TYPE_DROPDOWN_MENU ||
+			    ewmh->_NET_WM_WINDOW_TYPE_POPUP_MENU ||
+			    ewmh->_NET_WM_WINDOW_TYPE_TOOLTIP ||
+			    ewmh->_NET_WM_WINDOW_TYPE_COMBO ||
+			    ewmh->_NET_WM_WINDOW_TYPE_DND ||
+			    ewmh->_NET_WM_WINDOW_TYPE_NORMAL) {
 			}
 		}
 		xcb_ewmh_get_atoms_reply_wipe(&win_type);

@@ -8,6 +8,7 @@
 #include "ewmh.h"
 #include "xcb.h"
 #include "config.h"
+#include "util.h"
 
 void
 applyrules(Client *c) {

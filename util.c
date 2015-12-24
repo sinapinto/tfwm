@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "tfwm.h"
+#include "util.h"
 
 void
 warn(const char *fmt, ...) {

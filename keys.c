@@ -8,6 +8,7 @@
 #include "workspace.h"
 #include "pointer.h"
 #include "keys.h"
+#include "util.h"
 
 const Rule rules[RULE_MAX] = {
 	/* class           workspace       fullscreen       border */

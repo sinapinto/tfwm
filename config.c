@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include "tfwm.h"
 #include "config.h"
+#include "util.h"
 
 #define PATH_MAX 4096
 #define LINE_MAX 4096
