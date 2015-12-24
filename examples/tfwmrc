@@ -2,8 +2,8 @@
 
 pixmap_border   = 1
 border_width    = 4
-focus_color     = lime green
-unfocus_color   = slate gray
+# focus_color     = #00cc00
+# unfocus_color   = slate gray
 
 move_step       = 30
 resize_step     = 30

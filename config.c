@@ -144,7 +144,7 @@ parse_config(char *fname) {
 		}
 		
 		if (cfg_idx == -1) {
-			warn("%s: couldn't match setting on line %d\n",
+			warn("%s: couldn't match setting key on line %d\n",
 			     fname, line_num);
 			return 1;
 		}
@@ -158,6 +158,7 @@ parse_config(char *fname) {
 			     fname, config[cfg_idx].key, line_num);
 			continue;
 		}
+
 		/* trim trailing newline */
 		if (val[strlen(val)-1] == '\n') {
 			val[strlen(val)-1] = '\0';

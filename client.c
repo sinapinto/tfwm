@@ -65,7 +65,7 @@ fitclient(Client *c) {
 			c->win, c->geom.x, c->geom.y,
 			c->geom.width, c->geom.height);
 		c->geom.x = c->geom.y = 0;
-		moveresize_win(c->win, c->geom.x, c->geom.y,
+		moveresize_win(c->frame, c->geom.x, c->geom.y,
 			       c->geom.width, c->geom.height);
 	}
 }
@@ -163,7 +163,7 @@ manage(xcb_window_t w) {
 		PRINTF("base height: %d\n", c->size_hints.base_height);
 	if (c->size_hints.base_width)
 		PRINTF("base width: %d\n", c->size_hints.base_width);
-	PRINTF("-------------------------------\n");
+	PRINTF("------------------------------\n");
 #endif
 
 	/* get wm hints */
