@@ -44,11 +44,6 @@ xcb_atom_t WM_DELETE_WINDOW;
 xcb_atom_t WM_TAKE_FOCUS;
 xcb_atom_t WM_PROTOCOLS;
 Display *display;
-cursor_t cursors[XC_MAX] = {
-	{"left_ptr",            XC_left_ptr,            XCB_CURSOR_NONE},
-	{"fleur",               XC_fleur,               XCB_CURSOR_NONE},
-	{"bottom_right_corner", XC_bottom_right_corner, XCB_CURSOR_NONE}
-};
 unsigned int selws = 0;
 unsigned int prevws = 0;
 Client *sel;

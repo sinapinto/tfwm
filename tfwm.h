@@ -103,12 +103,6 @@ struct Client {
 	unsigned int      ws;
 };
 
-typedef struct cursor_t {
-	char         *name;
-	uint8_t       cf_glyph;
-	xcb_cursor_t  cid;
-} cursor_t;
-
 enum { MoveDown, MoveRight, MoveUp, MoveLeft };
 enum { GrowHeight, GrowWidth, ShrinkHeight, ShrinkWidth, GrowBoth, ShrinkBoth };
 enum { Center, TopLeft, TopRight, BottomLeft, BottomRight };
@@ -184,7 +178,6 @@ extern xcb_atom_t WM_DELETE_WINDOW;
 extern xcb_atom_t WM_TAKE_FOCUS;
 extern xcb_atom_t WM_PROTOCOLS;
 extern Display *display;
-extern cursor_t cursors[XC_MAX];
 extern unsigned int selws;
 extern unsigned int prevws;
 extern Client *clients;
