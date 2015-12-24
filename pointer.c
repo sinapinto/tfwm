@@ -136,6 +136,7 @@ mousemotion(const Arg *arg) {
 		xcb_flush(conn);
 	}
 	change_ewmh_flags(sel, REMOVE_STATE, EWMH_FULLSCREEN);
+	ewmh_update_wm_state(sel);
 	free(ev);
 	free(qpr);
 	xcb_ungrab_pointer(conn, XCB_CURRENT_TIME);

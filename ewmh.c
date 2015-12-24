@@ -33,14 +33,14 @@ ewmh_setup() {
 		ewmh->_NET_FRAME_EXTENTS,
 		ewmh->_NET_WM_STATE,
 		ewmh->_NET_WM_STATE_MODAL,
-		/* ewmh->_NET_WM_STATE_STICKY, */
+		ewmh->_NET_WM_STATE_STICKY,
 		ewmh->_NET_WM_STATE_MAXIMIZED_VERT,
 		ewmh->_NET_WM_STATE_MAXIMIZED_HORZ,
-		ewmh->_NET_WM_STATE_HIDDEN,
+		/* ewmh->_NET_WM_STATE_HIDDEN, */
 		ewmh->_NET_WM_STATE_FULLSCREEN,
 		ewmh->_NET_WM_STATE_ABOVE,
-		ewmh->_NET_WM_STATE_BELOW,
-		/* ewmh->_NET_WM_STATE_DEMANDS_ATTENTION, */
+		/* ewmh->_NET_WM_STATE_BELOW, */
+		ewmh->_NET_WM_STATE_DEMANDS_ATTENTION,
 		ewmh->_NET_WM_WINDOW_TYPE,
 		ewmh->_NET_WM_WINDOW_TYPE_DESKTOP,
 		ewmh->_NET_WM_WINDOW_TYPE_DOCK,
@@ -134,8 +134,8 @@ void
 handle_wm_state(Client *c, xcb_atom_t state, xcb_ewmh_wm_state_action_t action) {
 #ifdef DEBUG
 	char *name = get_atom_name(state);
-	PRINTF("EWMH: change_wm_state: win %#x, state: %s, action: %d %s\n",
-	       c->win, name, action, c->win ? "" : "(not found)");
+	PRINTF("EWMH: handle_wm_state: win %#x, state: %s, action: %d %s\n",
+	       c->win, name, action, c->win ? "" : "(win not found)");
 	free(name);
 #endif
 	if (!c->win)
@@ -143,23 +143,21 @@ handle_wm_state(Client *c, xcb_atom_t state, xcb_ewmh_wm_state_action_t action) 
 
 	if (state == ewmh->_NET_WM_STATE_MAXIMIZED_VERT) {
 		if (action == ADD_STATE) {
+			maximizeaxis_client(c, MaxVertical);
 		} else if (action == REMOVE_STATE) {
+			maximizeaxis_client(c, MaxVertical);
 		} else if (action == TOGGLE_STATE) {
+			maximizeaxis_client(c, MaxVertical);
 		}
-	}
-	else if (state == ewmh->_NET_WM_STATE_MAXIMIZED_HORZ) {
+	} else if (state == ewmh->_NET_WM_STATE_MAXIMIZED_HORZ) {
 		if (action == ADD_STATE) {
+			maximizeaxis_client(c, MaxHorizontal);
 		} else if (action == REMOVE_STATE) {
+			maximizeaxis_client(c, MaxHorizontal);
 		} else if (action == TOGGLE_STATE) {
+			maximizeaxis_client(c, MaxHorizontal);
 		}
-	}
-	else if (state == ewmh->_NET_WM_STATE_HIDDEN) {
-		if (action == ADD_STATE) {
-		} else if (action == REMOVE_STATE) {
-		} else if (action == TOGGLE_STATE) {
-		}
-	}
-	else if (state == ewmh->_NET_WM_STATE_FULLSCREEN) {
+	} else if (state == ewmh->_NET_WM_STATE_FULLSCREEN) {
 		if (action == ADD_STATE) {
 			maximizeclient(c, true);
 		} else if (action == REMOVE_STATE) {
@@ -167,14 +165,22 @@ handle_wm_state(Client *c, xcb_atom_t state, xcb_ewmh_wm_state_action_t action) 
 		} else if (action == TOGGLE_STATE) {
 			maximizeclient(c, c->ewmh_flags & EWMH_FULLSCREEN);
 		}
-	}
-	else if (state == ewmh->_NET_WM_STATE_ABOVE) {
+	} else if (state == ewmh->_NET_WM_STATE_ABOVE) {
 		if (action == ADD_STATE) {
 		} else if (action == REMOVE_STATE) {
 		} else if (action == TOGGLE_STATE) {
 		}
-	}
-	else if (state == ewmh->_NET_WM_STATE_BELOW) {
+	} else if (state == ewmh->_NET_WM_STATE_STICKY) {
+		if (action == ADD_STATE) {
+		} else if (action == REMOVE_STATE) {
+		} else if (action == TOGGLE_STATE) {
+		}
+	} else if (state == ewmh->_NET_WM_STATE_DEMANDS_ATTENTION) {
+		if (action == ADD_STATE) {
+		} else if (action == REMOVE_STATE) {
+		} else if (action == TOGGLE_STATE) {
+		}
+	} else if (state == ewmh->_NET_WM_STATE_MODAL) {
 		if (action == ADD_STATE) {
 		} else if (action == REMOVE_STATE) {
 		} else if (action == TOGGLE_STATE) {
@@ -193,10 +199,10 @@ ewmh_update_wm_state(Client *c) {
 		v[i++] = ewmh->_NET_WM_STATE_MAXIMIZED_HORZ;
 	if (ISFULLSCREEN(c))
 		v[i++] = ewmh->_NET_WM_STATE_FULLSCREEN;
-	if (ISHIDDEN(c))
-		v[i++] = ewmh->_NET_WM_STATE_HIDDEN;
-	if (ISBELOW(c))
-		v[i++] = ewmh->_NET_WM_STATE_BELOW;
+	if (c->ewmh_flags & EWMH_STICKY)
+		v[i++] = ewmh->_NET_WM_STATE_STICKY;
+	if (c->ewmh_flags & EWMH_DEMANDS_ATTENTION)
+		v[i++] = ewmh->_NET_WM_STATE_DEMANDS_ATTENTION;
 	if (ISABOVE(c))
 		v[i++] = ewmh->_NET_WM_STATE_ABOVE;
 
@@ -225,8 +231,25 @@ ewmh_get_wm_state(Client *c) {
 			PRINTF("EWMH: state: win %#x, atom %s\n", c->win, name);
 			free(name);
 #endif
+			change_ewmh_flags(c, ADD_STATE, a);
 			if (a == ewmh->_NET_WM_STATE_FULLSCREEN) {
-				maximizeclient(c, true);
+				change_ewmh_flags(c, ADD_STATE,
+						  EWMH_FULLSCREEN);
+			} else if (a == ewmh->_NET_WM_STATE_MAXIMIZED_VERT) {
+				change_ewmh_flags(c, ADD_STATE,
+						  EWMH_MAXIMIZED_VERT);
+			} else if (a == ewmh->_NET_WM_STATE_MAXIMIZED_HORZ) {
+				change_ewmh_flags(c, ADD_STATE,
+						  EWMH_MAXIMIZED_HORZ);
+			} else if (a == ewmh->_NET_WM_STATE_STICKY) {
+				change_ewmh_flags(c, ADD_STATE,
+						  EWMH_STICKY);
+			} else if (a == ewmh->_NET_WM_STATE_DEMANDS_ATTENTION) {
+				change_ewmh_flags(c, ADD_STATE,
+						  EWMH_DEMANDS_ATTENTION);
+			} else if (a == ewmh->_NET_WM_STATE_ABOVE) {
+				change_ewmh_flags(c, ADD_STATE,
+						  EWMH_ABOVE);
 			}
 		}
 		xcb_ewmh_get_atoms_reply_wipe(&win_state);

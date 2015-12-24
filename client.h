@@ -12,6 +12,7 @@ void killselected(const Arg *arg);
 void manage(xcb_window_t w);
 void maximize(const Arg *arg);
 void maximizeaxis(const Arg *arg);
+void maximizeaxis_client(Client *c, uint16_t direction);
 void maximizeclient(Client *c, bool doit);
 void move(const Arg *arg);
 void movewin(xcb_window_t win, int16_t x, int16_t y);

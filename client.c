@@ -296,52 +296,56 @@ maximize(const Arg *arg) {
 
 void
 maximizeaxis(const Arg *arg) {
+	if (!sel || ISFULLSCREEN(sel))
+		return;
+	maximizeaxis_client(sel, arg->i);
+}
+
+void
+maximizeaxis_client(Client *c, uint16_t direction) {
 	uint32_t values[3];
 	uint16_t tw, th;
 
-	if (!sel || ISFULLSCREEN(sel))
-		return;
-
-	if (ISMAXVERT(sel) || ISMAXHORZ(sel)) {
-		maximizeclient(sel, false);
+	if (ISMAXVERT(c) || ISMAXHORZ(c)) {
+		maximizeclient(c, false);
 		return;
 	}
 
-	savegeometry(sel);
+	savegeometry(c);
 	tw = screen->width_in_pixels;
 	th = screen->height_in_pixels;
 
-	if (!sel->noborder) {
+	if (!c->noborder) {
 		tw -= border_width * 2;
 		th -= border_width * 2;
 	}
 
-	if (arg->i == MaxVertical) {
-		sel->geom.y = 0;
-		sel->geom.height = th;
-		values[0] = sel->geom.y;
-		values[1] = sel->geom.height;
-		xcb_configure_window(conn, sel->frame, XCB_CONFIG_WINDOW_Y
+	if (direction == MaxVertical) {
+		c->geom.y = 0;
+		c->geom.height = th;
+		values[0] = c->geom.y;
+		values[1] = c->geom.height;
+		xcb_configure_window(conn, c->frame, XCB_CONFIG_WINDOW_Y
 				     | XCB_CONFIG_WINDOW_HEIGHT, values);
-		xcb_configure_window(conn, sel->win, XCB_CONFIG_WINDOW_Y
+		xcb_configure_window(conn, c->win, XCB_CONFIG_WINDOW_Y
 				     | XCB_CONFIG_WINDOW_HEIGHT, values);
-		change_ewmh_flags(sel, ADD_STATE,
-				  EWMH_MAXIMIZED_VERT);
-	} else if (arg->i == MaxHorizontal) {
-		sel->geom.x = 0;
-		sel->geom.width = tw;
-		values[0] = sel->geom.x;
-		values[1] = sel->geom.width;
-		xcb_configure_window(conn, sel->frame, XCB_CONFIG_WINDOW_X
+		change_ewmh_flags(c, ADD_STATE, EWMH_MAXIMIZED_VERT);
+		ewmh_update_wm_state(c);
+	} else if (direction == MaxHorizontal) {
+		c->geom.x = 0;
+		c->geom.width = tw;
+		values[0] = c->geom.x;
+		values[1] = c->geom.width;
+		xcb_configure_window(conn, c->frame, XCB_CONFIG_WINDOW_X
 				     | XCB_CONFIG_WINDOW_WIDTH, values);
-		xcb_configure_window(conn, sel->win, XCB_CONFIG_WINDOW_X
+		xcb_configure_window(conn, c->win, XCB_CONFIG_WINDOW_X
 				     | XCB_CONFIG_WINDOW_WIDTH, values);
-		change_ewmh_flags(sel, ADD_STATE,
-				  EWMH_MAXIMIZED_HORZ);
+		change_ewmh_flags(c, ADD_STATE, EWMH_MAXIMIZED_HORZ);
+		ewmh_update_wm_state(c);
 	}
 
-	setborder(sel, true);
-	warp_pointer(sel);
+	setborder(c, true);
+	warp_pointer(c);
 }
 
 void
@@ -360,6 +364,7 @@ maximizeclient(Client *c, bool doit) {
 		change_ewmh_flags(c, ADD_STATE, EWMH_FULLSCREEN);
 		change_ewmh_flags(c, REMOVE_STATE, EWMH_MAXIMIZED_VERT);
 		change_ewmh_flags(c, REMOVE_STATE, EWMH_MAXIMIZED_HORZ);
+		ewmh_update_wm_state(c);
 		c->geom.x = 0;
 		c->geom.y = 0;
 		c->geom.width = screen->width_in_pixels;
@@ -379,6 +384,7 @@ maximizeclient(Client *c, bool doit) {
 		change_ewmh_flags(c, REMOVE_STATE, EWMH_FULLSCREEN);
 		change_ewmh_flags(c, REMOVE_STATE, EWMH_MAXIMIZED_VERT);
 		change_ewmh_flags(c, REMOVE_STATE, EWMH_MAXIMIZED_HORZ);
+		ewmh_update_wm_state(c);
 		if (!c->noborder)
 			setborderwidth(c->frame, border_width);
 		moveresize_win(c->frame, c->geom.x, c->geom.y,
@@ -491,6 +497,7 @@ resize(const Arg *arg) {
 	if (ISMAXHORZ(sel))
 		change_ewmh_flags(sel, REMOVE_STATE, EWMH_MAXIMIZED_HORZ);
 
+	ewmh_update_wm_state(sel);
 	setborder(sel, true);
 	warp_pointer(sel);
 }

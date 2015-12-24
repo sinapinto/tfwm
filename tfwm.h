@@ -40,8 +40,6 @@
 #define ISFULLSCREEN(C) ((C)->ewmh_flags & EWMH_FULLSCREEN)
 #define ISMAXVERT(C)    ((C)->ewmh_flags & EWMH_MAXIMIZED_VERT)
 #define ISMAXHORZ(C)    ((C)->ewmh_flags & EWMH_MAXIMIZED_HORZ)
-#define ISHIDDEN(C)     ((C)->ewmh_flags & EWMH_HIDDEN)
-#define ISBELOW(C)      ((C)->ewmh_flags & EWMH_BELOW)
 #define ISABOVE(C)      ((C)->ewmh_flags & EWMH_ABOVE)
 #define GRAVITY(C)      ((C->size_hints.flags & XCB_ICCCM_SIZE_HINT_P_WIN_GRAVITY) ? \
                          C->size_hints.win_gravity : XCB_GRAVITY_NORTH_WEST)
@@ -78,12 +76,12 @@ typedef struct {
 #define ADD_STATE    XCB_EWMH_WM_STATE_ADD      /* 1 */
 #define TOGGLE_STATE XCB_EWMH_WM_STATE_TOGGLE   /* 2 */
 enum { 
-	EWMH_MAXIMIZED_VERT = (1 << 0),
-	EWMH_MAXIMIZED_HORZ = (1 << 1),
-	EWMH_HIDDEN         = (1 << 2),
-	EWMH_FULLSCREEN     = (1 << 3),
-	EWMH_BELOW          = (1 << 4),
-	EWMH_ABOVE          = (1 << 5)
+	EWMH_MAXIMIZED_VERT    = (1 << 0),
+	EWMH_MAXIMIZED_HORZ    = (1 << 1),
+	EWMH_STICKY            = (1 << 2),
+	EWMH_FULLSCREEN        = (1 << 3),
+	EWMH_DEMANDS_ATTENTION = (1 << 4),
+	EWMH_ABOVE             = (1 << 5)
 };
 
 typedef struct Client Client;
@@ -134,6 +132,7 @@ void load_cursors(void);
 void manage(xcb_window_t w);
 void maprequest(xcb_generic_event_t *ev);
 void maximizeaxis(const Arg *arg);
+void maximizeaxis_client(Client *c, uint16_t direction);
 void maximizeclient(Client *c, bool doit);
 void maximize(const Arg *arg);
 void mousemotion(const Arg *arg);
