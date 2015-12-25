@@ -141,7 +141,7 @@ grabkeys(void) {
 			}
 		}
 
-		free(keycode);
+		FREE(keycode);
 	}
 }
 
@@ -178,7 +178,7 @@ updatenumlockmask(void) {
 					}
 		}
 	}
-	free(mmr);
-	free(numlock);
+	FREE(mmr);
+	FREE(numlock);
 }
 

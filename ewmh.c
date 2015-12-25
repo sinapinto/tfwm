@@ -106,11 +106,11 @@ ewmh_teardown() {
 			xcb_delete_property(conn, screen->root,
 					    ewmh->_NET_SUPPORTED);
 		}
-		free(pr);
+		FREE(pr);
 	}
 
 	xcb_ewmh_connection_wipe(ewmh);
-	free(ewmh);
+	FREE(ewmh);
 }
 
 void
@@ -137,7 +137,7 @@ handle_wm_state(Client *c, xcb_atom_t state, xcb_ewmh_wm_state_action_t action) 
 	char *name = get_atom_name(state);
 	PRINTF("EWMH: handle_wm_state: win %#x, state: %s, action: %d %s\n",
 	       c->win, name, action, c->win ? "" : "(win not found)");
-	free(name);
+	FREE(name);
 #endif
 	if (!c->win)
 		return;
@@ -230,7 +230,7 @@ ewmh_get_wm_state(Client *c) {
 #ifdef DEBUG
 			char *name = get_atom_name(a);
 			PRINTF("EWMH: state: win %#x, atom %s\n", c->win, name);
-			free(name);
+			FREE(name);
 #endif
 			change_ewmh_flags(c, ADD_STATE, a);
 			if (a == ewmh->_NET_WM_STATE_FULLSCREEN) {
@@ -291,7 +291,7 @@ ewmh_get_wm_window_type(Client *c) {
 			char *name = get_atom_name(a);
 			PRINTF("EWMH: window type: win %#x, atom %s\n",
 			       c->win, name);
-			free(name);
+			FREE(name);
 #endif
 			if (a == ewmh->_NET_WM_WINDOW_TYPE_DIALOG ||
 			    a == ewmh->_NET_WM_WINDOW_TYPE_SPLASH ||

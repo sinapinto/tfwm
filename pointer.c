@@ -88,10 +88,10 @@ mousemotion(const Arg *arg) {
 			       XCB_NONE, cursor, XCB_CURRENT_TIME);
 	gpr = xcb_grab_pointer_reply(conn, gpc, NULL);
 	if (gpr->status != XCB_GRAB_STATUS_SUCCESS) {
-		free(gpr);
+		FREE(gpr);
 		return;
 	}
-	free(gpr);
+	FREE(gpr);
 
 	nx = sel->geom.x;
 	ny = sel->geom.y;
@@ -133,13 +133,13 @@ mousemotion(const Arg *arg) {
 			ungrab = true;
 			setborder(sel, true);
 		}
-		free(ev);
+		FREE(ev);
 		xcb_flush(conn);
 	}
 	change_ewmh_flags(sel, REMOVE_STATE, EWMH_FULLSCREEN);
 	ewmh_update_wm_state(sel);
-	free(ev);
-	free(qpr);
+	FREE(ev);
+	FREE(qpr);
 	xcb_ungrab_pointer(conn, XCB_CURRENT_TIME);
 }
 

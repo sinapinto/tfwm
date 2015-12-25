@@ -119,7 +119,7 @@ manage(xcb_window_t w) {
 		if (c->geom.height)
 			PRINTF("height: %d\n", c->geom.height);
 #endif
-		free(gr);
+		FREE(gr);
 	} else {
 		warn("xcb_get_geometry failed for win %#x.", w);
 	}
@@ -528,7 +528,7 @@ send_client_message(Client *c, xcb_atom_t proto) {
 #if DEBUG
 	char *name = get_atom_name(proto);
 	PRINTF("send_client_message: %s to win %#x\n", name, c->win);
-	free(name);
+	FREE(name);
 #endif
 	memset(&ev, '\0', sizeof ev);
 	ev.response_type = XCB_CLIENT_MESSAGE;
@@ -660,7 +660,7 @@ unmanage(Client *c) {
 	detachstack(c);
 	if (c->frame)
 		xcb_destroy_window(conn, c->frame);
-	free(c);
+	FREE(c);
 	ewmh_update_client_list(clients);
 	focus(NULL);
 }

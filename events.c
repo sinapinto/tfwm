@@ -102,7 +102,7 @@ clientmessage(xcb_generic_event_t *ev) {
 #ifdef DEBUG
 	char *name = get_atom_name(e->type);
 	PRINTF("Event: client message: %s win %#x\n", name, e->window);
-	free(name);
+	FREE(name);
 #endif
 
 	if (!(c = wintoclient(e->window)))
@@ -322,7 +322,7 @@ propertynotify(xcb_generic_event_t *ev) {
 #ifdef DEBUG
 	char *name = get_atom_name(e->atom);
 	PRINTF("Event: property notify: win %#x atom %s", e->window, name);
-	free(name);
+	FREE(name);
 #endif
 
 	if (!(c = wintoclient(e->window)))

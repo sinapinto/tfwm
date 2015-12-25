@@ -26,7 +26,7 @@ get_atom_name(xcb_atom_t atom) {
 		name[len] = '\0';
 	}
 
-	free(r);
+	FREE(r);
 	return name;
 }
 #endif
@@ -76,7 +76,7 @@ getatom(xcb_atom_t *atom, char *name) {
 
 	if (r) {
 		*atom = r->atom;
-		free(r);
+		FREE(r);
 	} else {
 		*atom = XCB_NONE;
 	}
@@ -106,7 +106,7 @@ getcolor(char *color) {
 		if (!cr)
 			err("can't alloc color.");
 		pixel = cr->pixel;
-		free(cr);
+		FREE(cr);
 		return pixel;
 	} else {
 		ncc = xcb_alloc_named_color(conn, map, strlen(color), color);
@@ -114,7 +114,7 @@ getcolor(char *color) {
 		if (!ncr)
 			err("can't alloc named color.");
 		pixel = ncr->pixel;
-		free(ncr);
+		FREE(ncr);
 		return pixel;
 	}
 }

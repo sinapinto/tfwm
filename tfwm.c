@@ -95,7 +95,7 @@ run(void) {
 		xcb_flush(conn);
 		if ((ev = xcb_wait_for_event(conn)) != NULL) {
 			handleevent(ev);
-			free(ev);
+			FREE(ev);
 		}
 		if (connection_has_error()) {
 			cleanup();
@@ -119,13 +119,13 @@ cleanup(void) {
 
 		detach(stack);
 		detachstack(stack);
-		free(stack);
+		FREE(stack);
 	}
 
 	ewmh_teardown();
 	free_cursors();
-	free(focus_color);
-	free(unfocus_color);
+	FREE(focus_color);
+	FREE(unfocus_color);
 	xcb_flush(conn);
 	xcb_disconnect(conn);
 	PRINTF("bye\n");
@@ -155,11 +155,11 @@ remanage_windows(void) {
 			if (gar->override_redirect) {
 				PRINTF("remanage_windows: skip %#x: "
 				       "override_redirect set\n", children[i]);
-				free(gar);
+				FREE(gar);
 				continue;
 			}
 		}
-		free(qtr);
+		FREE(qtr);
 	}
 }
 
@@ -249,7 +249,7 @@ main(int argc, char **argv) {
 	/* load config */
 	if ((rc_path = find_config("tfwmrc"))) {
 		parse_config(rc_path);
-		free(rc_path);
+		FREE(rc_path);
 	} else {
 		warn("no config file found. using default settings\n");
 	}

@@ -41,7 +41,7 @@ check_shape_extension(void) {
 
 	PRINTF("Info: using shape extension version %d.%d\n",
 	       vreply->major_version, vreply->minor_version);
-	free(vreply);
+	FREE(vreply);
 	return true;
 }
 
