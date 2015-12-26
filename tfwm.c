@@ -183,9 +183,8 @@ setup(void) {
 		err("another window manager is running.");
 	}
 
-	/* restore windows from prior session
-	 * must come before ewmh_setup to avoid managing the wm_check window
-	 */
+	/* remanage windows from the prior session before setting
+	 * the _NET_SUPPORTING_WM_CHECK window. */
 	remanage_windows();
 
 	getatom(&WM_DELETE_WINDOW, "WM_DELETE_WINDOW");
@@ -220,6 +219,7 @@ setup(void) {
 int
 main(int argc, char **argv) {
 	(void)argc;
+	int   err_line;
 	char *rc_path = NULL;
 
 	warn("welcome to tfwm %s\n", VERSION);
@@ -248,7 +248,8 @@ main(int argc, char **argv) {
 
 	/* load config */
 	if ((rc_path = find_config("tfwmrc"))) {
-		parse_config(rc_path);
+		if ((err_line = parse_config(rc_path)) > 0)
+			warn("parse failed on line %d.\n", err_line);
 		FREE(rc_path);
 	} else {
 		warn("no config file found. using default settings\n");

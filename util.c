@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <ctype.h>
+#include <string.h>
 #include "tfwm.h"
 #include "util.h"
 
@@ -33,5 +35,12 @@ spawn(const Arg *arg) {
 		execvp((char*)arg->com[0], (char**)arg->com);
 		err("execvp %s", ((char **)arg->com)[0]);
 	}
+}
+
+char *
+skip_leading_space(char* s) {
+	while (*s && isspace(*s))
+		s++;
+	return s;
 }
 

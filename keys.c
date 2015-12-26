@@ -1,11 +1,7 @@
 /* See LICENSE file for copyright and license details. */
 #include <X11/keysym.h>
-#include <X11/XF86keysym.h>
 #include "tfwm.h"
-#include "list.h"
-#include "client.h"
 #include "events.h"
-#include "workspace.h"
 #include "pointer.h"
 #include "keys.h"
 #include "util.h"
@@ -16,81 +12,8 @@ const Rule rules[RULE_MAX] = {
 	{ "firefox",       0,              false,           false  },
 };
 
-static const char *terminal[]  = { "urxvt", NULL };
-static const char *terminal2[] = { "termite", NULL };
-static const char *browser[]   = { "chromium", NULL };
-static const char *browser2[]  = { "firefox", NULL };
-static const char *launcher[]  = { "rofi", "-show", "run",  NULL };
-static const char *mpctoggle[] = { "mpc", "-q", "toggle", NULL };
-static const char *mpcseekf[]  = { "mpc", "-q", "seek", "+30", NULL };
-static const char *mpcseekb[]  = { "mpc", "-q", "seek", "-30", NULL };
-static const char *mpcnext[]   = { "mpc", "-q", "next", NULL };
-static const char *mpcprev[]   = { "mpc", "-q", "prev", NULL };
-static const char *volup[]     = { "amixer", "-q", "set", "Master", "3%+", "unmute", NULL };
-static const char *voldown[]   = { "amixer", "-q", "set", "Master", "3%-", "unmute", NULL };
-static const char *voltoggle[] = { "amixer", "-q", "set", "Master", "toggle", NULL };
-
 #define MOD    XCB_MOD_MASK_1
-#define SHIFT  XCB_MOD_MASK_SHIFT
-#define CTRL   XCB_MOD_MASK_CONTROL
-Key keys[KEY_MAX] = {
-	/* modifier     key                       function       argument */
-	{ MOD,          XK_Return,                spawn,         {.com=terminal}    },
-	{ MOD,          XK_t,                     spawn,         {.com=terminal2}   },
-	{ MOD,          XK_w,                     spawn,         {.com=browser}     },
-	{ MOD,          XK_e,                     spawn,         {.com=browser2}    },
-	{ MOD,          XK_space,                 spawn,         {.com=launcher}    },
-	{ MOD,          XK_p,                     spawn,         {.com=mpctoggle}   },
-	{ XCB_NONE,     XK_Pause,                 spawn,         {.com=mpcseekf}    },
-	{ XCB_NONE,     XK_Print,                 spawn,         {.com=mpcseekb}    },
-	{ MOD,          XK_o,                     spawn,         {.com=mpcnext}     },
-	{ MOD,          XK_i,                     spawn,         {.com=mpcprev}     },
-	{ XCB_NONE,     XK_F2,                    spawn,         {.com=volup}       },
-	{ XCB_NONE,     XK_F1,                    spawn,         {.com=voldown}     },
-	{ XCB_NONE,     XF86XK_AudioRaiseVolume,  spawn,         {.com=volup}       },
-	{ XCB_NONE,     XF86XK_AudioLowerVolume,  spawn,         {.com=voldown}     },
-	{ XCB_NONE,     XF86XK_AudioMute,         spawn,         {.com=voltoggle}   },
-	{ MOD,          XK_j,                     move,          {.i=MoveDown}      },
-	{ MOD,          XK_l,                     move,          {.i=MoveRight}     },
-	{ MOD,          XK_k,                     move,          {.i=MoveUp}        },
-	{ MOD,          XK_h,                     move,          {.i=MoveLeft}      },
-	{ MOD | SHIFT,  XK_j,                     resize,        {.i=GrowHeight}    },
-	{ MOD | SHIFT,  XK_l,                     resize,        {.i=GrowWidth}     },
-	{ MOD | SHIFT,  XK_k,                     resize,        {.i=ShrinkHeight}  },
-	{ MOD | SHIFT,  XK_h,                     resize,        {.i=ShrinkWidth}   },
-	{ MOD | CTRL,   XK_j,                     resize,        {.i=GrowBoth}      },
-	{ MOD | CTRL,   XK_k,                     resize,        {.i=ShrinkBoth}    },
-	{ MOD,          XK_Tab,                   cycleclients,  {.i=PrevWindow}    },
-	{ MOD | SHIFT,  XK_Tab,                   cycleclients,  {.i=NextWindow}    },
-	{ MOD,          XK_s,                     teleport,      {.i=Center}        },
-	{ MOD,          XK_y,                     teleport,      {.i=TopLeft}       },
-	{ MOD,          XK_u,                     teleport,      {.i=TopRight}      },
-	{ MOD,          XK_b,                     teleport,      {.i=BottomLeft}    },
-	{ MOD,          XK_n,                     teleport,      {.i=BottomRight}   },
-	{ MOD,          XK_x,                     maximize,      {.i=0}          },
-	{ MOD,          XK_m,                     maximizeaxis,  {.i=MaxVertical}   },
-	{ MOD | SHIFT,  XK_m,                     maximizeaxis,  {.i=MaxHorizontal} },
-	{ MOD,          XK_q,                     killselected,  {.i=0}          },
-	{ MOD,          XK_grave,                 selectrws,     {.i=LastWorkspace} },
-	{ MOD,          XK_bracketleft,           selectrws,     {.i=PrevWorkspace} },
-	{ MOD,          XK_bracketright,          selectrws,     {.i=NextWorkspace} },
-	{ MOD | SHIFT,  XK_r,                     restart,       {.i=0}          },
-	{ MOD | SHIFT,  XK_e,                     quit,          {.i=0}          },
-#define WORKSPACE(K,N) \
-	{ MOD,              K,                    selectws,      {.i=N} }, \
-	{ MOD | SHIFT,      K,                    sendtows,      {.i=N} },
-	WORKSPACE(      XK_1,                                    0 )
-	WORKSPACE(      XK_2,                                    1 )
-	WORKSPACE(      XK_3,                                    2 )
-	WORKSPACE(      XK_4,                                    3 )
-	WORKSPACE(      XK_5,                                    4 )
-	WORKSPACE(      XK_6,                                    5 )
-	WORKSPACE(      XK_7,                                    6 )
-	WORKSPACE(      XK_8,                                    7 )
-	WORKSPACE(      XK_9,                                    8 )
-	WORKSPACE(      XK_0,                                    9 )
-};
-
+Key keys[KEY_MAX];
 Button buttons[BUTTON_MAX] = {
 	{  MOD,          XCB_BUTTON_INDEX_1,      mousemotion,   {.i=MouseMove}     },
 	{  MOD,          XCB_BUTTON_INDEX_3,      mousemotion,   {.i=MouseResize}   }
@@ -123,9 +46,12 @@ void
 grabkeys(void) {
 	unsigned int   i, j, k;
 	xcb_keycode_t *keycode;
-	unsigned int   modifiers[] = {
-		0, XCB_MOD_MASK_LOCK, numlockmask,
-		numlockmask | XCB_MOD_MASK_LOCK };
+	uint16_t       modifiers[4];
+
+	modifiers[0] = 0;
+	modifiers[1] = XCB_MOD_MASK_LOCK;
+	modifiers[2] = numlockmask;
+	modifiers[3] = numlockmask | XCB_MOD_MASK_LOCK;
 
 	xcb_ungrab_key(conn, XCB_GRAB_ANY, screen->root, XCB_MOD_MASK_ANY);
 
@@ -134,6 +60,8 @@ grabkeys(void) {
 
 		for (j = 0; keycode[j] != XCB_NO_SYMBOL; j++) {
 			for (k = 0; k < LENGTH(modifiers); k++) {
+				/* PRINTF("grabkeys: key: %u, mod %d\n", */
+				/*        keycode[j], keys[i].mod); */
 				xcb_grab_key(conn, 1, screen->root,
 					     keys[i].mod | modifiers[k],
 					     keycode[j], XCB_GRAB_MODE_ASYNC,

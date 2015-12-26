@@ -47,6 +47,7 @@
                          C->size_hints.win_gravity : XCB_GRAVITY_NORTH_WEST)
 void warn(const char *fmt, ...);
 void err(const char *fmt, ...);
+char *skip_leading_space(char* s);
 
 #endif
 

@@ -104,7 +104,6 @@ clientmessage(xcb_generic_event_t *ev) {
 	PRINTF("Event: client message: %s win %#x\n", name, e->window);
 	FREE(name);
 #endif
-
 	if (!(c = wintoclient(e->window)))
 		return;
 

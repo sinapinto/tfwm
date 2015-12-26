@@ -1,14 +1,81 @@
 # ~/.tfwmrc
 
-pixmap_border   = 1
-border_width    = 4
-# focus_color     = #00cc00
-# unfocus_color   = slate gray
-
+[options]
+java_workaround = 1
 move_step       = 30
 resize_step     = 30
-
+pixmap_border   = 1
+border_width    = 4
+focus_color     = #00cc00
+unfocus_color   = slate gray
 sloppy_focus    = 0
 cursor_position = 0
 
-java_workaround = 1
+[keybinds]
+move_up = Mod1+k
+move_down = Mod1+j
+move_left = Mod1+h
+move_right = Mod1+l
+terminal1 = Mod1+
+terminal2 = Mod1+
+browser = Mod1+
+browser2 = Mod1+
+launcher = Mod1+
+mpc_toggle = Mod1+
+mpc_seek_f = Mod1+
+mpc_seek_b = Mod1+
+mpc_next = Mod1+
+mpc_prev = Mod1+
+vol_up = Mod1+
+vol_down = Mod1+
+vol_up2 = Mod1+
+vol_down2 = Mod1+
+vol_toggle = Mod1+
+resize_grow_height = Mod1+
+resize_grow_width = Mod1+
+resize_shrink_height = Mod1+
+resize_shrink_width = Mod1+
+resize_grow_both = Mod1+
+resize_shrink_both = Mod1+
+cycle_prev = Mod1+
+cycle_next = Mod1+
+teleport_center = Mod1+
+teleport_top_left = Mod1+
+teleport_top_right = Mod1+
+teleport_bottom_left = Mod1+
+teleport_bottom_right = Mod1+
+fullscreen = Mod1+
+maximize_vert = Mod1+
+maximize_horz = Mod1+
+kill_win = Mod1+
+prior_workspace = Mod1+
+prev_workspace = Mod1+
+next_workspace = Mod1+
+restart = Mod1+
+quit = Mod1+
+select_workspace_1 = Mod1+
+select_workspace_2 = Mod1+
+select_workspace_3 = Mod1+
+select_workspace_4 = Mod1+
+select_workspace_5 = Mod1+
+select_workspace_6 = Mod1+
+select_workspace_7 = Mod1+
+select_workspace_8 = Mod1+
+select_workspace_9 = Mod1+
+select_workspace_0 = Mod1+
+send_to_workspace_1 = Mod1+
+send_to_workspace_2 = Mod1+
+send_to_workspace_3 = Mod1+
+send_to_workspace_4 = Mod1+
+send_to_workspace_5 = Mod1+
+send_to_workspace_6 = Mod1+
+send_to_workspace_7 = Mod1+
+send_to_workspace_8 = Mod1+
+send_to_workspace_9 = Mod1+
+send_to_workspace_0 = Mod1+
+move_up = Mod1+
+move_down = Mod1+
+move_left = Mod1+
+move_right = Mod1+
+
+# vi: ft=dosini

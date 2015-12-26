@@ -10,8 +10,8 @@
 
 /* types */
 typedef union {
-	const char         **com;
-	const unsigned int   i;
+	char         **com;
+	unsigned int   i;
 } Arg;
 
 typedef struct {
@@ -25,7 +25,7 @@ typedef struct Key {
 	unsigned int mod;
 	xcb_keysym_t keysym;
 	void (*func)(const Arg *);
-	const Arg    arg;
+	Arg    arg;
 } Key;
 
 typedef struct {
