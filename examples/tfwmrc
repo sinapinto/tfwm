@@ -4,7 +4,7 @@
 java_workaround       = 1
 move_step             = 30
 resize_step           = 30
-pixmap_border         = 1
+pixmap_border         = 0
 border_width          = 4
 ; focus_color           = #00cc00
 unfocus_color         = slate gray
