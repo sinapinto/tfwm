@@ -248,8 +248,11 @@ main(int argc, char **argv) {
 
 	/* load config */
 	if ((rc_path = find_config("tfwmrc"))) {
-		if ((err_line = parse_config(rc_path)) > 0)
-			warn("parse failed on line %d.\n", err_line);
+		err_line = parse_config(rc_path);
+		if (err_line > 0)
+			warn("parse_config: error on line %d.\n", err_line);
+		else if (err_line < 0)
+			warn("parse_config: fopen error\n");
 		FREE(rc_path);
 	} else {
 		warn("no config file found. using default settings\n");

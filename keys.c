@@ -60,8 +60,6 @@ grabkeys(void) {
 
 		for (j = 0; keycode[j] != XCB_NO_SYMBOL; j++) {
 			for (k = 0; k < LENGTH(modifiers); k++) {
-				/* PRINTF("grabkeys: key: %u, mod %d\n", */
-				/*        keycode[j], keys[i].mod); */
 				xcb_grab_key(conn, 1, screen->root,
 					     keys[i].mod | modifiers[k],
 					     keycode[j], XCB_GRAB_MODE_ASYNC,

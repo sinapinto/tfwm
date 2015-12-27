@@ -1,12 +1,11 @@
 /* See LICENSE file for copyright and license details. */
 #include <sys/stat.h>
 #include <string.h>
-#include <strings.h> /* strncasecmp() */
+#include <strings.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <X11/keysym.h>
-#include <X11/XF86keysym.h>
 #include "tfwm.h"
 #include "config.h"
 #include "workspace.h"
@@ -17,9 +16,6 @@
 #define OPT(_opt) (strcmp(_opt, key) == 0)
 #define PATH_MAX  256
 #define LINE_MAX  256
-#define MOD    XCB_MOD_MASK_1
-#define SHIFT  XCB_MOD_MASK_SHIFT
-#define CTRL   XCB_MOD_MASK_CONTROL
 
 static bool is_regular_file(char *path);
 static void setopt(char *key, char *val);
@@ -166,130 +162,164 @@ find_config(char *file) {
 }
 
 void setkey(char *key, char *val) {
-	PRINTF("setkey: %s: %s\n", key, val);
+	uint16_t mod = XCB_NONE;
+	char *token;
+	uint16_t keysym = 0;
+
+	/* PRINTF("setkey: %s: %s\n", key, val); */
+
+	/* parse modifier */
+	token = strtok(val, "+");
+	do {
+		if (strlen(token) == 4 &&
+		    strncasecmp("mod", token, 3) == 0) {
+			if (token[3] == '1')
+				mod |= XCB_MOD_MASK_1;
+			else if (token[3] == '2')
+				mod |= XCB_MOD_MASK_2;
+			else if (token[3] == '3')
+				mod |= XCB_MOD_MASK_3;
+			else if (token[3] == '4')
+				mod |= XCB_MOD_MASK_4;
+			else if (token[3] == '5')
+				mod |= XCB_MOD_MASK_5;
+		} else if (strncasecmp("ctrl", token, 4) == 0) {
+			mod |= XCB_MOD_MASK_CONTROL;
+		} else if (strncasecmp("shift", token, 4) == 0) {
+			mod |= XCB_MOD_MASK_SHIFT;
+		} else {
+			if (strncmp(token, "0x", 2) == 0)
+				keysym = atoi(token);
+			else
+				keysym = XStringToKeysym(token);
+			if (keysym == 0)
+				warn("setkey: keysym for '%s' not found\n",
+				     token);
+		}
+	} while ((token = strtok(NULL, "+")));
 
 	if (OPT("terminal1")) {
-		keys[0]  = (Key){ MOD,         XK_Return,               spawn,        {.com=terminal}    };
+		keys[0]  = (Key){ mod,         keysym,               spawn,        {.com=terminal}    };
 	} else if (OPT("terminal2")) {
-		keys[1]  = (Key){ MOD,         XK_t,                    spawn,        {.com=terminal2}   };
+		keys[1]  = (Key){ mod,         keysym,                    spawn,        {.com=terminal2}   };
 	} else if (OPT("browser")) {
-		keys[2]  = (Key){ MOD,         XK_w,                    spawn,        {.com=browser}     };
+		keys[2]  = (Key){ mod,         keysym,                    spawn,        {.com=browser}     };
 	} else if (OPT("browser2")) {
-		keys[3]  = (Key){ MOD,         XK_e,                    spawn,        {.com=browser2}    };
+		keys[3]  = (Key){ mod,         keysym,                    spawn,        {.com=browser2}    };
 	} else if (OPT("launcher")) {
-		keys[4]  = (Key){ MOD,         XK_space,                spawn,        {.com=launcher}    };
+		keys[4]  = (Key){ mod,         keysym,                spawn,        {.com=launcher}    };
 	} else if (OPT("mpc_toggle")) {
-		keys[5]  = (Key){ MOD,         XK_p,                    spawn,        {.com=mpctoggle}   };
+		keys[5]  = (Key){ mod,         keysym,                    spawn,        {.com=mpctoggle}   };
 	} else if (OPT("mpc_seek_f")) {
-		keys[6]  = (Key){ XCB_NONE,    XK_Pause,                spawn,        {.com=mpcseekf}    };
+		keys[6]  = (Key){ mod,         keysym,                spawn,        {.com=mpcseekf}    };
 	} else if (OPT("mpc_seek_b")) {
-		keys[7]  = (Key){ XCB_NONE,    XK_Print,                spawn,        {.com=mpcseekb}    };
+		keys[7]  = (Key){ mod,         keysym,                spawn,        {.com=mpcseekb}    };
 	} else if (OPT("mpc_next")) {
-		keys[8]  = (Key){ MOD,         XK_o,                    spawn,        {.com=mpcnext}     };
+		keys[8]  = (Key){ mod,         keysym,                    spawn,        {.com=mpcnext}     };
 	} else if (OPT("mpc_prev")) {
-		keys[9]  = (Key){ MOD,         XK_i,                    spawn,        {.com=mpcprev}     };
+		keys[9]  = (Key){ mod,         keysym,                    spawn,        {.com=mpcprev}     };
 	} else if (OPT("vol_up")) {
-		keys[10] = (Key){ XCB_NONE,    XK_F2,                   spawn,        {.com=volup}       };
+		keys[10] = (Key){ mod,         keysym,                   spawn,        {.com=volup}       };
 	} else if (OPT("vol_down")) {
-		keys[11] = (Key){ XCB_NONE,    XK_F1,                   spawn,        {.com=voldown}     };
+		keys[11] = (Key){ mod,         keysym,                   spawn,        {.com=voldown}     };
 	} else if (OPT("vol_up2")) {
-		keys[12] = (Key){ XCB_NONE,    XF86XK_AudioRaiseVolume, spawn,        {.com=volup}       };
+		keys[12] = (Key){ mod,         keysym, spawn,        {.com=volup}       };
 	} else if (OPT("vol_down2")) {
-		keys[13] = (Key){ XCB_NONE,    XF86XK_AudioLowerVolume, spawn,        {.com=voldown}     };
+		keys[13] = (Key){ mod,         keysym, spawn,        {.com=voldown}     };
 	} else if (OPT("vol_toggle")) {
-		keys[14] = (Key){ XCB_NONE,    XF86XK_AudioMute,        spawn,        {.com=voltoggle}   };
+		keys[14] = (Key){ mod,         keysym,        spawn,        {.com=voltoggle}   };
 	} else if (OPT("resize_grow_height")) {
-		keys[15] = (Key){ MOD | SHIFT, XK_j,                    resize,       {.i=GrowHeight}    };
+		keys[15] = (Key){ mod,         keysym,                    resize,       {.i=GrowHeight}    };
 	} else if (OPT("resize_grow_width")) {
-		keys[16] = (Key){ MOD | SHIFT, XK_l,                    resize,       {.i=GrowWidth}     };
+		keys[16] = (Key){ mod,         keysym,                    resize,       {.i=GrowWidth}     };
 	} else if (OPT("resize_shrink_height")) {
-		keys[17] = (Key){ MOD | SHIFT, XK_k,                    resize,       {.i=ShrinkHeight}  };
+		keys[17] = (Key){ mod,         keysym,                    resize,       {.i=ShrinkHeight}  };
 	} else if (OPT("resize_shrink_width")) {
-		keys[18] = (Key){ MOD | SHIFT, XK_h,                    resize,       {.i=ShrinkWidth}   };
+		keys[18] = (Key){ mod,         keysym,                    resize,       {.i=ShrinkWidth}   };
 	} else if (OPT("resize_grow_both")) {
-		keys[19] = (Key){ MOD | CTRL,  XK_j,                    resize,       {.i=GrowBoth}      };
+		keys[19] = (Key){ mod,          keysym,                    resize,       {.i=GrowBoth}      };
 	} else if (OPT("resize_shrink_both")) {
-		keys[20] = (Key){ MOD | CTRL,  XK_k,                    resize,       {.i=ShrinkBoth}    };
+		keys[20] = (Key){ mod,          keysym,                    resize,       {.i=ShrinkBoth}    };
 	} else if (OPT("cycle_prev")) {
-		keys[21] = (Key){ MOD,         XK_Tab,                  cycleclients, {.i=PrevWindow}    };
+		keys[21] = (Key){ mod,         keysym,                  cycleclients, {.i=PrevWindow}    };
 	} else if (OPT("cycle_next")) {
-		keys[22] = (Key){ MOD | SHIFT, XK_Tab,                  cycleclients, {.i=NextWindow}    };
+		keys[22] = (Key){ mod,         keysym,                  cycleclients, {.i=NextWindow}    };
 	} else if (OPT("teleport_center")) {
-		keys[23] = (Key){ MOD,         XK_s,                    teleport,     {.i=Center}        };
+		keys[23] = (Key){ mod,         keysym,                    teleport,     {.i=Center}        };
 	} else if (OPT("teleport_top_left")) {
-		keys[24] = (Key){ MOD,         XK_y,                    teleport,     {.i=TopLeft}       };
+		keys[24] = (Key){ mod,         keysym,                    teleport,     {.i=TopLeft}       };
 	} else if (OPT("teleport_top_right")) {
-		keys[25] = (Key){ MOD,         XK_u,                    teleport,     {.i=TopRight}      };
+		keys[25] = (Key){ mod,         keysym,                    teleport,     {.i=TopRight}      };
 	} else if (OPT("teleport_bottom_left")) {
-		keys[26] = (Key){ MOD,         XK_b,                    teleport,     {.i=BottomLeft}    };
+		keys[26] = (Key){ mod,         keysym,                    teleport,     {.i=BottomLeft}    };
 	} else if (OPT("teleport_bottom_right")) {
-		keys[27] = (Key){ MOD,         XK_n,                    teleport,     {.i=BottomRight}   };
+		keys[27] = (Key){ mod,         keysym,                    teleport,     {.i=BottomRight}   };
 	} else if (OPT("fullscreen")) {
-		keys[28] = (Key){ MOD,         XK_x,                    maximize,     {.i=0}             };
+		keys[28] = (Key){ mod,         keysym,                    maximize,     {.i=0}             };
 	} else if (OPT("maximize_vert")) {
-		keys[29] = (Key){ MOD,         XK_m,                    maximizeaxis, {.i=MaxVertical}   };
+		keys[29] = (Key){ mod,         keysym,                    maximizeaxis, {.i=MaxVertical}   };
 	} else if (OPT("maximize_horz")) {
-		keys[30] = (Key){ MOD | SHIFT, XK_m,                    maximizeaxis, {.i=MaxHorizontal} };
+		keys[30] = (Key){ mod,         keysym,                    maximizeaxis, {.i=MaxHorizontal} };
 	} else if (OPT("kill_win")) {
-		keys[31] = (Key){ MOD,         XK_q,                    killselected, {.i=0}             };
+		keys[31] = (Key){ mod,         keysym,                    killselected, {.i=0}             };
 	} else if (OPT("prior_workspace")) {
-		keys[32] = (Key){ MOD,         XK_grave,                selectrws,    {.i=LastWorkspace} };
+		keys[32] = (Key){ mod,         keysym,                selectrws,    {.i=LastWorkspace} };
 	} else if (OPT("prev_workspace")) {
-		keys[33] = (Key){ MOD,         XK_bracketleft,          selectrws,    {.i=PrevWorkspace} };
+		keys[33] = (Key){ mod,         keysym,          selectrws,    {.i=PrevWorkspace} };
 	} else if (OPT("next_workspace")) {
-		keys[34] = (Key){ MOD,         XK_bracketright,         selectrws,    {.i=NextWorkspace} };
+		keys[34] = (Key){ mod,         keysym,         selectrws,    {.i=NextWorkspace} };
 	} else if (OPT("restart")) {
-		keys[35] = (Key){ MOD | SHIFT, XK_r,                    restart,      {.i=0}             };
+		keys[35] = (Key){ mod,         keysym,                    restart,      {.i=0}             };
 	} else if (OPT("quit")) {
-		keys[36] = (Key){ MOD | SHIFT, XK_e,                    quit,         {.i=0}             };
+		keys[36] = (Key){ mod,         keysym,                    quit,         {.i=0}             };
 	} else if (OPT("select_workspace_1")) {
-		keys[37] = (Key){ MOD,         XK_1,                    selectws,     {.i=1}             };
+		keys[37] = (Key){ mod,         keysym,                    selectws,     {.i=1}             };
 	} else if (OPT("select_workspace_2")) {
-		keys[38] = (Key){ MOD,         XK_2,                    selectws,     {.i=2}             };
+		keys[38] = (Key){ mod,         keysym,                    selectws,     {.i=2}             };
 	} else if (OPT("select_workspace_3")) {
-		keys[39] = (Key){ MOD,         XK_3,                    selectws,     {.i=3}             };
+		keys[39] = (Key){ mod,         keysym,                    selectws,     {.i=3}             };
 	} else if (OPT("select_workspace_4")) {
-		keys[40] = (Key){ MOD,         XK_4,                    selectws,     {.i=4}             };
+		keys[40] = (Key){ mod,         keysym,                    selectws,     {.i=4}             };
 	} else if (OPT("select_workspace_5")) {
-		keys[41] = (Key){ MOD,         XK_5,                    selectws,     {.i=5}             };
+		keys[41] = (Key){ mod,         keysym,                    selectws,     {.i=5}             };
 	} else if (OPT("select_workspace_6")) {
-		keys[42] = (Key){ MOD,         XK_6,                    selectws,     {.i=6}             };
+		keys[42] = (Key){ mod,         keysym,                    selectws,     {.i=6}             };
 	} else if (OPT("select_workspace_7")) {
-		keys[43] = (Key){ MOD,         XK_7,                    selectws,     {.i=7}             };
+		keys[43] = (Key){ mod,         keysym,                    selectws,     {.i=7}             };
 	} else if (OPT("select_workspace_8")) {
-		keys[44] = (Key){ MOD,         XK_8,                    selectws,     {.i=8}             };
+		keys[44] = (Key){ mod,         keysym,                    selectws,     {.i=8}             };
 	} else if (OPT("select_workspace_9")) {
-		keys[45] = (Key){ MOD,         XK_9,                    selectws,     {.i=9}             };
+		keys[45] = (Key){ mod,         keysym,                    selectws,     {.i=9}             };
 	} else if (OPT("select_workspace_0")) {
-		keys[46] = (Key){ MOD,         XK_0,                    selectws,     {.i=0}             };
+		keys[46] = (Key){ mod,         keysym,                    selectws,     {.i=0}             };
 	} else if (OPT("send_to_workspace_1")) {
-		keys[47] = (Key){ MOD,         XK_1,                    sendtows,     {.i=1}             };
+		keys[47] = (Key){ mod,         keysym,                    sendtows,     {.i=1}             };
 	} else if (OPT("send_to_workspace_2")) {
-		keys[48] = (Key){ MOD,         XK_2,                    sendtows,     {.i=2}             };
+		keys[48] = (Key){ mod,         keysym,                    sendtows,     {.i=2}             };
 	} else if (OPT("send_to_workspace_3")) {
-		keys[49] = (Key){ MOD,         XK_3,                    sendtows,     {.i=3}             };
+		keys[49] = (Key){ mod,         keysym,                    sendtows,     {.i=3}             };
 	} else if (OPT("send_to_workspace_4")) {
-		keys[50] = (Key){ MOD,         XK_4,                    sendtows,     {.i=4}             };
+		keys[50] = (Key){ mod,         keysym,                    sendtows,     {.i=4}             };
 	} else if (OPT("send_to_workspace_5")) {
-		keys[51] = (Key){ MOD,         XK_5,                    sendtows,     {.i=5}             };
+		keys[51] = (Key){ mod,         keysym,                    sendtows,     {.i=5}             };
 	} else if (OPT("send_to_workspace_6")) {
-		keys[52] = (Key){ MOD,         XK_6,                    sendtows,     {.i=6}             };
+		keys[52] = (Key){ mod,         keysym,                    sendtows,     {.i=6}             };
 	} else if (OPT("send_to_workspace_7")) {
-		keys[53] = (Key){ MOD,         XK_7,                    sendtows,     {.i=7}             };
+		keys[53] = (Key){ mod,         keysym,                    sendtows,     {.i=7}             };
 	} else if (OPT("send_to_workspace_8")) {
-		keys[54] = (Key){ MOD,         XK_8,                    sendtows,     {.i=8}             };
+		keys[54] = (Key){ mod,         keysym,                    sendtows,     {.i=8}             };
 	} else if (OPT("send_to_workspace_9")) {
-		keys[55] = (Key){ MOD,         XK_9,                    sendtows,     {.i=9}             };
+		keys[55] = (Key){ mod,         keysym,                    sendtows,     {.i=9}             };
 	} else if (OPT("send_to_workspace_0")) {
-		keys[56] = (Key){ MOD,         XK_0,                    sendtows,     {.i=0}             };
+		keys[56] = (Key){ mod,         keysym,                    sendtows,     {.i=0}             };
 	} else if (OPT("move_up")) {
-		keys[57] = (Key){ MOD, XK_k, move, {.i=MoveUp}};
+		keys[57] = (Key){ mod,         keysym,                    move,         {.i=MoveUp}        };
 	} else if (OPT("move_down")) {
-		keys[58] = (Key){ MOD, XK_j, move, {.i=MoveDown}};
+		keys[58] = (Key){ mod,         keysym,                    move,         {.i=MoveDown}      };
 	} else if (OPT("move_left")) {
-		keys[59] = (Key){ MOD, XK_h, move, {.i=MoveLeft}};
+		keys[59] = (Key){ mod,         keysym,                    move,         {.i=MoveLeft}      };
 	} else if (OPT("move_right")) {
-		keys[60] = (Key){ MOD, XK_l, move, {.i=MoveRight}};
+		keys[60] = (Key){ mod,         keysym,                    move,         {.i=MoveRight}     };
 	}
 }
 
@@ -362,7 +392,6 @@ parse_config(char *fname) {
 			toklen = strcspn(p, "]\n\t ");
 			if (strncasecmp(p, "options", toklen) == 0) {
 				section = OPTION;
-				PRINTF("a\n");
 			} else if (strncasecmp(p, "keybinds", toklen) == 0) {
 				section = KEYBIND;
 			} else {
