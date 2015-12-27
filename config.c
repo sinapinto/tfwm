@@ -154,7 +154,7 @@ find_config(char *file) {
 	}
 
 	if (getenv("XDG_CONFIG_HOME")) {
-		snprintf(path, PATH_MAX, "%s/.%s", getenv("HOME"), file);
+		snprintf(path, PATH_MAX, "%s/.%s", getenv("XDG_CONFIG_HOME"), file);
 		if (is_regular_file(path))
 			return path;
 	}
