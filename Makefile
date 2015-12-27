@@ -53,7 +53,7 @@ tfwm: $(OBJ)
 
 install: all
 	install -D -m 0755 tfwm $(DESTDIR)$(BINPREFIX)
-	install -D -m 0644 tfwm.1 $(DESTDIR)$(MANPREFIX)/man1
+	install -D -m 0644 doc/tfwm.1 $(DESTDIR)$(MANPREFIX)/man1
 
 uninstall:
 	rm -f $(DESTDIR)$(BINPREFIX)/tfwm

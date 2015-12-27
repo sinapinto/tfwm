@@ -1,0 +1,128 @@
+EWMH Compliance
+===============
+
+Root Window Properties (and Related Messages)
+
+_NET_SUPPORTED:                            supported
+_NET_CLIENT_LIST:                          supported
+_NET_CLIENT_LIST_STACKING:                 supported
+_NET_NUMBER_OF_DESKTOPS:                   supported
+_NET_DESKTOP_GEOMETRY:                     supported
+_NET_DESKTOP_VIEWPORT:                     UNSUPPORTED
+_NET_CURRENT_DESKTOP:                      supported
+_NET_DESKTOP_NAMES:                        UNSUPPORTED
+_NET_ACTIVE_WINDOW:                        supported
+_NET_WORKAREA:                             UNSUPPORTED
+_NET_SUPPORTING_WM_CHECK:                  supported
+_NET_VIRTUAL_ROOTS:                        UNSUPPORTED
+_NET_DESKTOP_LAYOUT:                       UNSUPPORTED
+_NET_SHOWING_DESKTOP:                      UNSUPPORTED
+
+
+Other Root Window Messages
+
+_NET_CLOSE_WINDOW:                         supported
+_NET_MOVERESIZE_WINDOW:                    UNSUPPORTED
+_NET_WM_MOVERESIZE:                        UNSUPPORTED
+_NET_RESTACK_WINDOW:                       UNSUPPORTED
+_NET_REQUEST_FRAME_EXTENTS:                supported
+
+
+Application Window Properties
+
+_NET_WM_NAME:                              supported
+_NET_WM_VISIBLE_NAME:                      UNSUPPORTED
+_NET_WM_ICON_NAME:                         UNSUPPORTED
+_NET_WM_VISIBLE_ICON_NAME:                 UNSUPPORTED
+_NET_WM_DESKTOP:                           supported
+_NET_WM_WINDOW_TYPE:
+        _NET_WM_WINDOW_TYPE_DESKTOP:       supported
+        _NET_WM_WINDOW_TYPE_DOCK:          supported
+        _NET_WM_WINDOW_TYPE_TOOLBAR:       supported
+        _NET_WM_WINDOW_TYPE_MENU:          supported
+        _NET_WM_WINDOW_TYPE_UTILITY:       supported
+        _NET_WM_WINDOW_TYPE_SPLASH:        supported
+        _NET_WM_WINDOW_TYPE_DIALOG:        supported
+        _NET_WM_WINDOW_TYPE_DROPDOWN_MENU: supported
+        _NET_WM_WINDOW_TYPE_POPUP_MENU:    supported
+        _NET_WM_WINDOW_TYPE_TOOLTIP:       supported
+        _NET_WM_WINDOW_TYPE_NOTIFICATION:  supported
+        _NET_WM_WINDOW_TYPE_COMBO:         supported
+        _NET_WM_WINDOW_TYPE_DND:           supported
+        _NET_WM_WINDOW_TYPE_NORMAL:        supported
+_NET_WM_STATE:
+        _NET_WM_STATE_MODAL:               supported
+        _NET_WM_STATE_STICKY:              supported
+        _NET_WM_STATE_MAXIMIZED_VERT:      supported
+        _NET_WM_STATE_MAXIMIZED_HORZ:      supported
+        _NET_WM_STATE_SHADED:              UNSUPPORTED
+        _NET_WM_STATE_SKIP_TASKBAR:        UNSUPPORTED
+        _NET_WM_STATE_SKIP_PAGER:          UNSUPPORTED
+        _NET_WM_STATE_HIDDEN:              UNSUPPORTED
+        _NET_WM_STATE_FULLSCREEN:          supported
+        _NET_WM_STATE_ABOVE:               supported
+        _NET_WM_STATE_BELOW:               UNSUPPORTED
+        _NET_WM_STATE_DEMANDS_ATTENTION:   supported
+        _NET_WM_STATE_FOCUSED:             UNSUPPORTED
+_NET_WM_ALLOWED_ACTIONS:
+        _NET_WM_ACTION_MOVE:               UNSUPPORTED
+        _NET_WM_ACTION_RESIZE:             UNSUPPORTED
+        _NET_WM_ACTION_MINIMIZE:           UNSUPPORTED
+        _NET_WM_ACTION_SHADE:              UNSUPPORTED
+        _NET_WM_ACTION_STICK:              UNSUPPORTED
+        _NET_WM_ACTION_MAXIMIZE_HORZ:      UNSUPPORTED
+        _NET_WM_ACTION_MAXIMIZE_VERT:      UNSUPPORTED
+        _NET_WM_ACTION_FULLSCREEN:         UNSUPPORTED
+        _NET_WM_ACTION_CHANGE_DESKTOP:     UNSUPPORTED
+        _NET_WM_ACTION_CLOSE:              UNSUPPORTED
+        _NET_WM_ACTION_ABOVE:              UNSUPPORTED
+        _NET_WM_ACTION_BELOW:              UNSUPPORTED
+_NET_WM_STRUT:                             UNSUPPORTED
+_NET_WM_STRUT_PARTIAL:                     UNSUPPORTED
+_NET_WM_ICON_GEOMETRY:                     UNSUPPORTED
+_NET_WM_ICON:                              UNSUPPORTED
+_NET_WM_PID:                               suppoorted
+_NET_WM_HANDLED_ICONS:                     UNSUPPORTED
+_NET_WM_USER_TIME:                         UNSUPPORTED
+_NET_WM_USER_TIME_WINDOW:                  UNSUPPORTED
+_NET_FRAME_EXTENTS:                        supported
+_NET_WM_OPAQUE_REGION:                     UNSUPPORTED
+_NET_WM_BYPASS_COMPOSITOR:                 UNSUPPORTED
+
+Window Manager Protocols
+
+_NET_WM_PING:                              UNSUPPORTED
+_NET_WM_SYNC_REQUEST:                      UNSUPPORTED
+_NET_WM_SYNC_REQUEST_COUNTER:              UNSUPPORTED
+_NET_WM_FULLSCREEN_MONITORS:               UNSUPPORTED
+_NET_WM_FULL_PLACEMENT:                    UNSUPPORTED
+
+Other specifications:
+
+Startup Notification
+
+_NET_STARTUP_ID:                           UNSUPPORTED
+_NET_STARTUP_INFO:                         UNSUPPORTED
+_NET_STARTUP_INFO_BEGIN:                   UNSUPPORTED
+
+System Tray Specification
+
+_NET_SYSTEM_TRAY_MESSAGE_DATA:             UNSUPPORTED
+_NET_SYSTEM_TRAY_OPCODE:                   UNSUPPORTED
+_NET_SYSTEM_TRAY_ORIENTATION:              UNSUPPORTED
+_NET_SYSTEM_TRAY_VISUAL:                   UNSUPPORTED
+
+Composite Manager Specification
+
+_NET_WM_WINDOW_OPACITY:                    UNSUPPORTED
+
+
+ICCCM Compliance 
+================
+(only supported properties are listed)
+
+Client Properties
+
+        WM_PROTOCOLS                       supported
+        WM_DELETE_WINDOW                   supported
+        WM_TAKE_FOCUS                      supported
