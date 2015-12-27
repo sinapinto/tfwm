@@ -162,9 +162,9 @@ find_config(char *file) {
 }
 
 void setkey(char *key, char *val) {
-	uint16_t mod = XCB_NONE;
-	char *token;
-	uint16_t keysym = 0;
+	char     *token;
+	uint16_t  mod = 0;
+	uint16_t  keysym = 0;
 
 	/* PRINTF("setkey: %s: %s\n", key, val); */
 
@@ -185,141 +185,143 @@ void setkey(char *key, char *val) {
 				mod |= XCB_MOD_MASK_5;
 		} else if (strncasecmp("ctrl", token, 4) == 0) {
 			mod |= XCB_MOD_MASK_CONTROL;
-		} else if (strncasecmp("shift", token, 4) == 0) {
+		} else if (strncasecmp("shift", token, 5) == 0) {
 			mod |= XCB_MOD_MASK_SHIFT;
 		} else {
 			if (strncmp(token, "0x", 2) == 0)
 				keysym = atoi(token);
 			else
 				keysym = XStringToKeysym(token);
-			if (keysym == 0)
+			if (keysym == 0) {
 				warn("setkey: keysym for '%s' not found\n",
 				     token);
+				return;
+			}
 		}
 	} while ((token = strtok(NULL, "+")));
 
 	if (OPT("terminal1")) {
-		keys[0]  = (Key){ mod,         keysym,               spawn,        {.com=terminal}    };
+		keys[0]  = (Key){ mod, keysym, spawn, {.com=terminal} };
 	} else if (OPT("terminal2")) {
-		keys[1]  = (Key){ mod,         keysym,                    spawn,        {.com=terminal2}   };
+		keys[1]  = (Key){ mod, keysym, spawn, {.com=terminal2}   };
 	} else if (OPT("browser")) {
-		keys[2]  = (Key){ mod,         keysym,                    spawn,        {.com=browser}     };
+		keys[2]  = (Key){ mod, keysym, spawn, {.com=browser}     };
 	} else if (OPT("browser2")) {
-		keys[3]  = (Key){ mod,         keysym,                    spawn,        {.com=browser2}    };
+		keys[3]  = (Key){ mod, keysym, spawn, {.com=browser2}    };
 	} else if (OPT("launcher")) {
-		keys[4]  = (Key){ mod,         keysym,                spawn,        {.com=launcher}    };
+		keys[4]  = (Key){ mod, keysym, spawn, {.com=launcher}    };
 	} else if (OPT("mpc_toggle")) {
-		keys[5]  = (Key){ mod,         keysym,                    spawn,        {.com=mpctoggle}   };
+		keys[5]  = (Key){ mod, keysym, spawn, {.com=mpctoggle}   };
 	} else if (OPT("mpc_seek_f")) {
-		keys[6]  = (Key){ mod,         keysym,                spawn,        {.com=mpcseekf}    };
+		keys[6]  = (Key){ mod, keysym, spawn, {.com=mpcseekf}    };
 	} else if (OPT("mpc_seek_b")) {
-		keys[7]  = (Key){ mod,         keysym,                spawn,        {.com=mpcseekb}    };
+		keys[7]  = (Key){ mod, keysym, spawn, {.com=mpcseekb}    };
 	} else if (OPT("mpc_next")) {
-		keys[8]  = (Key){ mod,         keysym,                    spawn,        {.com=mpcnext}     };
+		keys[8]  = (Key){ mod, keysym, spawn, {.com=mpcnext}     };
 	} else if (OPT("mpc_prev")) {
-		keys[9]  = (Key){ mod,         keysym,                    spawn,        {.com=mpcprev}     };
+		keys[9]  = (Key){ mod, keysym, spawn, {.com=mpcprev}     };
 	} else if (OPT("vol_up")) {
-		keys[10] = (Key){ mod,         keysym,                   spawn,        {.com=volup}       };
+		keys[10] = (Key){ mod, keysym, spawn, {.com=volup}       };
 	} else if (OPT("vol_down")) {
-		keys[11] = (Key){ mod,         keysym,                   spawn,        {.com=voldown}     };
+		keys[11] = (Key){ mod, keysym, spawn, {.com=voldown}     };
 	} else if (OPT("vol_up2")) {
-		keys[12] = (Key){ mod,         keysym, spawn,        {.com=volup}       };
+		keys[12] = (Key){ mod, keysym, spawn, {.com=volup}       };
 	} else if (OPT("vol_down2")) {
-		keys[13] = (Key){ mod,         keysym, spawn,        {.com=voldown}     };
+		keys[13] = (Key){ mod, keysym, spawn, {.com=voldown}     };
 	} else if (OPT("vol_toggle")) {
-		keys[14] = (Key){ mod,         keysym,        spawn,        {.com=voltoggle}   };
+		keys[14] = (Key){ mod, keysym, spawn, {.com=voltoggle}   };
 	} else if (OPT("resize_grow_height")) {
-		keys[15] = (Key){ mod,         keysym,                    resize,       {.i=GrowHeight}    };
+		keys[15] = (Key){ mod, keysym, resize, {.i=GrowHeight}    };
 	} else if (OPT("resize_grow_width")) {
-		keys[16] = (Key){ mod,         keysym,                    resize,       {.i=GrowWidth}     };
+		keys[16] = (Key){ mod, keysym, resize, {.i=GrowWidth}     };
 	} else if (OPT("resize_shrink_height")) {
-		keys[17] = (Key){ mod,         keysym,                    resize,       {.i=ShrinkHeight}  };
+		keys[17] = (Key){ mod, keysym, resize, {.i=ShrinkHeight}  };
 	} else if (OPT("resize_shrink_width")) {
-		keys[18] = (Key){ mod,         keysym,                    resize,       {.i=ShrinkWidth}   };
+		keys[18] = (Key){ mod, keysym, resize, {.i=ShrinkWidth}   };
 	} else if (OPT("resize_grow_both")) {
-		keys[19] = (Key){ mod,          keysym,                    resize,       {.i=GrowBoth}      };
+		keys[19] = (Key){ mod, keysym, resize, {.i=GrowBoth}      };
 	} else if (OPT("resize_shrink_both")) {
-		keys[20] = (Key){ mod,          keysym,                    resize,       {.i=ShrinkBoth}    };
+		keys[20] = (Key){ mod, keysym, resize, {.i=ShrinkBoth}    };
 	} else if (OPT("cycle_prev")) {
-		keys[21] = (Key){ mod,         keysym,                  cycleclients, {.i=PrevWindow}    };
+		keys[21] = (Key){ mod, keysym, cycleclients, {.i=PrevWindow} };
 	} else if (OPT("cycle_next")) {
-		keys[22] = (Key){ mod,         keysym,                  cycleclients, {.i=NextWindow}    };
+		keys[22] = (Key){ mod, keysym, cycleclients, {.i=NextWindow} };
 	} else if (OPT("teleport_center")) {
-		keys[23] = (Key){ mod,         keysym,                    teleport,     {.i=Center}        };
+		keys[23] = (Key){ mod, keysym, teleport, {.i=Center}        };
 	} else if (OPT("teleport_top_left")) {
-		keys[24] = (Key){ mod,         keysym,                    teleport,     {.i=TopLeft}       };
+		keys[24] = (Key){ mod, keysym, teleport, {.i=TopLeft}       };
 	} else if (OPT("teleport_top_right")) {
-		keys[25] = (Key){ mod,         keysym,                    teleport,     {.i=TopRight}      };
+		keys[25] = (Key){ mod, keysym, teleport, {.i=TopRight}      };
 	} else if (OPT("teleport_bottom_left")) {
-		keys[26] = (Key){ mod,         keysym,                    teleport,     {.i=BottomLeft}    };
+		keys[26] = (Key){ mod, keysym, teleport, {.i=BottomLeft}    };
 	} else if (OPT("teleport_bottom_right")) {
-		keys[27] = (Key){ mod,         keysym,                    teleport,     {.i=BottomRight}   };
+		keys[27] = (Key){ mod, keysym, teleport, {.i=BottomRight}   };
 	} else if (OPT("fullscreen")) {
-		keys[28] = (Key){ mod,         keysym,                    maximize,     {.i=0}             };
+		keys[28] = (Key){ mod, keysym, maximize, {.i=0}             };
 	} else if (OPT("maximize_vert")) {
-		keys[29] = (Key){ mod,         keysym,                    maximizeaxis, {.i=MaxVertical}   };
+		keys[29] = (Key){ mod, keysym, maximizeaxis, {.i=MaxVertical} };
 	} else if (OPT("maximize_horz")) {
-		keys[30] = (Key){ mod,         keysym,                    maximizeaxis, {.i=MaxHorizontal} };
+		keys[30] = (Key){ mod, keysym, maximizeaxis, {.i=MaxHorizontal} };
 	} else if (OPT("kill_win")) {
-		keys[31] = (Key){ mod,         keysym,                    killselected, {.i=0}             };
+		keys[31] = (Key){ mod, keysym, killselected, {.i=0} };
 	} else if (OPT("prior_workspace")) {
-		keys[32] = (Key){ mod,         keysym,                selectrws,    {.i=LastWorkspace} };
+		keys[32] = (Key){ mod, keysym, selectrws, {.i=LastWorkspace} };
 	} else if (OPT("prev_workspace")) {
-		keys[33] = (Key){ mod,         keysym,          selectrws,    {.i=PrevWorkspace} };
+		keys[33] = (Key){ mod, keysym, selectrws, {.i=PrevWorkspace} };
 	} else if (OPT("next_workspace")) {
-		keys[34] = (Key){ mod,         keysym,         selectrws,    {.i=NextWorkspace} };
+		keys[34] = (Key){ mod, keysym, selectrws, {.i=NextWorkspace} };
 	} else if (OPT("restart")) {
-		keys[35] = (Key){ mod,         keysym,                    restart,      {.i=0}             };
+		keys[35] = (Key){ mod, keysym, restart, {.i=0} };
 	} else if (OPT("quit")) {
-		keys[36] = (Key){ mod,         keysym,                    quit,         {.i=0}             };
+		keys[36] = (Key){ mod, keysym, quit, {.i=0} };
 	} else if (OPT("select_workspace_1")) {
-		keys[37] = (Key){ mod,         keysym,                    selectws,     {.i=1}             };
+		keys[37] = (Key){ mod, keysym, selectws, {.i=1} };
 	} else if (OPT("select_workspace_2")) {
-		keys[38] = (Key){ mod,         keysym,                    selectws,     {.i=2}             };
+		keys[38] = (Key){ mod, keysym, selectws, {.i=2} };
 	} else if (OPT("select_workspace_3")) {
-		keys[39] = (Key){ mod,         keysym,                    selectws,     {.i=3}             };
+		keys[39] = (Key){ mod, keysym, selectws, {.i=3} };
 	} else if (OPT("select_workspace_4")) {
-		keys[40] = (Key){ mod,         keysym,                    selectws,     {.i=4}             };
+		keys[40] = (Key){ mod, keysym, selectws, {.i=4} };
 	} else if (OPT("select_workspace_5")) {
-		keys[41] = (Key){ mod,         keysym,                    selectws,     {.i=5}             };
+		keys[41] = (Key){ mod, keysym, selectws, {.i=5} };
 	} else if (OPT("select_workspace_6")) {
-		keys[42] = (Key){ mod,         keysym,                    selectws,     {.i=6}             };
+		keys[42] = (Key){ mod, keysym, selectws, {.i=6} };
 	} else if (OPT("select_workspace_7")) {
-		keys[43] = (Key){ mod,         keysym,                    selectws,     {.i=7}             };
+		keys[43] = (Key){ mod, keysym, selectws, {.i=7} };
 	} else if (OPT("select_workspace_8")) {
-		keys[44] = (Key){ mod,         keysym,                    selectws,     {.i=8}             };
+		keys[44] = (Key){ mod, keysym, selectws, {.i=8} };
 	} else if (OPT("select_workspace_9")) {
-		keys[45] = (Key){ mod,         keysym,                    selectws,     {.i=9}             };
+		keys[45] = (Key){ mod, keysym, selectws, {.i=9} };
 	} else if (OPT("select_workspace_0")) {
-		keys[46] = (Key){ mod,         keysym,                    selectws,     {.i=0}             };
+		keys[46] = (Key){ mod, keysym, selectws, {.i=0} };
 	} else if (OPT("send_to_workspace_1")) {
-		keys[47] = (Key){ mod,         keysym,                    sendtows,     {.i=1}             };
+		keys[47] = (Key){ mod, keysym, sendtows, {.i=1} };
 	} else if (OPT("send_to_workspace_2")) {
-		keys[48] = (Key){ mod,         keysym,                    sendtows,     {.i=2}             };
+		keys[48] = (Key){ mod, keysym, sendtows, {.i=2} };
 	} else if (OPT("send_to_workspace_3")) {
-		keys[49] = (Key){ mod,         keysym,                    sendtows,     {.i=3}             };
+		keys[49] = (Key){ mod, keysym, sendtows, {.i=3} };
 	} else if (OPT("send_to_workspace_4")) {
-		keys[50] = (Key){ mod,         keysym,                    sendtows,     {.i=4}             };
+		keys[50] = (Key){ mod, keysym, sendtows, {.i=4} };
 	} else if (OPT("send_to_workspace_5")) {
-		keys[51] = (Key){ mod,         keysym,                    sendtows,     {.i=5}             };
+		keys[51] = (Key){ mod, keysym, sendtows, {.i=5} };
 	} else if (OPT("send_to_workspace_6")) {
-		keys[52] = (Key){ mod,         keysym,                    sendtows,     {.i=6}             };
+		keys[52] = (Key){ mod, keysym, sendtows, {.i=6} };
 	} else if (OPT("send_to_workspace_7")) {
-		keys[53] = (Key){ mod,         keysym,                    sendtows,     {.i=7}             };
+		keys[53] = (Key){ mod, keysym, sendtows, {.i=7} };
 	} else if (OPT("send_to_workspace_8")) {
-		keys[54] = (Key){ mod,         keysym,                    sendtows,     {.i=8}             };
+		keys[54] = (Key){ mod, keysym, sendtows, {.i=8} };
 	} else if (OPT("send_to_workspace_9")) {
-		keys[55] = (Key){ mod,         keysym,                    sendtows,     {.i=9}             };
+		keys[55] = (Key){ mod, keysym, sendtows, {.i=9} };
 	} else if (OPT("send_to_workspace_0")) {
-		keys[56] = (Key){ mod,         keysym,                    sendtows,     {.i=0}             };
+		keys[56] = (Key){ mod, keysym, sendtows, {.i=0} };
 	} else if (OPT("move_up")) {
-		keys[57] = (Key){ mod,         keysym,                    move,         {.i=MoveUp}        };
+		keys[57] = (Key){ mod, keysym, move, {.i=MoveUp} };
 	} else if (OPT("move_down")) {
-		keys[58] = (Key){ mod,         keysym,                    move,         {.i=MoveDown}      };
+		keys[58] = (Key){ mod, keysym, move, {.i=MoveDown} };
 	} else if (OPT("move_left")) {
-		keys[59] = (Key){ mod,         keysym,                    move,         {.i=MoveLeft}      };
+		keys[59] = (Key){ mod, keysym, move, {.i=MoveLeft} };
 	} else if (OPT("move_right")) {
-		keys[60] = (Key){ mod,         keysym,                    move,         {.i=MoveRight}     };
+		keys[60] = (Key){ mod, keysym, move, {.i=MoveRight} };
 	}
 }
 
