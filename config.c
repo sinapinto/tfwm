@@ -275,45 +275,45 @@ void setkey(char *key, char *val) {
 	} else if (OPT("quit")) {
 		keys[36] = (Key){ mod, keysym, quit, {.i=0} };
 	} else if (OPT("select_workspace_1")) {
-		keys[37] = (Key){ mod, keysym, selectws, {.i=1} };
+		keys[37] = (Key){ mod, keysym, selectws, {.i=0} };
 	} else if (OPT("select_workspace_2")) {
-		keys[38] = (Key){ mod, keysym, selectws, {.i=2} };
+		keys[38] = (Key){ mod, keysym, selectws, {.i=1} };
 	} else if (OPT("select_workspace_3")) {
-		keys[39] = (Key){ mod, keysym, selectws, {.i=3} };
+		keys[39] = (Key){ mod, keysym, selectws, {.i=2} };
 	} else if (OPT("select_workspace_4")) {
-		keys[40] = (Key){ mod, keysym, selectws, {.i=4} };
+		keys[40] = (Key){ mod, keysym, selectws, {.i=3} };
 	} else if (OPT("select_workspace_5")) {
-		keys[41] = (Key){ mod, keysym, selectws, {.i=5} };
+		keys[41] = (Key){ mod, keysym, selectws, {.i=4} };
 	} else if (OPT("select_workspace_6")) {
-		keys[42] = (Key){ mod, keysym, selectws, {.i=6} };
+		keys[42] = (Key){ mod, keysym, selectws, {.i=5} };
 	} else if (OPT("select_workspace_7")) {
-		keys[43] = (Key){ mod, keysym, selectws, {.i=7} };
+		keys[43] = (Key){ mod, keysym, selectws, {.i=6} };
 	} else if (OPT("select_workspace_8")) {
-		keys[44] = (Key){ mod, keysym, selectws, {.i=8} };
+		keys[44] = (Key){ mod, keysym, selectws, {.i=7} };
 	} else if (OPT("select_workspace_9")) {
-		keys[45] = (Key){ mod, keysym, selectws, {.i=9} };
+		keys[45] = (Key){ mod, keysym, selectws, {.i=8} };
 	} else if (OPT("select_workspace_0")) {
-		keys[46] = (Key){ mod, keysym, selectws, {.i=0} };
+		keys[46] = (Key){ mod, keysym, selectws, {.i=9} };
 	} else if (OPT("send_to_workspace_1")) {
-		keys[47] = (Key){ mod, keysym, sendtows, {.i=1} };
+		keys[47] = (Key){ mod, keysym, sendtows, {.i=0} };
 	} else if (OPT("send_to_workspace_2")) {
-		keys[48] = (Key){ mod, keysym, sendtows, {.i=2} };
+		keys[48] = (Key){ mod, keysym, sendtows, {.i=1} };
 	} else if (OPT("send_to_workspace_3")) {
-		keys[49] = (Key){ mod, keysym, sendtows, {.i=3} };
+		keys[49] = (Key){ mod, keysym, sendtows, {.i=2} };
 	} else if (OPT("send_to_workspace_4")) {
-		keys[50] = (Key){ mod, keysym, sendtows, {.i=4} };
+		keys[50] = (Key){ mod, keysym, sendtows, {.i=3} };
 	} else if (OPT("send_to_workspace_5")) {
-		keys[51] = (Key){ mod, keysym, sendtows, {.i=5} };
+		keys[51] = (Key){ mod, keysym, sendtows, {.i=4} };
 	} else if (OPT("send_to_workspace_6")) {
-		keys[52] = (Key){ mod, keysym, sendtows, {.i=6} };
+		keys[52] = (Key){ mod, keysym, sendtows, {.i=5} };
 	} else if (OPT("send_to_workspace_7")) {
-		keys[53] = (Key){ mod, keysym, sendtows, {.i=7} };
+		keys[53] = (Key){ mod, keysym, sendtows, {.i=6} };
 	} else if (OPT("send_to_workspace_8")) {
-		keys[54] = (Key){ mod, keysym, sendtows, {.i=8} };
+		keys[54] = (Key){ mod, keysym, sendtows, {.i=7} };
 	} else if (OPT("send_to_workspace_9")) {
-		keys[55] = (Key){ mod, keysym, sendtows, {.i=9} };
+		keys[55] = (Key){ mod, keysym, sendtows, {.i=8} };
 	} else if (OPT("send_to_workspace_0")) {
-		keys[56] = (Key){ mod, keysym, sendtows, {.i=0} };
+		keys[56] = (Key){ mod, keysym, sendtows, {.i=9} };
 	} else if (OPT("move_up")) {
 		keys[57] = (Key){ mod, keysym, move, {.i=MoveUp} };
 	} else if (OPT("move_down")) {
