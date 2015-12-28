@@ -52,8 +52,10 @@ tfwm: $(OBJ)
 	$(CC) $(LIBS) $(CFLAGS) -o $@ $(OBJ)
 
 install: all
+	mkdir -p $(DESTDIR)$(BINPREFIX)
 	install -D -m 0755 tfwm $(DESTDIR)$(BINPREFIX)
-	install -D -m 0644 doc/tfwm.1 $(DESTDIR)$(MANPREFIX)/man1
+	mkdir -p $(DESTDIR)$(MANPREFIX)
+	install -D -m 0644 doc/tfwm.1 $(DESTDIR)$(MANPREFIX)/man1/tfwm.1
 
 uninstall:
 	rm -f $(DESTDIR)$(BINPREFIX)/tfwm
