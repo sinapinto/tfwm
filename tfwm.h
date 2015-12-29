@@ -68,6 +68,7 @@ struct Client {
 enum { MoveDown, MoveRight, MoveUp, MoveLeft };
 enum { GrowHeight, GrowWidth, ShrinkHeight, ShrinkWidth, GrowBoth, ShrinkBoth };
 enum { Center, TopLeft, TopRight, BottomLeft, BottomRight };
+enum { Top, Left, Bottom, Right };
 enum { MouseMove, MouseResize };
 enum { MaxVertical, MaxHorizontal };
 enum { LastWorkspace, PrevWorkspace, NextWorkspace };
@@ -120,6 +121,8 @@ void showhide(Client *c);
 void spawn(const Arg *arg);
 void teleport(const Arg *arg);
 void teleport_client(Client *c, uint16_t location);
+void maximize_half(const Arg *arg);
+void maximize_half_client(Client *c, uint16_t location);
 void unmanage(Client *c);
 void updatenumlockmask(void);
 void warn(const char *fmt, ...);

@@ -84,10 +84,15 @@ Key keys[KEY_MAX] = {
 	WORKSPACE(      XK_8,                                    7 )
 	WORKSPACE(      XK_9,                                    8 )
 	WORKSPACE(      XK_0,                                    9 )
+#undef WORKSPACE
 	{ MOD,          XK_k,                     move,          {.i=MoveUp}        },
 	{ MOD,          XK_j,                     move,          {.i=MoveDown}      },
 	{ MOD,          XK_h,                     move,          {.i=MoveLeft}      },
 	{ MOD,          XK_l,                     move,          {.i=MoveRight}     },
+	{ MOD | SHIFT,  XK_y,                     maximize_half, {.i=Left}     },
+	{ MOD | SHIFT,  XK_u,                     maximize_half, {.i=Right}     },
+	{ MOD | SHIFT,  XK_b,                     maximize_half, {.i=Bottom}     },
+	{ MOD | SHIFT,  XK_n,                     maximize_half, {.i=Top}     },
 };
 
 Button buttons[BUTTON_MAX] = {

@@ -2,7 +2,7 @@
 #ifndef KEYS_H
 #define KEYS_H
 
-#define KEY_MAX    61
+#define KEY_MAX    65
 #define RULE_MAX   2
 #define BUTTON_MAX 2
 

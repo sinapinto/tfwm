@@ -219,6 +219,12 @@ reparent(Client *c) {
 	y = c->geom.y;
 	width = c->geom.width;
 	height = c->geom.height;
+#if DEBUG
+	if (c->size_hints.flags & XCB_ICCCM_SIZE_HINT_P_WIN_GRAVITY &&
+	    c->size_hints.win_gravity > 1)
+		PRINTF("HAS NONSTANDARD GRAVITY: %d\n",
+		       c->size_hints.win_gravity);
+#endif
 
 	switch (GRAVITY(c)) {
 	case XCB_GRAVITY_NORTH_WEST:
@@ -594,7 +600,6 @@ showhide(Client *c) {
 	}
 	else {
 		showhide(c->snext);
-		// TODO: set iconic state
 		movewin(c->frame, WIDTH(c) * -2, c->geom.y);
 	}
 }
@@ -603,7 +608,6 @@ void
 teleport(const Arg *arg) {
 	if (!sel || sel->win == screen->root)
 		return;
-
 	teleport_client(sel, arg->i);
 }
 
@@ -649,6 +653,80 @@ teleport_client(Client *c, uint16_t location) {
 		movewin(c->frame, c->geom.x, c->geom.y);
 	else if (c->win)
 		movewin(c->win, c->geom.x, c->geom.y);
+	warp_pointer(c);
+}
+
+void
+maximize_half(const Arg *arg) {
+	if (!sel || sel->win == screen->root)
+		return;
+	maximize_half_client(sel, arg->i);
+}
+
+void
+maximize_half_client(Client *c, uint16_t location) {
+	const uint16_t sw = screen->width_in_pixels - 2*border_width;
+	const uint16_t sh = screen->height_in_pixels - 2*border_width;
+	const uint16_t half_sw = (screen->width_in_pixels/2) - 2*border_width;
+	const uint16_t half_sh = (screen->height_in_pixels/2) - 2*border_width;
+
+	savegeometry(c);
+
+	switch (location) {
+	case Left:
+		c->geom.x = 0;
+		c->geom.y = 0;
+		c->geom.width = half_sw;
+		c->geom.height = sh;
+		moveresize_win(c->frame, c->geom.x, c->geom.y,
+			       c->geom.width, c->geom.height);
+		moveresize_win(c->win, 0, 0, c->geom.width, c->geom.height);
+		change_ewmh_flags(c, ADD_STATE, EWMH_MAXIMIZED_VERT);
+		change_ewmh_flags(c, REMOVE_STATE, EWMH_MAXIMIZED_HORZ);
+		break;
+	case Right:
+		c->geom.y = 0;
+		c->geom.width = half_sw;
+		c->geom.x = screen->width_in_pixels -
+			(c->geom.width + 2*border_width);
+		c->geom.height = sh;
+		moveresize_win(c->frame, c->geom.x, c->geom.y,
+			       c->geom.width, c->geom.height);
+		moveresize_win(c->win, 0, 0, c->geom.width, c->geom.height);
+		change_ewmh_flags(c, ADD_STATE, EWMH_MAXIMIZED_VERT);
+		change_ewmh_flags(c, REMOVE_STATE, EWMH_MAXIMIZED_HORZ);
+		break;
+	case Top:
+		c->geom.x = 0;
+		c->geom.y = 0;
+		c->geom.width = sw;
+		c->geom.height = half_sh;
+		moveresize_win(c->frame, c->geom.x, c->geom.y,
+			       c->geom.width, c->geom.height);
+		moveresize_win(c->win, 0, 0, c->geom.width, c->geom.height);
+		change_ewmh_flags(c, ADD_STATE, EWMH_MAXIMIZED_VERT);
+		change_ewmh_flags(c, REMOVE_STATE, EWMH_MAXIMIZED_HORZ);
+		break;
+	case Bottom:
+		c->geom.x = 0;
+		c->geom.width = sw;
+		c->geom.height = half_sh;
+		c->geom.y = screen->height_in_pixels -
+			(c->geom.height + 2*border_width);
+		moveresize_win(c->frame, c->geom.x, c->geom.y,
+			       c->geom.width, c->geom.height);
+		moveresize_win(c->win, 0, 0, c->geom.width, c->geom.height);
+		change_ewmh_flags(c, ADD_STATE, EWMH_MAXIMIZED_VERT);
+		change_ewmh_flags(c, REMOVE_STATE, EWMH_MAXIMIZED_HORZ);
+		break;
+	}
+	change_ewmh_flags(c, REMOVE_STATE, EWMH_FULLSCREEN);
+	ewmh_update_wm_state(c);
+
+	PRINTF("maximize_half win %#x to (%d,%d) %dx%d\n",
+	       c->frame, c->geom.x, c->geom.y, c->geom.width, c->geom.height);
+
+	setborder(c, true);
 	warp_pointer(c);
 }
 

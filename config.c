@@ -105,6 +105,10 @@ static const struct {
 	{ KEYBIND, "move_down",             setkey },
 	{ KEYBIND, "move_left",             setkey },
 	{ KEYBIND, "move_right",            setkey },
+	{ KEYBIND, "maximize_half_left",     setkey },
+	{ KEYBIND, "maximize_half_right",    setkey },
+	{ KEYBIND, "maximize_half_bottom",   setkey },
+	{ KEYBIND, "maximize_half_top",      setkey },
 };
 
 static char *terminal[]  = { "urxvt", NULL };
@@ -322,6 +326,14 @@ void setkey(char *key, char *val) {
 		keys[59] = (Key){ mod, keysym, move, {.i=MoveLeft} };
 	} else if (OPT("move_right")) {
 		keys[60] = (Key){ mod, keysym, move, {.i=MoveRight} };
+	} else if (OPT("maximize_half_left")) {
+		keys[61] = (Key){ mod, keysym, maximize_half, {.i=Left} };
+	} else if (OPT("maximize_half_right")) {
+		keys[62] = (Key){ mod, keysym, maximize_half, {.i=Right} };
+	} else if (OPT("maximize_half_bottom")) {
+		keys[63] = (Key){ mod, keysym, maximize_half, {.i=Bottom} };
+	} else if (OPT("maximize_half_top")) {
+		keys[64] = (Key){ mod, keysym, maximize_half, {.i=Top} };
 	}
 }
 
