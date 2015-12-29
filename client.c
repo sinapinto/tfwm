@@ -391,7 +391,6 @@ maximizeclient(Client *c, bool doit) {
 		moveresize_win(c->frame, c->geom.x, c->geom.y,
 			       c->geom.width, c->geom.height);
 		moveresize_win(c->win, 0, 0, c->geom.width, c->geom.height);
-		/* setborder(c, true); */
 	}
 
 	warp_pointer(c);
@@ -616,7 +615,7 @@ teleport_client(Client *c, uint16_t location) {
 	tw = c->geom.width;
 	th = c->geom.height;
 
-	if (!c->noborder) {
+	if (!ISFULLSCREEN(c)) {
 		tw += border_width * 2;
 		th += border_width * 2;
 	}
