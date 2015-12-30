@@ -1,7 +1,7 @@
 Configuration Specification
 ===========================
 
-Configuration is done in through an INI style config file, which is looked for
+Configuration is done in through an INI style config file, which is searched
 in the following order:
  $HOME/.tfwmrc
  $XDG_CONFIG_HOME/.tfwmrc
@@ -14,13 +14,12 @@ If no configuration file exists, tfwm will fallback to the default keybinds
 Lines can be commented using either a semi-colon (;) or octothorpe (#) as the
 first character of the line.
 
-In general, in the "options" section, a value of 0 correlates to "Off" and 1
-correlates to "On".
-
 In the "keybinds" section, "Mod1" refers to the modifier mask used in key
 combinations. You can use the xmodmap(1) utility to find which modifier a key
 corresponds to. Generally, Mod1 is the Alt key and Mod4 is the Windows/Super
 key.
+
+-------------------------------------------------------------------------------
 
 [options]
 
@@ -44,16 +43,14 @@ The width of window borders, in pixels.
 
 focus_color:
 The border color of the actively focused window. This can be either an unquoted
-hexadecimal code (e.g. #ff00AA) or an unquoted string representing an X11 color
-name (e.g. sky blue).
+hexadecimal code (e.g. #ff00AA) or an unquoted X11 color name (e.g. sky blue).
 
 unfocus_color:
 The border color of an unfocused window. This can be either an unquoted
-hexadecimal code (e.g. #ff00AA) or an unquoted string representing an X11 color
-name (e.g. sky blue).
+hexadecimal code (e.g. #ff00AA) or an unquoted X11 color name (e.g. sky blue).
 
 sloppy_focus:
-If window focus should follow the mouse pointer.
+Window focus should follow the mouse pointer.
 Possible values: (default 0)
 0:  Off
 1:  On
@@ -63,12 +60,11 @@ The location of the mouse pointer on the active window when moving, resizing,
 or focusing it.
 Possible values: (default 0)
 0:  None
-1:  The top left of the window
-2:  The top right of the window
-3:  The bottom left of the window
-4:  The bottom right of the window
-5:  The center of the window
-
+1:  Top-left corner
+2:  Top-right corner
+3:  Bottom-left corner
+4:  Bottom-right corner
+5:  Center
 
 [keybinds]
 
@@ -149,10 +145,3 @@ Restart tfwm.
 
 quit:
 Quit tfwm.
-
-select_workspace_[n]:
-Switch to the nth workspace.
-
-send_to_workspace_[n]:
-Move focused window to the nth workspace.
-
