@@ -1,4 +1,6 @@
 /* See LICENSE file for copyright and license details. */
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,15 +28,16 @@ err(const char *fmt, ...) {
 }
 
 void
-spawn(const Arg *arg) {
-	(void)arg;
+run_program(const char *cmd) {
 	if (fork() == 0) {
-		if (conn)
-			close(screen->root);
 		setsid();
-		execvp((char*)arg->com[0], (char**)arg->com);
-		err("execvp %s", ((char **)arg->com)[0]);
+		if (fork() == 0) {
+			execl("/bin/sh", "/bin/sh", "-c", cmd, (void *)NULL);
+			err("execl failed: %s", cmd);
+		}
+		_exit(0);
 	}
+	wait(0);
 }
 
 char *

@@ -10,7 +10,7 @@
 
 /* types */
 typedef union {
-	char         **com;
+	char         *com;
 	unsigned int   i;
 } Arg;
 

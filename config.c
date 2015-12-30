@@ -111,19 +111,19 @@ static const struct {
 	{ KEYBIND, "maximize_half_top",      setkey },
 };
 
-static char *terminal[]  = { "urxvt", NULL };
-static char *terminal2[] = { "termite", NULL };
-static char *browser[]   = { "chromium", NULL };
-static char *browser2[]  = { "firefox", NULL };
-static char *launcher[]  = { "rofi", "-show", "run",  NULL };
-static char *mpctoggle[] = { "mpc", "-q", "toggle", NULL };
-static char *mpcseekf[]  = { "mpc", "-q", "seek", "+30", NULL };
-static char *mpcseekb[]  = { "mpc", "-q", "seek", "-30", NULL };
-static char *mpcnext[]   = { "mpc", "-q", "next", NULL };
-static char *mpcprev[]   = { "mpc", "-q", "prev", NULL };
-static char *volup[]     = { "amixer", "-q", "set", "Master", "3%+", "unmute", NULL };
-static char *voldown[]   = { "amixer", "-q", "set", "Master", "3%-", "unmute", NULL };
-static char *voltoggle[] = { "amixer", "-q", "set", "Master", "toggle", NULL };
+static char terminal[]  = "urxvt";
+static char terminal2[] = "termite";
+static char browser[]   = "chromium";
+static char browser2[]  = "firefox";
+static char launcher[]  = "rofi -show run";
+static char mpctoggle[] = "mpc -q toggle";
+static char mpcseekf[]  = "mpc -q seek +30";
+static char mpcseekb[]  = "mpc -q seek -30";
+static char mpcnext[]   = "mpc -q next";
+static char mpcprev[]   = "mpc -q prev";
+static char volup[]     = "amixer -q set Master 3%+ unmute";
+static char voldown[]   = "amixer -q set Master 3%- unmute";
+static char voltoggle[] = "amixer -q set Master toggle";
 
 bool pixmap_border   = false;
 int border_width     = 4;

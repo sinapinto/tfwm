@@ -605,6 +605,11 @@ showhide(Client *c) {
 }
 
 void
+spawn(const Arg *arg) {
+	run_program(arg->com);
+}
+
+void
 teleport(const Arg *arg) {
 	if (!sel || sel->win == screen->root)
 		return;
