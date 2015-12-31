@@ -1,5 +1,5 @@
-EWMH Compliance
-===============
+EWMH 1.5
+--------
 
 Root Window Properties (and Related Messages)
 
@@ -117,8 +117,8 @@ Composite Manager Specification
 _NET_WM_WINDOW_OPACITY:                    UNSUPPORTED
 
 
-ICCCM Compliance 
-================
+ICCCM 2.0
+---------
 (only supported properties are listed)
 
 Client Properties
