@@ -33,7 +33,7 @@ run_program(const char *cmd) {
 		setsid();
 		if (fork() == 0) {
 			execl("/bin/sh", "/bin/sh", "-c", cmd, (void *)NULL);
-			err("execl failed: %s", cmd);
+			err("execl failed: %s\n", cmd);
 		}
 		_exit(0);
 	}

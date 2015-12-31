@@ -6,6 +6,7 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <xcb/xcb.h>
+#include <xcb/xcb_aux.h>
 #include <xcb/xcb_ewmh.h>
 #include <X11/Xlib-xcb.h>
 #include <X11/cursorfont.h>
@@ -36,10 +37,10 @@ xcb_screen_t *screen;
 unsigned int numlockmask;
 int scrno;
 Client *stack;
-int sigcode;
 xcb_ewmh_connection_t *ewmh;
 uint32_t focuscol, unfocuscol, outercol;
-bool restart_wm;
+static volatile sig_atomic_t sigcode;
+static volatile bool restart_wm;
 bool shape_ext;
 xcb_atom_t WM_DELETE_WINDOW;
 xcb_atom_t WM_TAKE_FOCUS;
@@ -73,7 +74,6 @@ sigcatch(int sig) {
 		sigcode = sig;
 		break;
 	case SIGHUP:
-	case SIGUSR1:
 		restart_wm = true;
 		sigcode = sig;
 		break;
@@ -106,26 +106,30 @@ run(void) {
 
 void
 cleanup(void) {
-	PRINTF("========= shutting down ==========\n");
+	Client *c;
 
-	xcb_set_input_focus(conn, XCB_NONE, XCB_INPUT_FOCUS_POINTER_ROOT,
-			    XCB_CURRENT_TIME);
+	for (c = clients; c; c = c->next) {
+		xcb_reparent_window(conn, c->win, screen->root,
+				    c->geom.x, c->geom.y);
+	}
+	xcb_aux_sync(conn);
+
+	// FIXME
 	while (stack) {
-		/* xcb_reparent_window(conn, stack->win, screen->root, */
-		/* 		    stack->geom.x, stack->geom.y); */
-		/* xcb_destroy_window(conn, stack->frame); */
 		PRINTF("unmap and free win %#x\n", stack->win);
 		xcb_unmap_window(conn, stack->win);
-
 		detach(stack);
 		detachstack(stack);
 		FREE(stack);
+		ewmh_update_client_list(clients);
+		focus(NULL);
 	}
-
 	ewmh_teardown();
 	free_cursors();
 	FREE(focus_color);
 	FREE(unfocus_color);
+	xcb_set_input_focus(conn, XCB_NONE, XCB_INPUT_FOCUS_POINTER_ROOT,
+			    XCB_CURRENT_TIME);
 	xcb_flush(conn);
 	xcb_disconnect(conn);
 	PRINTF("bye\n");
@@ -133,34 +137,44 @@ cleanup(void) {
 
 void
 remanage_windows(void) {
+	xcb_window_t                        sup;
 	xcb_query_tree_cookie_t             qtc;
 	xcb_query_tree_reply_t             *qtr;
 	xcb_get_window_attributes_cookie_t  gac;
 	xcb_get_window_attributes_reply_t  *gar;
+	xcb_window_t *children;
+
+	if (!ewmh_get_supporting_wm_check(&sup))
+		warn("ewmh_get_supporting_wm_check fail\n");
 
 	qtc = xcb_query_tree(conn, screen->root);
-	if ((qtr = xcb_query_tree_reply(conn, qtc, NULL))) {
-		PRINTF("parent = 0x%08x\n", qtr->parent);
-		PRINTF("root   = 0x%08x\n", qtr->root);
-		xcb_window_t *children = xcb_query_tree_children(qtr);
+	if ((qtr = xcb_query_tree_reply(conn, qtc, NULL)) == NULL)
+		return;
 
-		for (int i = 0; i < xcb_query_tree_children_length(qtr); i++) {
-			warn("restore window %#x\n", children[i]);
-			manage(children[i]);
+	children = xcb_query_tree_children(qtr);
 
-			gac = xcb_get_window_attributes(conn, children[i]);
-			gar = xcb_get_window_attributes_reply(conn, gac, NULL);
-			if (!gar)
-				continue;
-			if (gar->override_redirect) {
-				PRINTF("remanage_windows: skip %#x: "
-				       "override_redirect set\n", children[i]);
-				FREE(gar);
-				continue;
-			}
+	for (int i = 0; i < xcb_query_tree_children_length(qtr); i++) {
+		if (children[i] == sup) {
+			PRINTF("remanage_windows: skip %#x: "
+			       "supporting_wm_check window\n", children[i]);
+			continue;
 		}
-		FREE(qtr);
+
+		warn("remanage_windows: %#x\n", children[i]);
+		manage(children[i]);
+
+		gac = xcb_get_window_attributes(conn, children[i]);
+		gar = xcb_get_window_attributes_reply(conn, gac, NULL);
+		if (!gar)
+			continue;
+		if (gar->override_redirect) {
+			PRINTF("remanage_windows: skip %#x: "
+			       "override_redirect set\n", children[i]);
+			FREE(gar);
+			continue;
+		}
 	}
+	FREE(qtr);
 }
 
 void
@@ -183,15 +197,9 @@ setup(void) {
 		err("another window manager is running.");
 	}
 
-	/* remanage windows from the prior session before setting
-	 * the _NET_SUPPORTING_WM_CHECK window. */
-	remanage_windows();
-
 	getatom(&WM_DELETE_WINDOW, "WM_DELETE_WINDOW");
 	getatom(&WM_TAKE_FOCUS, "WM_TAKE_FOCUS");
 	getatom(&WM_PROTOCOLS, "WM_PROTOCOLS");
-
-	ewmh_setup();
 
 	updatenumlockmask();
 	grabkeys();
@@ -213,6 +221,9 @@ setup(void) {
 #ifdef SHAPE
 	shape_ext = check_shape_extension();
 #endif
+
+	ewmh_setup();
+	remanage_windows();
 	focus(NULL);
 }
 
@@ -242,7 +253,6 @@ main(int argc, char **argv) {
 	signal(SIGTERM, sigcatch);
 	signal(SIGQUIT, sigcatch);
 	signal(SIGHUP, sigcatch);
-	signal(SIGUSR1, sigcatch);
 
 	scrno = XDefaultScreen(display);
 
@@ -258,6 +268,7 @@ main(int argc, char **argv) {
 		warn("no config file found. using default settings\n");
 	}
 
+	xcb_aux_sync(conn);
 	setup();
 	run();
 	cleanup();

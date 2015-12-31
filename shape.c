@@ -17,11 +17,11 @@ static void draw_corner(Client *c, uint8_t corner, unsigned char bits[]);
 
 bool
 check_shape_extension(void) {
-	xcb_query_extension_reply_t const *ereply;
 	xcb_shape_query_version_cookie_t   vcookie;
 	xcb_shape_query_version_reply_t   *vreply;
 
-	ereply = xcb_get_extension_data(conn, &xcb_shape_id);
+	xcb_query_extension_reply_t const *ereply =
+		xcb_get_extension_data(conn, &xcb_shape_id);
 
 	if (!ereply) {
 		warn("can't get shape extension data.");

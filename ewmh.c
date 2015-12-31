@@ -316,3 +316,14 @@ ewmh_get_wm_window_type(Client *c) {
 	}
 }
 
+bool
+ewmh_get_supporting_wm_check(xcb_window_t *win) {
+	xcb_get_property_cookie_t c;
+
+	c = xcb_ewmh_get_supporting_wm_check_unchecked(ewmh, screen->root);
+	if (xcb_ewmh_get_supporting_wm_check_reply(ewmh, c, win, NULL) == 0) {
+		return false;
+	}
+	return true;
+}
+

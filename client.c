@@ -95,6 +95,8 @@ manage(xcb_window_t w) {
 	unsigned int                        i;
 	uint32_t                            val[1];
 
+	PRINTF("manage window %#x\n", w);
+
 	if (!(c = malloc(sizeof(Client))))
 		err("can't allocate memory.");
 
@@ -109,7 +111,6 @@ manage(xcb_window_t w) {
 		c->geom.width = c->old_geom.width = gr->width;
 		c->geom.height = c->old_geom.height = gr->height;
 #if DEBUG
-		PRINTF("========== geometry ==========\n");
 		if (c->geom.x)
 			PRINTF("x: %d\n", c->geom.x);
 		if (c->geom.y)
@@ -143,7 +144,6 @@ manage(xcb_window_t w) {
 	nhc = xcb_icccm_get_wm_normal_hints(conn, c->win);
 	xcb_icccm_get_wm_normal_hints_reply(conn, nhc, &c->size_hints, NULL);
 #if DEBUG
-	PRINTF("========= size hints =========\n");
 	if (c->size_hints.x)
 		PRINTF("x: %d\n", c->size_hints.x);
 	if (c->size_hints.y)
@@ -164,7 +164,6 @@ manage(xcb_window_t w) {
 		PRINTF("base height: %d\n", c->size_hints.base_height);
 	if (c->size_hints.base_width)
 		PRINTF("base width: %d\n", c->size_hints.base_width);
-	PRINTF("------------------------------\n");
 #endif
 
 	/* get wm hints */

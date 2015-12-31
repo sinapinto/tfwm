@@ -10,6 +10,7 @@ void ewmh_get_wm_state(Client *c);
 void ewmh_update_wm_state(Client *c);
 void ewmh_update_client_list(Client *list);
 void ewmh_get_wm_window_type(Client *c);
+bool ewmh_get_supporting_wm_check(xcb_window_t *win);
 
 #endif
 
