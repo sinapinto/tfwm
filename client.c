@@ -411,6 +411,7 @@ move(const Arg *arg) {
 	case MoveRight: sel->geom.x += move_step; break;
 	case MoveUp:    sel->geom.y -= move_step; break;
 	case MoveLeft:  sel->geom.x -= move_step; break;
+	default: warn("move: bad arg %d\n", arg->i);
 	}
 
 	movewin(sel->frame, sel->geom.x, sel->geom.y);
@@ -629,26 +630,28 @@ teleport_client(Client *c, uint16_t location) {
 	}
 
 	switch (location) {
-		case Center:
-			c->geom.x = (screen->width_in_pixels - tw) / 2;
-			c->geom.y = (screen->height_in_pixels - th) / 2;
-			break;
-		case TopLeft:
-			c->geom.x = 0;
-			c->geom.y = 0;
-			break;
-		case TopRight:
-			c->geom.x = screen->width_in_pixels - tw;
-			c->geom.y = 0;
-			break;
-		case BottomLeft:
-			c->geom.x = 0;
-			c->geom.y = screen->height_in_pixels - th;
-			break;
-		case BottomRight:
-			c->geom.x = screen->width_in_pixels - tw;
-			c->geom.y = screen->height_in_pixels - th;
-			break;
+	case Center:
+		c->geom.x = (screen->width_in_pixels - tw) / 2;
+		c->geom.y = (screen->height_in_pixels - th) / 2;
+		break;
+	case TopLeft:
+		c->geom.x = 0;
+		c->geom.y = 0;
+		break;
+	case TopRight:
+		c->geom.x = screen->width_in_pixels - tw;
+		c->geom.y = 0;
+		break;
+	case BottomLeft:
+		c->geom.x = 0;
+		c->geom.y = screen->height_in_pixels - th;
+		break;
+	case BottomRight:
+		c->geom.x = screen->width_in_pixels - tw;
+		c->geom.y = screen->height_in_pixels - th;
+		break;
+	default:
+		warn("teleport_client: bad arg %d\n", location);
 	}
 
 	PRINTF("teleport win %#x to (%d,%d)\n",
@@ -723,6 +726,8 @@ maximize_half_client(Client *c, uint16_t location) {
 		change_ewmh_flags(c, ADD_STATE, EWMH_MAXIMIZED_VERT);
 		change_ewmh_flags(c, REMOVE_STATE, EWMH_MAXIMIZED_HORZ);
 		break;
+	default:
+		warn("maximize_half_client: bad arg %d\n", location);
 	}
 	change_ewmh_flags(c, REMOVE_STATE, EWMH_FULLSCREEN);
 	ewmh_update_wm_state(c);

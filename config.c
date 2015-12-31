@@ -298,7 +298,7 @@ void setkey(const char *key, char *val) {
 }
 
 void setopt(const char *key, char *val) {
-	PRINTF("setopt: %s: %s\n", key, val);
+	/* PRINTF("setopt: %s: %s\n", key, val); */
 
 	if (OPT("pixmap_border")) {
 		pixmap_border = (atoi(val) != 0);
@@ -351,6 +351,7 @@ parse_config(const char *fname) {
 
 	if (!(file = fopen(fname, "r")))
 		return -1;
+	PRINTF("loading config: %s\n", fname);
 
 	while (fgets(line, LINE_MAX, file)) {
 		line_num++;

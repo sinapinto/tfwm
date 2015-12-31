@@ -9,9 +9,40 @@
 #include "keys.h"
 
 /* types */
+enum action {
+	MoveDown,
+	MoveRight,
+	MoveUp,
+	MoveLeft,
+	GrowHeight,
+	GrowWidth,
+	ShrinkHeight,
+	ShrinkWidth,
+	GrowBoth,
+	ShrinkBoth,
+	Center,
+	TopLeft,
+	TopRight,
+	BottomLeft,
+	BottomRight,
+	Top,
+	Left,
+	Bottom,
+	Right,
+	MouseMove,
+	MouseResize,
+	MaxVertical,
+	MaxHorizontal,
+	LastWorkspace,
+	PrevWorkspace,
+	NextWorkspace,
+	PrevWindow,
+	NextWindow
+};
+
 typedef union {
-	char         *com;
-	unsigned int   i;
+	char        *com;
+	enum action  i;
 } Arg;
 
 typedef struct {
@@ -65,15 +96,12 @@ struct Client {
 	unsigned int      ws;
 };
 
-enum { MoveDown, MoveRight, MoveUp, MoveLeft };
-enum { GrowHeight, GrowWidth, ShrinkHeight, ShrinkWidth, GrowBoth, ShrinkBoth };
-enum { Center, TopLeft, TopRight, BottomLeft, BottomRight };
-enum { Top, Left, Bottom, Right };
-enum { MouseMove, MouseResize };
-enum { MaxVertical, MaxHorizontal };
-enum { LastWorkspace, PrevWorkspace, NextWorkspace };
-enum { PrevWindow, NextWindow };
-enum { XC_LEFT_PTR, XC_FLEUR, XC_BOTTOM_RIGHT_CORNER, XC_MAX };
+enum {
+	XC_LEFT_PTR,
+	XC_FLEUR,
+	XC_BOTTOM_RIGHT_CORNER,
+	XC_MAX
+};
 
 /* functions */
 void applyrules(Client *c);
