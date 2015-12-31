@@ -8,7 +8,7 @@ void free_cursors(void);
 void warp_pointer(Client *c);
 
 struct cursor_t {
-	char         *name;
+	const char   *name;
 	uint8_t       cf_glyph;
 	xcb_cursor_t  cid;
 } ;

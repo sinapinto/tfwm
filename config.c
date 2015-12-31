@@ -18,8 +18,8 @@
 #define LINE_MAX  256
 
 static bool is_regular_file(char *path);
-static void setopt(char *key, char *val);
-static void setkey(char *key, char *val);
+static void setopt(const char *key, char *val);
+static void setkey(const char *key, char *val);
 
 enum cfg_section {
 	OPTION = 0,
@@ -28,8 +28,8 @@ enum cfg_section {
 
 static const struct {
 	enum cfg_section section;
-	char * key;
-	void (*func)(char *, char *);
+	const char *key;
+	void (*func)(const char *, char *);
 } config[] = {
 	{ OPTION,  "pixmap_border",         setopt },
 	{ OPTION,  "border_width",          setopt },
@@ -146,7 +146,7 @@ is_regular_file(char *path) {
 }
 
 char *
-find_config(char *file) {
+find_config(const char *file) {
 	char *path;
 
 	path = (char *)malloc(PATH_MAX);
@@ -165,7 +165,7 @@ find_config(char *file) {
 	return NULL;
 }
 
-void setkey(char *key, char *val) {
+void setkey(const char *key, char *val) {
 	char     *token;
 	uint16_t  mod = 0;
 	uint16_t  keysym = 0;
@@ -297,7 +297,7 @@ void setkey(char *key, char *val) {
 	}
 }
 
-void setopt(char *key, char *val) {
+void setopt(const char *key, char *val) {
 	PRINTF("setopt: %s: %s\n", key, val);
 
 	if (OPT("pixmap_border")) {
@@ -337,7 +337,7 @@ void setopt(char *key, char *val) {
  * return -1 on file open error.
  * return 0 otherwise.  */
 int
-parse_config(char *fname) {
+parse_config(const char *fname) {
 	FILE             *file = NULL;
 	int               err = 0;
 	char              line[LINE_MAX];

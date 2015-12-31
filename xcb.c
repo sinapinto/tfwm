@@ -67,7 +67,7 @@ connection_has_error(void) {
 }
 
 void
-getatom(xcb_atom_t *atom, char *name) {
+getatom(xcb_atom_t *atom, const char *name) {
 	xcb_intern_atom_reply_t  *r;
 	xcb_intern_atom_cookie_t  c;
 
@@ -83,7 +83,7 @@ getatom(xcb_atom_t *atom, char *name) {
 }
 
 uint32_t
-getcolor(char *color) {
+getcolor(const char *color) {
 	uint32_t                        pixel;
 	unsigned int                    r, g, b;
 	xcb_colormap_t                  map;

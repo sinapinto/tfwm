@@ -5,8 +5,8 @@
 #define DEFAULT_FOCUS_COLOR   "sky blue"
 #define DEFAULT_UNFOCUS_COLOR "rebecca purple"
 
-char *find_config(char *);
-int parse_config(char *);
+char *find_config(const char *);
+int parse_config(const char *);
 
 extern bool pixmap_border;
 extern int border_width;

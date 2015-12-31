@@ -1,6 +1,6 @@
 tfwm is a small, floating window manager for X.
 
-# Installation
+## Installation
 Dependencies:
 * libx11
 * xcb-util
@@ -14,15 +14,15 @@ page accessible by running `man tfwm`.
 By default, files are installed in `/usr/local`. You can change the installation
 directory with, for example, `make PREFIX=/some/path install`.
 
-# Configuration
+## Configuration
 Configuration settings are documented in `doc/Configuration`. An example
 configuration file can be found in the `examples/` subdirectory.
 
-# Compliance
+## Compliance
 tfwm focuses on EWMH compliance and only supports a few ICCCM properties. For
 a list of supported properties, see `doc/Compliance`.
 
-# Todo
+## Todo
 * Remanage windows after restart.
 * Improve support for window class based rules.
 * Add the ability to define exec keybinds in the config.
@@ -33,5 +33,5 @@ a list of supported properties, see `doc/Compliance`.
     * Inline comments?
 * Much more..
 
-# License
+## License
 MIT/X Consortium License

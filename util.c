@@ -41,7 +41,7 @@ run_program(const char *cmd) {
 }
 
 char *
-skip_leading_space(char* s) {
+skip_leading_space(char *s) {
 	while (*s && isspace(*s))
 		s++;
 	return s;
