@@ -45,26 +45,27 @@ cycleclients(const Arg *arg) {
 }
 
 void
-fitclient(Client *c) {
+fit_in_screen(Client *c) {
 	bool update = false;
 
 	if (c->noborder)
 		return;
 
 	if (c->geom.width >= screen->width_in_pixels - 2 * border_width) {
-		c->geom.width = screen->width_in_pixels - 2 * border_width;
 		update = true;
+		c->geom.width = screen->width_in_pixels - 2 * border_width;
 	}
 
 	if (c->geom.height >= screen->height_in_pixels - 2 * border_width) {
-		c->geom.height = screen->height_in_pixels - 2 * border_width;
 		update = true;
+		c->geom.height = screen->height_in_pixels - 2 * border_width;
 	}
 
 	if (update) {
-		PRINTF("fitclient win %#x to (%d,%d) %dx%d\n",
+		PRINTF("fit_in_screen: resize win %#x to (%d,%d) %dx%d\n",
 			c->win, c->geom.x, c->geom.y,
 			c->geom.width, c->geom.height);
+
 		c->geom.x = c->geom.y = 0;
 		moveresize_win(c->frame, c->geom.x, c->geom.y,
 			       c->geom.width, c->geom.height);
@@ -188,11 +189,30 @@ manage(xcb_window_t w) {
 	}
 
 	applyrules(c);
+
+	if (center_new_windows) {
+		uint16_t tw = c->geom.width;
+		uint16_t th = c->geom.height;
+		if (!ISFULLSCREEN(c)) {
+			tw += border_width * 2;
+			th += border_width * 2;
+		}
+		c->geom.x = (screen->width_in_pixels - tw) / 2;
+		c->geom.y = (screen->height_in_pixels - th) / 2;
+		PRINTF("manage: centering win %#x to (%d,%d)\n",
+		       c->frame, c->geom.x, c->geom.y);
+		if (c->frame)
+			movewin(c->frame, c->geom.x, c->geom.y);
+		else if (c->win)
+			movewin(c->win, c->geom.x, c->geom.y);
+		warp_pointer(c);
+	}
+
 	reparent(c);
 	attach(c);
 	attachstack(c);
 	sel = c;
-	fitclient(c);
+	fit_in_screen(c);
 
 	if (sloppy_focus) {
 		val[0] = CLIENT_EVENT_MASK;
@@ -224,7 +244,6 @@ reparent(Client *c) {
 		PRINTF("HAS NONSTANDARD GRAVITY: %d\n",
 		       c->size_hints.win_gravity);
 #endif
-
 	switch (GRAVITY(c)) {
 	case XCB_GRAVITY_NORTH_WEST:
 	case XCB_GRAVITY_BIT_FORGET:
@@ -272,6 +291,7 @@ reparent(Client *c) {
 	vals[1] = true;
 	vals[2] = FRAME_EVENT_MASK;
 
+	PRINTF("reparent: creating frame (%d,%d) %dx%d\n", x, y, width, height);
 	xcb_create_window(conn, XCB_COPY_FROM_PARENT, c->frame, screen->root,
 			  x, y, width, height,
 			  c->noborder ? 0 : border_width,
@@ -288,7 +308,7 @@ reparent(Client *c) {
 	if (shape_ext)
 		roundcorners(c);
 #endif
-	PRINTF("reparenting win %#x to %#x\n", c->win, c->frame);
+	PRINTF("reparent: reparenting win %#x to %#x\n", c->win, c->frame);
 	xcb_reparent_window(conn, c->win, c->frame, 0, 0);
 }
 
@@ -654,8 +674,7 @@ teleport_client(Client *c, uint16_t location) {
 		warn("teleport_client: bad arg %d\n", location);
 	}
 
-	PRINTF("teleport win %#x to (%d,%d)\n",
-	       c->frame, c->geom.x, c->geom.y);
+	PRINTF("teleport win %#x to (%d,%d)\n", c->frame, c->geom.x, c->geom.y);
 	if (c->frame)
 		movewin(c->frame, c->geom.x, c->geom.y);
 	else if (c->win)

@@ -10,6 +10,7 @@ focus_color           = #87CEEB
 unfocus_color         = slate gray
 sloppy_focus          = 0
 cursor_position       = 0
+center_new_windows    = 1
 
 [keybinds]
 move_up               = Mod1+k
@@ -43,8 +44,8 @@ next_workspace        = Mod1+bracketright
 restart               = Mod1+Shift+r
 quit                  = Mod1+Shift+e
 
+; exec[urxvt]           = Mod1+t
 terminal1             = Mod1+Return
-terminal2             = Mod1+t
 browser               = Mod1+w
 browser2              = Mod1+e
 launcher              = Mod1+space

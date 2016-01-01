@@ -40,6 +40,7 @@ static const struct {
 	{ OPTION,  "cursor_position",       setopt },
 	{ OPTION,  "focus_color",           setopt },
 	{ OPTION,  "unfocus_color",         setopt },
+	{ OPTION,  "center_new_windows",    setopt },
 	{ KEYBIND, "move_up",               setkey },
 	{ KEYBIND, "move_down",             setkey },
 	{ KEYBIND, "move_left",             setkey },
@@ -125,13 +126,14 @@ static char volup[]     = "amixer -q set Master 3%+ unmute";
 static char voldown[]   = "amixer -q set Master 3%- unmute";
 static char voltoggle[] = "amixer -q set Master toggle";
 
-bool pixmap_border   = false;
-int border_width     = 4;
-int move_step        = 30;
-int resize_step      = 30;
-bool sloppy_focus    = false;
-bool java_workaround = true;
-int cursor_position  = 0;
+int border_width        = 2;
+int move_step           = 30;
+int resize_step         = 30;
+int cursor_position     = 0;
+bool sloppy_focus       = false;
+bool java_workaround    = false;
+bool pixmap_border      = false;
+bool center_new_windows = false;
 char *focus_color;
 char *unfocus_color;
 
@@ -328,6 +330,8 @@ void setopt(const char *key, char *val) {
 		cursor_position = atoi(val);
 		if (cursor_position < 0)
 			cursor_position = 0;
+	} else if (OPT("center_new_windows")) {
+		center_new_windows = (atoi(val) != 0);
 	} else {
 		warn("setopt: no handler for %s\n", key);
 	}
