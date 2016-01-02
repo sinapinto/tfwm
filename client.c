@@ -191,14 +191,8 @@ manage(xcb_window_t w) {
 	applyrules(c);
 
 	if (center_new_windows) {
-		uint16_t tw = c->geom.width;
-		uint16_t th = c->geom.height;
-		if (!ISFULLSCREEN(c)) {
-			tw += border_width * 2;
-			th += border_width * 2;
-		}
-		c->geom.x = (screen->width_in_pixels - tw) / 2;
-		c->geom.y = (screen->height_in_pixels - th) / 2;
+		c->geom.x = (screen->width_in_pixels - BWIDTH(c)) / 2;
+		c->geom.y = (screen->height_in_pixels - BHEIGHT(c)) / 2;
 		PRINTF("manage: centering win %#x to (%d,%d)\n",
 		       c->frame, c->geom.x, c->geom.y);
 		if (c->frame)
@@ -638,37 +632,26 @@ teleport(const Arg *arg) {
 
 void
 teleport_client(Client *c, uint16_t location) {
-	uint16_t tw;
-	uint16_t th;
-
-	tw = c->geom.width;
-	th = c->geom.height;
-
-	if (!ISFULLSCREEN(c) && !c->noborder) {
-		tw += border_width * 2;
-		th += border_width * 2;
-	}
-
 	switch (location) {
 	case Center:
-		c->geom.x = (screen->width_in_pixels - tw) / 2;
-		c->geom.y = (screen->height_in_pixels - th) / 2;
+		c->geom.x = (screen->width_in_pixels - BWIDTH(c)) / 2;
+		c->geom.y = (screen->height_in_pixels - BHEIGHT(c)) / 2;
 		break;
 	case TopLeft:
 		c->geom.x = 0;
 		c->geom.y = 0;
 		break;
 	case TopRight:
-		c->geom.x = screen->width_in_pixels - tw;
+		c->geom.x = screen->width_in_pixels - BWIDTH(c);
 		c->geom.y = 0;
 		break;
 	case BottomLeft:
 		c->geom.x = 0;
-		c->geom.y = screen->height_in_pixels - th;
+		c->geom.y = screen->height_in_pixels - BHEIGHT(c);
 		break;
 	case BottomRight:
-		c->geom.x = screen->width_in_pixels - tw;
-		c->geom.y = screen->height_in_pixels - th;
+		c->geom.x = screen->width_in_pixels - BWIDTH(c);
+		c->geom.y = screen->height_in_pixels - BHEIGHT(c);
 		break;
 	default:
 		warn("teleport_client: bad arg %d\n", location);

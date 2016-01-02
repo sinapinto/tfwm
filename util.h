@@ -17,6 +17,14 @@
                 }                                                             \
         } while(0)
 
+#define BWIDTH(C) ((!ISFULLSCREEN(C) && !(C)->noborder)                       \
+                      ? (C)->geom.width + border_width * 2                    \
+                      : (C)->geom.width)
+
+#define BHEIGHT(C) ((!ISFULLSCREEN(C) && !(C)->noborder)                      \
+                      ? (C)->geom.height + border_width * 2                   \
+                      : (C)->geom.height)
+
 #define ROOT_EVENT_MASK    (XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY                \
                             | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT            \
                             | XCB_EVENT_MASK_BUTTON_PRESS)
