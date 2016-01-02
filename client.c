@@ -96,7 +96,7 @@ manage(xcb_window_t w) {
 	unsigned int                        i;
 	uint32_t                            val[1];
 
-	PRINTF("manage window %#x\n", w);
+	PRINTF("manage: manage window %#x\n", w);
 
 	if (!(c = malloc(sizeof(Client))))
 		err("can't allocate memory.");
@@ -193,12 +193,8 @@ manage(xcb_window_t w) {
 	if (center_new_windows) {
 		c->geom.x = (screen->width_in_pixels - BWIDTH(c)) / 2;
 		c->geom.y = (screen->height_in_pixels - BHEIGHT(c)) / 2;
-		PRINTF("manage: centering win %#x to (%d,%d)\n",
-		       c->frame, c->geom.x, c->geom.y);
-		if (c->frame)
-			movewin(c->frame, c->geom.x, c->geom.y);
-		else if (c->win)
-			movewin(c->win, c->geom.x, c->geom.y);
+		PRINTF("manage: centering to (%d,%d)\n", c->geom.x, c->geom.y);
+		movewin(c->win, c->geom.x, c->geom.y);
 		warp_pointer(c);
 	}
 
@@ -235,7 +231,7 @@ reparent(Client *c) {
 #if DEBUG
 	if (c->size_hints.flags & XCB_ICCCM_SIZE_HINT_P_WIN_GRAVITY &&
 	    c->size_hints.win_gravity > 1)
-		PRINTF("HAS NONSTANDARD GRAVITY: %d\n",
+		PRINTF("reparent: NONSTANDARD GRAVITY: %d\n",
 		       c->size_hints.win_gravity);
 #endif
 	switch (GRAVITY(c)) {
@@ -455,7 +451,7 @@ void
 raisewindow(xcb_drawable_t win) {
 	if (screen->root == win || !win)
 		return;
-	PRINTF("raise win %#x\n", win);
+	PRINTF("raissewindow: %#x\n", win);
 	const uint32_t values[] = { XCB_STACK_MODE_ABOVE };
 	xcb_configure_window(conn, win, XCB_CONFIG_WINDOW_STACK_MODE, values);
 }
@@ -524,7 +520,7 @@ resize(const Arg *arg) {
 
 void
 resizewin(xcb_window_t win, uint16_t w, uint16_t h) {
-	PRINTF("reszewin win %#x %dx%d\n", win, w, h);
+	PRINTF("reszewin: win %#x to %dx%d\n", win, w, h);
 	const uint32_t values[] = { w, h };
 	const uint32_t mask = XCB_CONFIG_WINDOW_WIDTH
 		| XCB_CONFIG_WINDOW_HEIGHT;
@@ -533,7 +529,7 @@ resizewin(xcb_window_t win, uint16_t w, uint16_t h) {
 
 void
 savegeometry(Client *c) {
-	PRINTF("saving old_geom: (%d,%d) %dx%d\n",
+	PRINTF("savegeom: (%d,%d) %dx%d\n",
 	       c->geom.x, c->geom.y, c->geom.width, c->geom.height);
 	c->old_geom.x = c->geom.x;
 	c->old_geom.y = c->geom.y;
@@ -657,7 +653,8 @@ teleport_client(Client *c, uint16_t location) {
 		warn("teleport_client: bad arg %d\n", location);
 	}
 
-	PRINTF("teleport win %#x to (%d,%d)\n", c->frame, c->geom.x, c->geom.y);
+	PRINTF("teleport_client: win %#x to (%d,%d)\n",
+	       c->frame, c->geom.x, c->geom.y);
 	if (c->frame)
 		movewin(c->frame, c->geom.x, c->geom.y);
 	else if (c->win)
@@ -743,7 +740,7 @@ maximize_half_client(Client *c, uint16_t location) {
 
 void
 unmanage(Client *c) {
-	PRINTF("unmanage win %#x\n", c->win);
+	PRINTF("unmanage: %#x\n", c->win);
 	detach(c);
 	detachstack(c);
 	if (c->frame)
@@ -776,7 +773,7 @@ focus(Client *c) {
 		if (sel && sel != c)
 			setborder(sel, false);
 		setborder(c, true);
-		PRINTF("focus win %#x\n", c->win);
+		PRINTF("focus: %#x\n", c->win);
 		xcb_set_input_focus(conn, XCB_INPUT_FOCUS_POINTER_ROOT,
 				c->win, XCB_CURRENT_TIME);
 		xcb_change_property(conn, XCB_PROP_MODE_REPLACE, screen->root,

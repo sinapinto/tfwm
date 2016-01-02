@@ -155,13 +155,10 @@ remanage_windows(void) {
 	children = xcb_query_tree_children(qtr);
 
 	for (int i = 0; i < xcb_query_tree_children_length(qtr); i++) {
-		if (children[i] == sup) {
-			PRINTF("remanage_windows: skip %#x: "
-			       "supporting_wm_check window\n", children[i]);
+		if (children[i] == sup)
 			continue;
-		}
 
-		warn("remanage_windows: %#x\n", children[i]);
+		PRINTF("remanage_windows: %#x\n", children[i]);
 		manage(children[i]);
 
 		gac = xcb_get_window_attributes(conn, children[i]);
