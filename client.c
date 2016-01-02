@@ -644,7 +644,7 @@ teleport_client(Client *c, uint16_t location) {
 	tw = c->geom.width;
 	th = c->geom.height;
 
-	if (!ISFULLSCREEN(c)) {
+	if (!ISFULLSCREEN(c) && !c->noborder) {
 		tw += border_width * 2;
 		th += border_width * 2;
 	}
