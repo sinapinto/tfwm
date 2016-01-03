@@ -106,10 +106,10 @@ static const struct {
 	{ KEYBIND, "move_down",             setkey },
 	{ KEYBIND, "move_left",             setkey },
 	{ KEYBIND, "move_right",            setkey },
-	{ KEYBIND, "maximize_half_left",     setkey },
-	{ KEYBIND, "maximize_half_right",    setkey },
-	{ KEYBIND, "maximize_half_bottom",   setkey },
-	{ KEYBIND, "maximize_half_top",      setkey },
+	{ KEYBIND, "maximize_half_left",    setkey },
+	{ KEYBIND, "maximize_half_right",   setkey },
+	{ KEYBIND, "maximize_half_bottom",  setkey },
+	{ KEYBIND, "maximize_half_top",     setkey },
 };
 
 static char terminal[]  = "urxvt";
@@ -384,8 +384,7 @@ parse_config(const char *fname) {
 			continue;
 
 		for (i = 0; i < LENGTH(config); ++i) {
-			if (//config[i].section == section &&
-			    strncasecmp(p, config[i].key, toklen) == 0 &&
+			if (strncasecmp(p, config[i].key, toklen) == 0 &&
 			    strlen(config[i].key) == toklen)
 				cfg_idx = i;
 		}

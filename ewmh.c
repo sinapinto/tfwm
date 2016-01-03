@@ -224,37 +224,32 @@ ewmh_get_wm_state(Client *c) {
 
 	pc = xcb_ewmh_get_wm_state(ewmh, c->win);
 
-	if (xcb_ewmh_get_wm_state_reply(ewmh, pc, &win_state, NULL) == 1) {
-		for (i = 0; i < win_state.atoms_len; i++) {
-			a = win_state.atoms[i];
+	if (xcb_ewmh_get_wm_state_reply(ewmh, pc, &win_state, NULL) != 1)
+		return;
+
+	for (i = 0; i < win_state.atoms_len; i++) {
+		a = win_state.atoms[i];
 #ifdef DEBUG
-			char *name = get_atom_name(a);
-			PRINTF("EWMH: state: win %#x, atom %s\n", c->win, name);
-			FREE(name);
+		char *name = get_atom_name(a);
+		PRINTF("EWMH: state: win %#x, atom %s\n", c->win, name);
+		FREE(name);
 #endif
-			change_ewmh_flags(c, ADD_STATE, a);
-			if (a == ewmh->_NET_WM_STATE_FULLSCREEN) {
-				change_ewmh_flags(c, ADD_STATE,
-						  EWMH_FULLSCREEN);
-			} else if (a == ewmh->_NET_WM_STATE_MAXIMIZED_VERT) {
-				change_ewmh_flags(c, ADD_STATE,
-						  EWMH_MAXIMIZED_VERT);
-			} else if (a == ewmh->_NET_WM_STATE_MAXIMIZED_HORZ) {
-				change_ewmh_flags(c, ADD_STATE,
-						  EWMH_MAXIMIZED_HORZ);
-			} else if (a == ewmh->_NET_WM_STATE_STICKY) {
-				change_ewmh_flags(c, ADD_STATE,
-						  EWMH_STICKY);
-			} else if (a == ewmh->_NET_WM_STATE_DEMANDS_ATTENTION) {
-				change_ewmh_flags(c, ADD_STATE,
-						  EWMH_DEMANDS_ATTENTION);
-			} else if (a == ewmh->_NET_WM_STATE_ABOVE) {
-				change_ewmh_flags(c, ADD_STATE,
-						  EWMH_ABOVE);
-			}
+		change_ewmh_flags(c, ADD_STATE, a);
+		if (a == ewmh->_NET_WM_STATE_FULLSCREEN) {
+			change_ewmh_flags(c, ADD_STATE, EWMH_FULLSCREEN);
+		} else if (a == ewmh->_NET_WM_STATE_MAXIMIZED_VERT) {
+			change_ewmh_flags(c, ADD_STATE, EWMH_MAXIMIZED_VERT);
+		} else if (a == ewmh->_NET_WM_STATE_MAXIMIZED_HORZ) {
+			change_ewmh_flags(c, ADD_STATE, EWMH_MAXIMIZED_HORZ);
+		} else if (a == ewmh->_NET_WM_STATE_STICKY) {
+			change_ewmh_flags(c, ADD_STATE, EWMH_STICKY);
+		} else if (a == ewmh->_NET_WM_STATE_DEMANDS_ATTENTION) {
+			change_ewmh_flags(c, ADD_STATE, EWMH_DEMANDS_ATTENTION);
+		} else if (a == ewmh->_NET_WM_STATE_ABOVE) {
+			change_ewmh_flags(c, ADD_STATE, EWMH_ABOVE);
 		}
-		xcb_ewmh_get_atoms_reply_wipe(&win_state);
 	}
+	xcb_ewmh_get_atoms_reply_wipe(&win_state);
 }
 
 void
