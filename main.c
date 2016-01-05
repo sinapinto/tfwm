@@ -248,7 +248,7 @@ main(int argc, char **argv) {
 	scrno = XDefaultScreen(display);
 
 	/* load config */
-	if ((rc_path = find_config("acidwm"))) {
+	if ((rc_path = find_config("acidwmrc"))) {
 		err_line = parse_config(rc_path);
 		if (err_line > 0)
 			warn("parse_config: error on line %d.\n", err_line);

@@ -26,6 +26,7 @@ void send_client_message(Client *c, xcb_atom_t proto);
 void setborder(Client *c, bool focus);
 void setborderwidth(xcb_window_t win, uint16_t bw);
 void showhide(Client *c);
+void spawn(const Arg *arg);
 void teleport(const Arg *arg);
 void teleport_client(Client *c, uint16_t location);
 void maximize_half(const Arg *arg);

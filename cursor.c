@@ -4,6 +4,7 @@
 #include <X11/Xcursor/Xcursor.h>
 #include "main.h"
 #include "events.h"
+#include "client.h"
 #include "cursor.h"
 #include "ewmh.h"
 #include "config.h"

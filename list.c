@@ -1,6 +1,7 @@
 /* See LICENSE file for copyright and license details. */
 #include "main.h"
 #include "list.h"
+#include "client.h"
 #include "xcb.h"
 #include "util.h"
 

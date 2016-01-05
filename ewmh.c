@@ -5,6 +5,8 @@
 #include "main.h"
 #include "ewmh.h"
 #include "config.h"
+#include "client.h"
+#include "xcb.h"
 #include "util.h"
 
 void

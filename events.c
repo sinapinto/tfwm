@@ -5,8 +5,11 @@
 #include "main.h"
 #include "list.h"
 #include "events.h"
+#include "keys.h"
+#include "xcb.h"
 #include "ewmh.h"
 #include "config.h"
+#include "client.h"
 #include "util.h"
 
 static void buttonpress(xcb_generic_event_t *ev);

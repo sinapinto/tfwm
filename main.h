@@ -6,7 +6,10 @@
 #include <xcb/xcb_keysyms.h>
 #include <X11/Xlib-xcb.h>
 #include <stdbool.h>
-#include "keys.h"
+
+#define KEY_MAX    65
+#define RULE_MAX   2
+#define BUTTON_MAX 2
 
 /* types */
 enum action {
@@ -105,55 +108,8 @@ enum {
 };
 
 /* functions */
-void applyrules(Client *c);
-void attach(Client *c);
-void attachstack(Client *c);
-void detach(Client *c);
-void detachstack(Client *c);
-void err(const char *fmt, ...);
-void fitclient(Client *c);
-void focus(Client *c);
-void focusstack(bool next);
-void free_cursors(void);
-#ifdef DEBUG
-char *get_atom_name(xcb_atom_t atom);
-#endif
-xcb_keysym_t getkeysym(xcb_keycode_t keycode);
-void grabkeys(void);
-void handleevent(xcb_generic_event_t *ev);
-void killselected(const Arg *arg);
-void load_cursors(void);
-void manage(xcb_window_t w);
-void maprequest(xcb_generic_event_t *ev);
-void maximizeaxis(const Arg *arg);
-void maximizeaxis_client(Client *c, uint16_t direction);
-void maximizeclient(Client *c, bool doit);
-void maximize(const Arg *arg);
-void mousemotion(const Arg *arg);
-void move(const Arg *arg);
-void moveresize_win(xcb_window_t win, int16_t x, int16_t y, uint16_t w, uint16_t h);
-void movewin(xcb_window_t win, int16_t x, int16_t y);
 void quit(const Arg *arg);
-void raisewindow(xcb_drawable_t win);
-void resize(const Arg *arg);
-void resizewin(xcb_window_t win, uint16_t w, uint16_t h);
 void restart(const Arg *arg);
-void savegeometry(Client *c);
-void send_client_message(Client *c, xcb_atom_t proto);
-void sendtows(const Arg *arg);
-void setborder(Client *c, bool focus);
-void setborderwidth(xcb_window_t win, uint16_t bw);
-void showhide(Client *c);
-void spawn(const Arg *arg);
-void teleport(const Arg *arg);
-void teleport_client(Client *c, uint16_t location);
-void maximize_half(const Arg *arg);
-void maximize_half_client(Client *c, uint16_t location);
-void unmanage(Client *c);
-void updatenumlockmask(void);
-void warn(const char *fmt, ...);
-void warp_pointer(Client *c);
-Client *wintoclient(xcb_window_t w);
 
 /* globals */
 extern const Rule rules[RULE_MAX];
