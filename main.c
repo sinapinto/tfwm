@@ -10,14 +10,14 @@
 #include <xcb/xcb_ewmh.h>
 #include <X11/Xlib-xcb.h>
 #include <X11/cursorfont.h>
-#include "tfwm.h"
+#include "main.h"
 #include "util.h"
 #include "list.h"
 #include "client.h"
 #include "workspace.h"
 #include "events.h"
 #include "keys.h"
-#include "pointer.h"
+#include "cursor.h"
 #include "ewmh.h"
 #include "config.h"
 #include "xcb.h"

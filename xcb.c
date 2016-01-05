@@ -1,7 +1,7 @@
 /* See LICENSE file for copyright and license details. */
 #include <stdio.h>
 #include <string.h>
-#include "tfwm.h"
+#include "main.h"
 #include "xcb.h"
 #include "util.h"
 

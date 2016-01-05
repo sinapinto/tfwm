@@ -1,5 +1,5 @@
 /* See LICENSE file for copyright and license details. */
-#include "tfwm.h"
+#include "main.h"
 #include "list.h"
 #include "xcb.h"
 #include "util.h"

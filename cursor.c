@@ -2,9 +2,9 @@
 #include <string.h>
 #include <X11/cursorfont.h>
 #include <X11/Xcursor/Xcursor.h>
-#include "tfwm.h"
+#include "main.h"
 #include "events.h"
-#include "pointer.h"
+#include "cursor.h"
 #include "ewmh.h"
 #include "config.h"
 #include "util.h"

@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <X11/keysym.h>
-#include "tfwm.h"
+#include "main.h"
 #include "config.h"
 #include "workspace.h"
 #include "client.h"

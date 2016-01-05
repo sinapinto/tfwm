@@ -2,7 +2,7 @@
 #include <string.h>
 #include <xcb/xcb_event.h>
 #include <xcb/xcb_icccm.h>
-#include "tfwm.h"
+#include "main.h"
 #include "list.h"
 #include "events.h"
 #include "ewmh.h"

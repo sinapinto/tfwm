@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <string.h>
-#include "tfwm.h"
+#include "main.h"
 #include "util.h"
 
 void

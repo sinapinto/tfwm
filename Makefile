@@ -13,7 +13,7 @@ CFLAGS += -I$(PREFIX)/include -DVERSION=\"$(VERSION)\"
 LIBS    = -lxcb -lxcb-keysyms -lxcb-icccm -lxcb-ewmh -lxcb-util \
           -lX11 -lX11-xcb -lXcursor
 
-OBJ = tfwm.o util.o events.o client.o list.o workspace.o keys.o pointer.o \
+OBJ = main.o util.o events.o client.o list.o workspace.o keys.o cursor.o \
       ewmh.o config.o xcb.o
 
 all: CFLAGS += -Os
@@ -22,19 +22,19 @@ all: tfwm
 debug: CFLAGS += -O0 -g -DDEBUG
 debug: tfwm
 
-tfwm.o: tfwm.c list.h client.h workspace.h events.h keys.h pointer.h ewmh.h \
+main.o: main.c list.h client.h workspace.h events.h keys.h cursor.h ewmh.h \
         config.h util.h
-util.o: util.c tfwm.h util.h
-events.o: events.c tfwm.h client.h list.h events.h ewmh.h config.h util.h
-client.o: client.c tfwm.h list.h client.h keys.h ewmh.h xcb.h config.h util.h
-list.o: list.c tfwm.h client.h list.h xcb.h util.h
-workspace.o: workspace.c tfwm.h list.h client.h util.h
-keys.o: keys.c tfwm.h list.h client.h events.h workspace.h pointer.h util.h
-pointer.o: pointer.c tfwm.h events.h config.h util.h
-ewmh.o: ewmh.c tfwm.h config.h util.h
-config.o: config.c tfwm.h util.h
-shape.o: shape.c tfwm.h util.h
-xcb.o: xcb.c tfwm.h util.h
+util.o: util.c main.h util.h
+events.o: events.c main.h client.h list.h events.h ewmh.h config.h util.h
+client.o: client.c main.h list.h client.h keys.h ewmh.h xcb.h config.h util.h
+list.o: list.c main.h client.h list.h xcb.h util.h
+workspace.o: workspace.c main.h list.h client.h util.h
+keys.o: keys.c main.h list.h client.h events.h workspace.h cursor.h util.h
+cursor.o: cursor.c main.h events.h config.h util.h
+ewmh.o: ewmh.c main.h config.h util.h
+config.o: config.c main.h util.h
+shape.o: shape.c main.h util.h
+xcb.o: xcb.c main.h util.h
 
 %.o: %.c
 	$(CC) -c $(CFLAGS) -o $@ $<

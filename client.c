@@ -1,7 +1,7 @@
 /* See LICENSE file for copyright and license details. */
 #include <string.h>
 #include <xcb/xcb_icccm.h>
-#include "tfwm.h"
+#include "main.h"
 #include "list.h"
 #include "client.h"
 #include "keys.h"

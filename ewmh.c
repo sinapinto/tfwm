@@ -2,7 +2,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <xcb/xcb_ewmh.h>
-#include "tfwm.h"
+#include "main.h"
 #include "ewmh.h"
 #include "config.h"
 #include "util.h"
