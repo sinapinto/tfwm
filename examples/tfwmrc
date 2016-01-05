@@ -1,4 +1,4 @@
-# ~/.tfwmrc
+# ~/.acidwmrc
 
 [options]
 java_workaround       = 1

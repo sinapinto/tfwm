@@ -74,7 +74,7 @@ ewmh_setup() {
 	if (java_workaround)
 		xcb_ewmh_set_wm_name(ewmh, screen->root, strlen("LG3D"), "LG3D");
 	else
-		xcb_ewmh_set_wm_name(ewmh, screen->root, strlen("tfwm"), "tfwm");
+		xcb_ewmh_set_wm_name(ewmh, screen->root, strlen("acidwm"), "acidwm");
 
 	/* _NET_NUMBER_ODESKTOPS */
 	xcb_ewmh_set_number_of_desktops(ewmh, scrno, 10);

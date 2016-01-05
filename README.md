@@ -1,4 +1,4 @@
-tfwm is a small, floating window manager for X.
+acidwm is a small, floating window manager for X.
 
 ## Installation
 Dependencies:
@@ -9,7 +9,7 @@ Dependencies:
 
 After cloning the repository, run (as root, if necessary) `make install` to
 compile the program and install the executable. This will also install a man
-page accessible by running `man tfwm`.
+page accessible by running `man acidwm`.
 
 By default, files are installed in `/usr/local`. You can change the installation
 directory with, for example, `make PREFIX=/some/path install`.
@@ -19,7 +19,7 @@ Configuration settings are documented in `doc/Configuration`. An example
 configuration file can be found in the `examples/` subdirectory.
 
 ## Compliance
-tfwm focuses on EWMH compliance and only supports a few ICCCM properties. For
+acidwm focuses on EWMH compliance and only supports a few ICCCM properties. For
 a list of supported properties, see `doc/Compliance`.
 
 ## Todo

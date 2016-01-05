@@ -1,6 +1,6 @@
 /* See LICENSE file for copyright and license details. */
-#ifndef TFWM_H
-#define TFWM_H
+#ifndef MAIN_H
+#define MAIN_H
 #include <xcb/xcb_ewmh.h>
 #include <xcb/xcb_icccm.h>
 #include <xcb/xcb_keysyms.h>
@@ -174,4 +174,4 @@ extern unsigned int prevws;
 extern Client *clients;
 extern Client *sel;
 
-#endif /* TFWM_H */
+#endif /* MAIN_H */

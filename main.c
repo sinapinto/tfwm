@@ -224,7 +224,7 @@ main(int argc, char **argv) {
 	int   err_line;
 	char *rc_path = NULL;
 
-	warn("welcome to tfwm %s\n", VERSION);
+	warn("welcome to acidWM %s\n", VERSION);
 
 	/* open shared XLib/XCB connection */
 	if ((display = XOpenDisplay(NULL)) == NULL)
@@ -248,7 +248,7 @@ main(int argc, char **argv) {
 	scrno = XDefaultScreen(display);
 
 	/* load config */
-	if ((rc_path = find_config("tfwmrc"))) {
+	if ((rc_path = find_config("acidwm"))) {
 		err_line = parse_config(rc_path);
 		if (err_line > 0)
 			warn("parse_config: error on line %d.\n", err_line);
