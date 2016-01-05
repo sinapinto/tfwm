@@ -107,7 +107,6 @@ getcolor(const char *color) {
 			err("can't alloc color.");
 		pixel = cr->pixel;
 		FREE(cr);
-		return pixel;
 	} else {
 		ncc = xcb_alloc_named_color(conn, map, strlen(color), color);
 		ncr = xcb_alloc_named_color_reply(conn, ncc, NULL);
@@ -115,8 +114,8 @@ getcolor(const char *color) {
 			err("can't alloc named color.");
 		pixel = ncr->pixel;
 		FREE(ncr);
-		return pixel;
 	}
+	return pixel;
 }
 
 void

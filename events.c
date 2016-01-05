@@ -10,7 +10,6 @@
 #include "util.h"
 
 static void buttonpress(xcb_generic_event_t *ev);
-static void circulaterequest(xcb_generic_event_t *ev);
 static void clientmessage(xcb_generic_event_t *ev);
 static void configurerequest(xcb_generic_event_t *ev);
 static void destroynotify(xcb_generic_event_t *ev);
@@ -27,9 +26,6 @@ handleevent(xcb_generic_event_t *ev) {
 	switch (ev->response_type & ~0x80) {
 		case XCB_BUTTON_PRESS:
 			buttonpress(ev);
-			break;
-		case XCB_CIRCULATE_REQUEST:
-			circulaterequest(ev);
 			break;
 		case XCB_CLIENT_MESSAGE:
 			clientmessage(ev);
@@ -85,13 +81,6 @@ buttonpress(xcb_generic_event_t *ev) {
 		    buttons[i].func)
 			if (sel != NULL && e->event != screen->root)
 				buttons[i].func(&buttons[i].arg);
-}
-
-void
-circulaterequest(xcb_generic_event_t *ev) {
-	xcb_circulate_request_event_t *e = (xcb_circulate_request_event_t *)ev;
-	PRINTF("Event: circulate request win %#x\n", e->window);
-	xcb_circulate_window(conn, e->window, e->place);
 }
 
 void

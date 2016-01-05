@@ -13,17 +13,8 @@ CFLAGS += -I$(PREFIX)/include -DVERSION=\"$(VERSION)\"
 LIBS    = -lxcb -lxcb-keysyms -lxcb-icccm -lxcb-ewmh -lxcb-util \
           -lX11 -lX11-xcb -lXcursor
 
-# set this to 1 to enable support for X's nonrectangular window shape extension
-SHAPE ?= 0
-
 OBJ = tfwm.o util.o events.o client.o list.o workspace.o keys.o pointer.o \
       ewmh.o config.o xcb.o
-
-ifeq ($(SHAPE),1)
-  CFLAGS += -DSHAPE
-  LIBS += -lxcb-shape -lxcb-image -lxcb-shm
-  OBJ += shape.o
-endif
 
 all: CFLAGS += -Os
 all: tfwm

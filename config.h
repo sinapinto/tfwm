@@ -8,7 +8,6 @@
 char *find_config(const char *);
 int parse_config(const char *);
 
-extern bool pixmap_border;
 extern bool center_new_windows;
 extern int border_width;
 extern char *focus_color;

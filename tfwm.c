@@ -21,9 +21,6 @@
 #include "ewmh.h"
 #include "config.h"
 #include "xcb.h"
-#ifdef SHAPE
-#include "shape.h"
-#endif
 
 static void cleanup(void);
 static void remanage_windows(void);
@@ -42,7 +39,6 @@ uint32_t focuscol;
 uint32_t unfocuscol;
 static volatile sig_atomic_t sigcode;
 static volatile bool restart_wm;
-bool shape_ext;
 xcb_atom_t WM_DELETE_WINDOW;
 xcb_atom_t WM_TAKE_FOCUS;
 xcb_atom_t WM_PROTOCOLS;
@@ -216,9 +212,6 @@ setup(void) {
 	vals[0] = cursors[XC_LEFT_PTR].cid;
 	xcb_change_window_attributes_checked(conn, screen->root,
 					     XCB_CW_CURSOR, vals);
-#ifdef SHAPE
-	shape_ext = check_shape_extension();
-#endif
 
 	ewmh_setup();
 	remanage_windows();

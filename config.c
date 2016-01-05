@@ -31,7 +31,6 @@ static const struct {
 	const char *key;
 	void (*func)(const char *, char *);
 } config[] = {
-	{ OPTION,  "pixmap_border",         setopt },
 	{ OPTION,  "border_width",          setopt },
 	{ OPTION,  "move_step",             setopt },
 	{ OPTION,  "resize_step",           setopt },
@@ -132,7 +131,6 @@ int resize_step         = 30;
 int cursor_position     = 0;
 bool sloppy_focus       = false;
 bool java_workaround    = false;
-bool pixmap_border      = false;
 bool center_new_windows = false;
 char *focus_color;
 char *unfocus_color;
@@ -302,9 +300,7 @@ void setkey(const char *key, char *val) {
 void setopt(const char *key, char *val) {
 	/* PRINTF("setopt: %s: %s\n", key, val); */
 
-	if (OPT("pixmap_border")) {
-		pixmap_border = (atoi(val) != 0);
-	} else if (OPT("border_width")) {
+	if (OPT("border_width")) {
 		border_width = atoi(val);
 		if (border_width < 0)
 			border_width = 0;

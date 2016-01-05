@@ -100,6 +100,7 @@ enum {
 	XC_LEFT_PTR,
 	XC_FLEUR,
 	XC_BOTTOM_RIGHT_CORNER,
+	XC_WATCH,
 	XC_MAX
 };
 
@@ -137,9 +138,6 @@ void raisewindow(xcb_drawable_t win);
 void resize(const Arg *arg);
 void resizewin(xcb_window_t win, uint16_t w, uint16_t h);
 void restart(const Arg *arg);
-#ifdef SHAPE
-void roundcorners(Client *c);
-#endif
 void savegeometry(Client *c);
 void send_client_message(Client *c, xcb_atom_t proto);
 void sendtows(const Arg *arg);
@@ -167,7 +165,6 @@ extern unsigned int numlockmask;
 extern int scrno;
 extern Client *stack;
 extern xcb_ewmh_connection_t *ewmh;
-extern bool shape_ext;
 extern xcb_atom_t WM_DELETE_WINDOW;
 extern xcb_atom_t WM_TAKE_FOCUS;
 extern xcb_atom_t WM_PROTOCOLS;

@@ -294,10 +294,6 @@ reparent(Client *c) {
 
 	xcb_map_window(conn, c->frame);
 
-#ifdef SHAPE
-	if (shape_ext)
-		roundcorners(c);
-#endif
 	PRINTF("reparent: reparenting win %#x to %#x\n", c->win, c->frame);
 	xcb_reparent_window(conn, c->win, c->frame, 0, 0);
 }
@@ -558,37 +554,14 @@ send_client_message(Client *c, xcb_atom_t proto) {
 void
 setborder(Client *c, bool focus) {
 	uint32_t       val[1];
-	/* xcb_pixmap_t   pmap; */
-	/* xcb_gcontext_t gc; */
 
 	if (ISFULLSCREEN(c) || c->noborder)
 		return;
 
-	/* if (!pixmap_border) { */
-		val[0] = focus ? focuscol : unfocuscol;
-		xcb_change_window_attributes(conn, c->frame,
-					     XCB_CW_BORDER_PIXEL, val);
-		return;
-	/* } */
-
-	/* pmap = xcb_generate_id(conn); */
-	/* gc = xcb_generate_id(conn); */
-	/* xcb_create_pixmap(conn, screen->root_depth, pmap, screen->root, */
-	/* 		  c->geom.width + border_width * 2, */
-	/* 		  c->geom.height); */
-	/* xcb_create_gc(conn, gc, pmap, 0, NULL); */
-	/* val[0] = focuscol; */
-	/* xcb_change_gc(conn, gc, XCB_GC_FOREGROUND, &val[0]); */
-
-	/* xcb_rectangle_t rectangles[] = { { 0, 0, c->geom.width, 5 } }; */
-	/* xcb_poly_fill_rectangle(conn, pmap, gc, 1, rectangles); */
-
-	/* val[0] = pmap; */
-	/* xcb_change_window_attributes(conn, c->win, */
-	/* 			     XCB_CW_BORDER_PIXMAP, &val[0]); */
-
-	/* xcb_free_pixmap(conn, pmap); */
-	/* xcb_free_gc(conn, gc); */
+	val[0] = focus ? focuscol : unfocuscol;
+	xcb_change_window_attributes(conn, c->frame,
+				     XCB_CW_BORDER_PIXEL, val);
+	return;
 }
 
 void
