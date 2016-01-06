@@ -208,7 +208,7 @@ int
 main(int argc, char **argv) {
 	(void)argc;
 
-	warn("welcome to acidWM %s\n", VERSION);
+	warn("welcome to tfwm %s\n", VERSION);
 
 	conn = xcb_connect(NULL, &scrno);
 	if (connection_has_error())
@@ -228,7 +228,7 @@ main(int argc, char **argv) {
 
 	/* load config */
 	/* char *rc_path = NULL; */
-	/* if ((rc_path = find_config("acidwmrc"))) { */
+	/* if ((rc_path = find_config("tfwmrc"))) { */
 	/* 	int err_line = parse_config(rc_path); */
 	/* 	if (err_line > 0) */
 	/* 		warn("parse_config: error on line %d.\n", err_line); */

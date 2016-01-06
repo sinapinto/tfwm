@@ -3,12 +3,12 @@ Configuration Specification
 
 Configuration is done in through an INI style config file, which is searched
 in the following order:
- $HOME/.acidwmrc
- $XDG_CONFIG_HOME/.acidwmrc
+ $HOME/.tfwmrc
+ $XDG_CONFIG_HOME/.tfwmrc
 
 An example configuration file can be found in the examples/ directory.
 
-If no configuration file exists, acidwm will fallback to the default keybinds
+If no configuration file exists, tfwm will fallback to the default keybinds
 (set in `keys.c`).
 
 Lines can be commented using either a semi-colon (;) or octothorpe (#) as the
@@ -141,7 +141,7 @@ next_workspace:
 Switch to next workspace (i.e. current + 1).
 
 restart:
-Restart acidwm.
+Restart tfwm.
 
 quit:
-Quit acidwm.
+Quit tfwm.

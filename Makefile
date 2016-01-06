@@ -1,6 +1,6 @@
 VERSION = $(shell git describe --tags 2>/dev/null)
 ifeq ($(VERSION),)
-VERSION = 0.1.0
+  VERSION = 0.1.0
 endif
 
 PREFIX   ?= /usr/local
@@ -22,29 +22,29 @@ SRC := $(wildcard *.c)
 OBJ := $(SRC:.c=.o)
 
 all: CFLAGS += -Os
-all: acidwm
+all: tfwm
 
 debug: CFLAGS += -O0 -g -DDEBUG
-debug: acidwm
+debug: tfwm
 
 %.o: %.c
 	$(CC) -c $(CFLAGS) -o $@ $<
 
-acidwm: $(OBJ)
+tfwm: $(OBJ)
 	$(CC) $(LIBS) $(CFLAGS) -o $@ $(OBJ)
 
 install: all
 	mkdir -p $(DESTDIR)$(BINPREFIX)
-	install -D -m 0755 acidwm $(DESTDIR)$(BINPREFIX)
+	install -D -m 0755 tfwm $(DESTDIR)$(BINPREFIX)
 	mkdir -p $(DESTDIR)$(MANPREFIX)
-	install -D -m 0644 doc/acidwm.1 $(DESTDIR)$(MANPREFIX)/man1/acidwm.1
+	install -D -m 0644 doc/tfwm.1 $(DESTDIR)$(MANPREFIX)/man1/tfwm.1
 
 uninstall:
-	rm -f $(DESTDIR)$(BINPREFIX)/acidwm
-	rm -f $(DESTDIR)$(MANPREFIX)/man1/acidwm.1
+	rm -f $(DESTDIR)$(BINPREFIX)/tfwm
+	rm -f $(DESTDIR)$(MANPREFIX)/man1/tfwm.1
 
 clean:
-	rm -f $(OBJ) acidwm
+	rm -f $(OBJ) tfwm
 
 .PHONY: all debug install uninstall clean
 
