@@ -99,14 +99,6 @@ struct Client {
 	unsigned int      ws;
 };
 
-enum {
-	XC_LEFT_PTR,
-	XC_FLEUR,
-	XC_BOTTOM_RIGHT_CORNER,
-	XC_WATCH,
-	XC_MAX
-};
-
 /* functions */
 void quit(const Arg *arg);
 void restart(const Arg *arg);
@@ -124,7 +116,6 @@ extern xcb_ewmh_connection_t *ewmh;
 extern xcb_atom_t WM_DELETE_WINDOW;
 extern xcb_atom_t WM_TAKE_FOCUS;
 extern xcb_atom_t WM_PROTOCOLS;
-extern Display *display;
 extern unsigned int selws;
 extern unsigned int prevws;
 extern Client *clients;

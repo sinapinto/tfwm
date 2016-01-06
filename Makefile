@@ -10,8 +10,7 @@ BINPREFIX = $(PREFIX)/bin
 CC     ?= gcc
 CFLAGS  = -std=c99 -Wall -Wextra -Wshadow -Wno-uninitialized -pedantic
 CFLAGS += -I$(PREFIX)/include -DVERSION=\"$(VERSION)\"
-LIBS    = -lxcb -lxcb-keysyms -lxcb-icccm -lxcb-ewmh -lxcb-util \
-          -lX11 -lX11-xcb -lXcursor
+LIBS    = -lxcb -lxcb-keysyms -lxcb-icccm -lxcb-ewmh -lxcb-util -lxcb-cursor
 
 SRC = $(wildcard *.c)
 OBJ = $(SRC:.c=.o)

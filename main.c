@@ -8,8 +8,6 @@
 #include <xcb/xcb.h>
 #include <xcb/xcb_aux.h>
 #include <xcb/xcb_ewmh.h>
-#include <X11/Xlib-xcb.h>
-#include <X11/cursorfont.h>
 #include "main.h"
 #include "util.h"
 #include "list.h"
@@ -42,7 +40,6 @@ static volatile bool restart_wm;
 xcb_atom_t WM_DELETE_WINDOW;
 xcb_atom_t WM_TAKE_FOCUS;
 xcb_atom_t WM_PROTOCOLS;
-Display *display;
 unsigned int selws = 0;
 unsigned int prevws = 0;
 Client *sel;
@@ -122,7 +119,7 @@ cleanup(void) {
 		focus(NULL);
 	}
 	ewmh_teardown();
-	free_cursors();
+	cursor_free_cursors();
 	FREE(focus_color);
 	FREE(unfocus_color);
 	xcb_set_input_focus(conn, XCB_NONE, XCB_INPUT_FOCUS_POINTER_ROOT,
@@ -208,10 +205,8 @@ setup(void) {
 	else
 		unfocuscol = getcolor(DEFAULT_UNFOCUS_COLOR);
 
-	load_cursors();
-	vals[0] = cursors[XC_LEFT_PTR].cid;
-	xcb_change_window_attributes_checked(conn, screen->root,
-					     XCB_CW_CURSOR, vals);
+	cursor_load_cursors();
+	cursor_set_window_cursor(screen->root, XC_POINTER);
 
 	ewmh_setup();
 	remanage_windows();
@@ -221,20 +216,12 @@ setup(void) {
 int
 main(int argc, char **argv) {
 	(void)argc;
-	int   err_line;
-	char *rc_path = NULL;
 
 	warn("welcome to acidWM %s\n", VERSION);
 
-	/* open shared XLib/XCB connection */
-	if ((display = XOpenDisplay(NULL)) == NULL)
-		err("can't open display.");
-
-	conn = XGetXCBConnection(display);
+	conn = xcb_connect(NULL, NULL);
 	if (connection_has_error())
 		return EXIT_FAILURE;
-
-	XSetEventQueueOwner(display, XCBOwnsEventQueue);
 
 	/* reap children */
 	sigchld();
@@ -245,19 +232,20 @@ main(int argc, char **argv) {
 	signal(SIGQUIT, sigcatch);
 	signal(SIGHUP, sigcatch);
 
-	scrno = XDefaultScreen(display);
+	scrno = 0;
 
 	/* load config */
-	if ((rc_path = find_config("acidwmrc"))) {
-		err_line = parse_config(rc_path);
-		if (err_line > 0)
-			warn("parse_config: error on line %d.\n", err_line);
-		else if (err_line < 0)
-			warn("parse_config: fopen error\n");
-		FREE(rc_path);
-	} else {
-		warn("no config file found. using default settings\n");
-	}
+	/* char *rc_path = NULL; */
+	/* if ((rc_path = find_config("acidwmrc"))) { */
+	/* 	int err_line = parse_config(rc_path); */
+	/* 	if (err_line > 0) */
+	/* 		warn("parse_config: error on line %d.\n", err_line); */
+	/* 	else if (err_line < 0) */
+	/* 		warn("parse_config: fopen error\n"); */
+	/* 	FREE(rc_path); */
+	/* } else { */
+	/* 	warn("no config file found. using default settings\n"); */
+	/* } */
 
 	xcb_aux_sync(conn);
 	setup();

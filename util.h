@@ -17,9 +17,10 @@
                 }                                                             \
         } while(0)
 
+/* buonding width/height */
 #define BWIDTH(C) ((!ISFULLSCREEN(C) && !(C)->noborder)                       \
-                      ? (C)->geom.width + border_width * 2                    \
-                      : (C)->geom.width)
+                     ? (C)->geom.width + border_width * 2                     \
+                     : (C)->geom.width)
 
 #define BHEIGHT(C) ((!ISFULLSCREEN(C) && !(C)->noborder)                      \
                       ? (C)->geom.height + border_width * 2                   \
@@ -42,7 +43,7 @@
                             | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT)
 
 #define CLEANMASK(mask) (mask & ~(numlockmask|XCB_MOD_MASK_LOCK))
-#define LENGTH(X)       (sizeof(X)/sizeof(*X))
+#define LENGTH(X)       (int)(sizeof(X)/sizeof(X)[0])
 #define MAX(X, Y)       ((X) > (Y) ? (X) : (Y))
 #define MIN(X, Y)       ((X) < (Y) ? (X) : (Y))
 #define WIDTH(C)        ((C)->geom.width + 2 * border_width)

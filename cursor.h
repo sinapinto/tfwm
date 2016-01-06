@@ -1,19 +1,19 @@
 /* See LICENSE file for copyright and license details. */
-#ifndef POINTER_H
-#define POINTER_H
+#ifndef CURSOR_H
+#define CURSOR_H
 
-void mousemotion(const Arg *arg);
-void load_cursors(void);
-void free_cursors(void);
-void warp_pointer(Client *c);
+enum xcursor_t {
+    XC_POINTER,
+    XC_BOTTOM_RIGHT,
+    XC_MOVE,
+    XC_MAX
+};
 
-struct cursor_t {
-	const char   *name;
-	uint8_t       cf_glyph;
-	xcb_cursor_t  cid;
-} ;
-
-extern struct cursor_t cursors[XC_MAX];
+void cursor_load_cursors(void);
+xcb_cursor_t cursor_get_xcursor(enum xcursor_t c);
+int cursor_get_cursorfont(enum xcursor_t c);
+void cursor_set_window_cursor(xcb_window_t win, enum xcursor_t c);
+void cursor_free_cursors(void);
 
 #endif
 

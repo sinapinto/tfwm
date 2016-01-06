@@ -3,6 +3,7 @@
 #include <string.h>
 #include "main.h"
 #include "xcb.h"
+#include "config.h"
 #include "util.h"
 
 #ifdef DEBUG
@@ -134,5 +135,31 @@ grabbuttons(Client *c) {
 					buttons[i].mask|modifiers[j]);
 		}
 	}
+}
+
+
+void
+warp_pointer(Client *c) {
+	int16_t x = 0;
+	int16_t y = 0;
+
+	switch(cursor_position) {
+	case 0: return;
+	case 1: break;
+	case 2: x += c->geom.width; break;
+	case 3: y += c->geom.height; break;
+	case 4:
+		x += c->geom.width;
+		y += c->geom.height;
+		break;
+	case 5:
+		x = c->geom.width / 2;
+		y = c->geom.height / 2;
+		break;
+	default:
+		warn("warp_pointer: bad setting: %d\n", cursor_position);
+	}
+
+	xcb_warp_pointer(conn, XCB_NONE, c->win, 0, 0, 0, 0, x, y);
 }
 

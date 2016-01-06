@@ -194,8 +194,8 @@ void setkey(const char *key, char *val) {
 		} else {
 			if (strncmp(token, "0x", 2) == 0)
 				keysym = atoi(token);
-			else
-				keysym = XStringToKeysym(token);
+			/* else */
+			/* 	keysym = XStringToKeysym(token); */
 			if (keysym == 0) {
 				warn("setkey: keysym for '%s' not found\n",
 				     token);
