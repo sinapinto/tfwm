@@ -12,8 +12,14 @@ CFLAGS  = -std=c99 -Wall -Wextra -Wshadow -Wno-uninitialized -pedantic
 CFLAGS += -I$(PREFIX)/include -DVERSION=\"$(VERSION)\"
 LIBS    = -lxcb -lxcb-keysyms -lxcb-icccm -lxcb-ewmh -lxcb-util -lxcb-cursor
 
-SRC = $(wildcard *.c)
-OBJ = $(SRC:.c=.o)
+UNAME := $(shell uname -s)
+
+ifeq ($(UNAME),Linux)
+CFLAGS += -D_GNU_SOURCE
+endif
+
+SRC := $(wildcard *.c)
+OBJ := $(SRC:.c=.o)
 
 all: CFLAGS += -Os
 all: acidwm

@@ -59,6 +59,7 @@ restart(const Arg *arg) {
 
 void
 sigcatch(int sig) {
+	PRINTF("caught signal %d\n", sig);
 	switch (sig) {
 	case SIGINT:
 	case SIGTERM:
@@ -213,10 +214,17 @@ main(int argc, char **argv) {
 	if (connection_has_error())
 		return EXIT_FAILURE;
 
-	/* add signal handlers */
-	signal(SIGINT, sigcatch);
-	signal(SIGTERM, sigcatch);
-	signal(SIGHUP, sigcatch);
+	/* while handling a signal, reset disposition to SIG_DFL */
+	struct sigaction sa = {
+		.sa_handler = sigcatch,
+		.sa_flags = SA_RESETHAND };
+	sigemptyset(&sa.sa_mask);
+
+	if (sigaction(SIGINT, &sa, NULL) == -1 ||
+	    sigaction(SIGTERM, &sa, NULL) == -1 ||
+	    sigaction(SIGHUP, &sa, NULL) == -1) {
+		warn("failed to add signal handlers.\n");
+	}
 
 	/* load config */
 	/* char *rc_path = NULL; */
