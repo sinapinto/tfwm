@@ -119,7 +119,7 @@ cleanup(void) {
 		focus(NULL);
 	}
 	ewmh_teardown();
-	cursor_free_cursors();
+	cursor_free_context();
 	FREE(focus_color);
 	FREE(unfocus_color);
 	xcb_set_input_focus(conn, XCB_NONE, XCB_INPUT_FOCUS_POINTER_ROOT,
@@ -219,7 +219,7 @@ main(int argc, char **argv) {
 
 	warn("welcome to acidWM %s\n", VERSION);
 
-	conn = xcb_connect(NULL, NULL);
+	conn = xcb_connect(NULL, &scrno);
 	if (connection_has_error())
 		return EXIT_FAILURE;
 
@@ -231,8 +231,6 @@ main(int argc, char **argv) {
 	signal(SIGTERM, sigcatch);
 	signal(SIGQUIT, sigcatch);
 	signal(SIGHUP, sigcatch);
-
-	scrno = 0;
 
 	/* load config */
 	/* char *rc_path = NULL; */

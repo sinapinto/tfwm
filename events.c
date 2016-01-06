@@ -10,6 +10,7 @@
 #include "ewmh.h"
 #include "config.h"
 #include "client.h"
+#include "cursor.h"
 #include "util.h"
 
 static void buttonpress(xcb_generic_event_t *ev);
@@ -372,7 +373,6 @@ destroynotify(xcb_generic_event_t *ev) {
 
 void
 mousemotion(const Arg *arg) {
-	xcb_cursor_t                cursor = XCB_NONE;
 	xcb_time_t                  lasttime = 0;
 	xcb_generic_event_t        *ev;
 	xcb_motion_notify_event_t  *e;
@@ -391,10 +391,11 @@ mousemotion(const Arg *arg) {
 	qpc = xcb_query_pointer(conn, screen->root);
 	qpr = xcb_query_pointer_reply(conn, qpc, 0);
 
+	xcb_cursor_t cursor = XCB_NONE;
 	if (arg->i == MouseMove) {
-		/* cursor = cursors[XC_FLEUR].cid; */
+		cursor = cursor_get_id(XC_MOVE);
 	} else {
-		/* cursor = cursors[XC_BOTTOM_RIGHT_CORNER].cid; */
+		cursor = cursor_get_id(XC_BOTTOM_RIGHT);
 	}
 
 	/* grab pointer */
