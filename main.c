@@ -4,7 +4,6 @@
 #include <unistd.h>
 #include <signal.h>
 #include <string.h>
-#include <sys/wait.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_aux.h>
 #include <xcb/xcb_ewmh.h>
@@ -24,7 +23,6 @@ static void cleanup(void);
 static void remanage_windows(void);
 static void run(void);
 static void setup(void);
-static void sigchld();
 static void sigcatch(int sig);
 
 xcb_connection_t *conn;
@@ -64,7 +62,6 @@ sigcatch(int sig) {
 	switch (sig) {
 	case SIGINT:
 	case SIGTERM:
-	case SIGQUIT:
 		sigcode = sig;
 		break;
 	case SIGHUP:
@@ -72,13 +69,6 @@ sigcatch(int sig) {
 		sigcode = sig;
 		break;
 	}
-}
-
-void
-sigchld() {
-	if (signal(SIGCHLD, sigchld) == SIG_ERR)
-		err("can't install SIGCHLD handler.");
-	while (0 < waitpid(-1, NULL, WNOHANG));
 }
 
 void
@@ -223,13 +213,9 @@ main(int argc, char **argv) {
 	if (connection_has_error())
 		return EXIT_FAILURE;
 
-	/* reap children */
-	sigchld();
-
 	/* add signal handlers */
 	signal(SIGINT, sigcatch);
 	signal(SIGTERM, sigcatch);
-	signal(SIGQUIT, sigcatch);
 	signal(SIGHUP, sigcatch);
 
 	/* load config */
