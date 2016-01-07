@@ -9,17 +9,12 @@
 #ifdef DEBUG
 char *
 get_atom_name(xcb_atom_t atom) {
-	char *name = NULL;
-	xcb_get_atom_name_reply_t *r;
-	xcb_get_atom_name_cookie_t c;
-	int len;
-
-	c = xcb_get_atom_name(conn, atom);
-	r = xcb_get_atom_name_reply(conn, c, NULL);
+	xcb_get_atom_name_reply_t *r = xcb_get_atom_name_reply(conn, xcb_get_atom_name(conn, atom), NULL);
 	if (!r)
 		return NULL;
 
-	len = xcb_get_atom_name_name_length(r);
+	char *name;
+	int len = xcb_get_atom_name_name_length(r);
 	if (len) {
 		if (!(name = malloc(len + 1)))
 			err("can't allocate memory.");
@@ -69,11 +64,7 @@ connection_has_error(void) {
 
 void
 getatom(xcb_atom_t *atom, const char *name) {
-	xcb_intern_atom_reply_t  *r;
-	xcb_intern_atom_cookie_t  c;
-
-	c = xcb_intern_atom(conn, 0, strlen(name), name);
-	r = xcb_intern_atom_reply(conn, c, NULL);
+	xcb_intern_atom_reply_t *r = xcb_intern_atom_reply(conn, xcb_intern_atom(conn, 0, strlen(name), name), NULL);
 
 	if (r) {
 		*atom = r->atom;
@@ -85,32 +76,25 @@ getatom(xcb_atom_t *atom, const char *name) {
 
 uint32_t
 getcolor(const char *color) {
-	uint32_t                        pixel;
-	unsigned int                    r, g, b;
-	xcb_colormap_t                  map;
-	xcb_alloc_color_cookie_t        cc;
-	xcb_alloc_color_reply_t        *cr;
-	xcb_alloc_named_color_cookie_t  ncc;
-	xcb_alloc_named_color_reply_t  *ncr;
+	uint32_t pixel;
 
-	map = screen->default_colormap;
+	xcb_colormap_t map = screen->default_colormap;
 
 	if (color[0] == '#') {
+		unsigned int r, g, b;
 		if (sscanf(color + 1, "%02x%02x%02x", &r, &g, &b) != 3)
 			err("bad color: %s.", color);
 		/* convert from 8-bit to 16-bit */
-		r = r << 8 | r;
-		g = g << 8 | g;
-		b = b << 8 | b;
-		cc = xcb_alloc_color(conn, map, r, g, b);
-		cr = xcb_alloc_color_reply(conn, cc, NULL);
+		r = (r << 8) | r;
+		g = (g << 8) | g;
+		b = (b << 8) | b;
+		xcb_alloc_color_reply_t *cr = xcb_alloc_color_reply(conn, xcb_alloc_color(conn, map, r, g, b), NULL);
 		if (!cr)
 			err("can't alloc color.");
 		pixel = cr->pixel;
 		FREE(cr);
 	} else {
-		ncc = xcb_alloc_named_color(conn, map, strlen(color), color);
-		ncr = xcb_alloc_named_color_reply(conn, ncc, NULL);
+		xcb_alloc_named_color_reply_t *ncr = xcb_alloc_named_color_reply(conn, xcb_alloc_named_color(conn, map, strlen(color), color), NULL);
 		if (!ncr)
 			err("can't alloc named color.");
 		pixel = ncr->pixel;
@@ -121,12 +105,14 @@ getcolor(const char *color) {
 
 void
 grabbuttons(Client *c) {
-	unsigned int i, j;
-	unsigned int modifiers[] = { 0, XCB_MOD_MASK_LOCK, numlockmask,
-		numlockmask | XCB_MOD_MASK_LOCK };
+	uint16_t modifiers[4];
+	modifiers[0] = 0;
+	modifiers[1] = XCB_MOD_MASK_LOCK;
+	modifiers[2] = numlockmask;
+	modifiers[3] = numlockmask | XCB_MOD_MASK_LOCK;
 
-	for (i = 0; i < LENGTH(buttons); i++) {
-		for (j = 0; j < LENGTH(modifiers); j++) {
+	for (int i = 0; i < LENGTH(buttons); i++) {
+		for (int j = 0; j < LENGTH(modifiers); j++) {
 			xcb_grab_button(conn, 1, c->win,
 					XCB_EVENT_MASK_BUTTON_PRESS,
 					XCB_GRAB_MODE_ASYNC,

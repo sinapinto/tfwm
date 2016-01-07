@@ -11,12 +11,8 @@
 
 void
 ewmh_setup() {
-	uint8_t r;
-
 	ewmh = malloc(sizeof(xcb_ewmh_connection_t));
-	r = xcb_ewmh_init_atoms_replies(ewmh,
-					xcb_ewmh_init_atoms(conn, ewmh), NULL);
-	if (r == 0)
+	if ((xcb_ewmh_init_atoms_replies(ewmh, xcb_ewmh_init_atoms(conn, ewmh), NULL)) == 0)
 		err("can't initialize ewmh.");
 
 	xcb_atom_t net_atoms[] = {
@@ -89,18 +85,14 @@ ewmh_setup() {
 
 void
 ewmh_teardown() {
-	xcb_window_t               id;
-	xcb_get_property_cookie_t  pc;
-	xcb_get_property_reply_t  *pr;
-
 	/* delete _NET_SUPPORTING_WM_CHECK */
-	pc = xcb_get_property(conn, 0, screen->root,
-			      ewmh->_NET_SUPPORTING_WM_CHECK,
-			      XCB_ATOM_WINDOW, 0, 1);
-	pr = xcb_get_property_reply(conn, pc, NULL);
+	xcb_get_property_cookie_t cookie = xcb_get_property(conn, 0, screen->root,
+							    ewmh->_NET_SUPPORTING_WM_CHECK,
+							    XCB_ATOM_WINDOW, 0, 1);
+	xcb_get_property_reply_t *pr = xcb_get_property_reply(conn, cookie, NULL);
 	if (pr) {
 		if (pr->format == ewmh->_NET_SUPPORTING_WM_CHECK) {
-			id = *((xcb_window_t *)xcb_get_property_value(pr));
+			xcb_window_t id = *((xcb_window_t *)xcb_get_property_value(pr));
 			PRINTF("deleting supporting wm check window %#x\n", id);
 			xcb_destroy_window(conn, id);
 			xcb_delete_property(conn, screen->root,
@@ -121,15 +113,15 @@ change_ewmh_flags(Client *c, xcb_ewmh_wm_state_action_t op, uint32_t mask) {
 	       c->win, mask, op);
 
 	switch (op) {
-		case ADD_STATE:
-			c->ewmh_flags |= mask;
-			break;
-		case REMOVE_STATE:
-			c->ewmh_flags &= ~mask;
-			break;
-		case TOGGLE_STATE:
-			c->ewmh_flags ^= mask;
-			break;
+	case ADD_STATE:
+		c->ewmh_flags |= mask;
+		break;
+	case REMOVE_STATE:
+		c->ewmh_flags &= ~mask;
+		break;
+	case TOGGLE_STATE:
+		c->ewmh_flags ^= mask;
+		break;
 	}
 }
 
@@ -194,7 +186,7 @@ handle_wm_state(Client *c, xcb_atom_t state, xcb_ewmh_wm_state_action_t action) 
 void
 ewmh_update_wm_state(Client *c) {
 	xcb_atom_t v[MAX_STATE];
-	int        i = 0;
+	int i = 0;
 
 	if (ISMAXVERT(c))
 		v[i++] = ewmh->_NET_WM_STATE_MAXIMIZED_VERT;
@@ -219,18 +211,13 @@ ewmh_update_wm_state(Client *c) {
 
 void
 ewmh_get_wm_state(Client *c) {
-	unsigned int               i;
-	xcb_get_property_cookie_t  pc;
 	xcb_ewmh_get_atoms_reply_t win_state;
-	xcb_atom_t                 a = XCB_NONE;
 
-	pc = xcb_ewmh_get_wm_state(ewmh, c->win);
-
-	if (xcb_ewmh_get_wm_state_reply(ewmh, pc, &win_state, NULL) != 1)
+	if (xcb_ewmh_get_wm_state_reply(ewmh, xcb_ewmh_get_wm_state(ewmh, c->win), &win_state, NULL) != 1)
 		return;
 
-	for (i = 0; i < win_state.atoms_len; i++) {
-		a = win_state.atoms[i];
+	for (unsigned int i = 0; i < win_state.atoms_len; i++) {
+		xcb_atom_t a = win_state.atoms[i];
 #ifdef DEBUG
 		char *name = get_atom_name(a);
 		PRINTF("EWMH: state: win %#x, atom %s\n", c->win, name);
@@ -257,7 +244,7 @@ ewmh_get_wm_state(Client *c) {
 void
 ewmh_update_client_list(Client *list) {
 	Client *t;
-	int     count = 0;
+	int count = 0;
 
 	for (t = list; t; t = t->next)
 		count++;
@@ -273,17 +260,12 @@ ewmh_update_client_list(Client *list) {
 
 void
 ewmh_get_wm_window_type(Client *c) {
-	unsigned int               i;
-	xcb_get_property_cookie_t  pc;
 	xcb_ewmh_get_atoms_reply_t win_type;
-	xcb_atom_t                 a = XCB_NONE;
 
-	pc = xcb_ewmh_get_wm_window_type(ewmh, c->win);
-
-	if (xcb_ewmh_get_wm_window_type_reply(ewmh, pc, &win_type, NULL) == 1) {
-		for (i = 0; i < win_type.atoms_len; i++) {
-			a = win_type.atoms[i];
-			(void)a; // TODO
+	if (xcb_ewmh_get_wm_window_type_reply(ewmh, xcb_ewmh_get_wm_window_type(ewmh, c->win), &win_type, NULL) == 1) {
+		for (unsigned int i = 0; i < win_type.atoms_len; i++) {
+			xcb_atom_t a = win_type.atoms[i];
+			/* (void)a; */
 #ifdef DEBUG
 			char *name = get_atom_name(a);
 			PRINTF("EWMH: window type: win %#x, atom %s\n",
@@ -315,10 +297,9 @@ ewmh_get_wm_window_type(Client *c) {
 
 bool
 ewmh_get_supporting_wm_check(xcb_window_t *win) {
-	xcb_get_property_cookie_t c;
-
-	c = xcb_ewmh_get_supporting_wm_check_unchecked(ewmh, screen->root);
-	if (xcb_ewmh_get_supporting_wm_check_reply(ewmh, c, win, NULL) == 0) {
+	xcb_get_property_cookie_t cookie;
+	cookie = xcb_ewmh_get_supporting_wm_check_unchecked(ewmh, screen->root);
+	if (xcb_ewmh_get_supporting_wm_check_reply(ewmh, cookie, win, NULL) == 0) {
 		return false;
 	}
 	return true;

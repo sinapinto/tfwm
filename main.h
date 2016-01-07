@@ -95,6 +95,8 @@ struct Client {
 	xcb_window_t      frame;
 	Client           *next;
 	Client           *snext;
+	/* TAILQ_ENTRY(clients) next; */
+	/* TAILQ_ENTRY(stack)   snext; */
 	xcb_window_t      win;
 	unsigned int      ws;
 };

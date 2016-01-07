@@ -121,10 +121,10 @@ clientmessage(xcb_generic_event_t *ev) {
 void
 configurerequest(xcb_generic_event_t *ev) {
 	xcb_configure_request_event_t *e = (xcb_configure_request_event_t *)ev;
-	Client   *c;
-	uint32_t  v[7];
-	int       i = 0;
-	uint16_t  mask = 0;
+	Client *c;
+	uint32_t v[7];
+	int i = 0;
+	uint16_t mask = 0;
 
 #ifdef DEBUG
 	PRINTF("Event: configure request: win %#x: ", e->window);
@@ -266,11 +266,10 @@ gravitynotify(xcb_generic_event_t *ev) {
 void
 keypress(xcb_generic_event_t *ev) {
 	xcb_key_press_event_t *e = (xcb_key_press_event_t *)ev;
-	unsigned int i;
 
 	xcb_keysym_t keysym = getkeysym(e->detail);
 
-	for (i = 0; i < LENGTH(keys); i++) {
+	for (int i = 0; i < LENGTH(keys); i++) {
 		if (keysym == keys[i].keysym
 		    && CLEANMASK(keys[i].mod) == CLEANMASK(e->state)
 		    && keys[i].func) {
@@ -307,9 +306,6 @@ void
 propertynotify(xcb_generic_event_t *ev) {
 	xcb_property_notify_event_t *e = (xcb_property_notify_event_t *)ev;
 	Client *c;
-	xcb_get_property_cookie_t nhc;
-	uint8_t                   nhr;
-	xcb_size_hints_t          sh;
 
 #ifdef DEBUG
 	char *name = get_atom_name(e->atom);
@@ -322,8 +318,9 @@ propertynotify(xcb_generic_event_t *ev) {
 
 	if (e->atom == XCB_ATOM_WM_NORMAL_HINTS) {
 		/* update size hints */
-		nhc = xcb_icccm_get_wm_normal_hints(conn, e->window);
-		nhr = xcb_icccm_get_wm_normal_hints_reply(conn, nhc, &sh, NULL);
+		xcb_get_property_cookie_t nhc = xcb_icccm_get_wm_normal_hints(conn, e->window);
+		xcb_size_hints_t sh;
+		uint8_t nhr = xcb_icccm_get_wm_normal_hints_reply(conn, nhc, &sh, NULL);
 
 		if (nhr == 1 && sh.flags & XCB_ICCCM_SIZE_HINT_P_MIN_SIZE) {
 			c->size_hints.min_width = sh.min_width;
@@ -373,23 +370,12 @@ destroynotify(xcb_generic_event_t *ev) {
 
 void
 mousemotion(const Arg *arg) {
-	xcb_time_t                  lasttime = 0;
-	xcb_generic_event_t        *ev;
-	xcb_motion_notify_event_t  *e;
-	bool                        ungrab = false;
-	int                         nx, ny, nw, nh;
-	xcb_query_pointer_cookie_t  qpc;
-	xcb_query_pointer_reply_t  *qpr;
-	xcb_grab_pointer_reply_t   *gpr;
-	xcb_grab_pointer_cookie_t   gpc;
-
 	if (!sel || sel->win == screen->root)
 		return;
 
 	raisewindow(sel->frame);
 	raisewindow(sel->win);
-	qpc = xcb_query_pointer(conn, screen->root);
-	qpr = xcb_query_pointer_reply(conn, qpc, 0);
+	xcb_query_pointer_reply_t *qpr = xcb_query_pointer_reply(conn, xcb_query_pointer(conn, screen->root), 0);
 
 	xcb_cursor_t cursor = XCB_NONE;
 	if (arg->i == MouseMove) {
@@ -399,20 +385,24 @@ mousemotion(const Arg *arg) {
 	}
 
 	/* grab pointer */
-	gpc = xcb_grab_pointer(conn, 0, screen->root, POINTER_EVENT_MASK,
+	xcb_grab_pointer_cookie_t gpc = xcb_grab_pointer(conn, 0, screen->root, POINTER_EVENT_MASK,
 			       XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC,
 			       XCB_NONE, cursor, XCB_CURRENT_TIME);
-	gpr = xcb_grab_pointer_reply(conn, gpc, NULL);
+	xcb_grab_pointer_reply_t *gpr = xcb_grab_pointer_reply(conn, gpc, NULL);
 	if (gpr->status != XCB_GRAB_STATUS_SUCCESS) {
 		FREE(gpr);
 		return;
 	}
 	FREE(gpr);
 
-	nx = sel->geom.x;
-	ny = sel->geom.y;
-	nw = sel->geom.width;
-	nh = sel->geom.height;
+	int nx = sel->geom.x;
+	int ny = sel->geom.y;
+	int nw = sel->geom.width;
+	int nh = sel->geom.height;
+	xcb_time_t lasttime = 0;
+	xcb_generic_event_t *ev;
+	xcb_motion_notify_event_t *e;
+	bool ungrab = false;
 	while ((ev = xcb_wait_for_event(conn)) && !ungrab) {
 		switch (ev->response_type & ~0x80) {
 		case XCB_CONFIGURE_REQUEST:

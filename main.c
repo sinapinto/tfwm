@@ -1,4 +1,5 @@
 /* See LICENSE file for copyright and license details. */
+#include <sys/queue.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -29,7 +30,6 @@ xcb_connection_t *conn;
 xcb_screen_t *screen;
 unsigned int numlockmask;
 int scrno;
-Client *stack;
 xcb_ewmh_connection_t *ewmh;
 uint32_t focuscol;
 uint32_t unfocuscol;
@@ -42,6 +42,10 @@ unsigned int selws = 0;
 unsigned int prevws = 0;
 Client *sel;
 Client *clients;
+Client *stack;
+/* TAILQ_HEAD(sel, Client); */
+/* TAILQ_HEAD(clients, Client); */
+/* TAILQ_HEAD(stack, Client); */
 
 void
 quit(const Arg *arg) {
@@ -52,7 +56,7 @@ quit(const Arg *arg) {
 
 void
 restart(const Arg *arg) {
-	(void) arg;
+	(void)arg;
 	restart_wm = true;
 	sigcode = 1;
 }
@@ -92,7 +96,6 @@ run(void) {
 void
 cleanup(void) {
 	Client *c;
-
 	for (c = clients; c; c = c->next) {
 		xcb_reparent_window(conn, c->win, screen->root,
 				    c->geom.x, c->geom.y);
@@ -122,21 +125,15 @@ cleanup(void) {
 
 void
 remanage_windows(void) {
-	xcb_window_t                        sup;
-	xcb_query_tree_cookie_t             qtc;
-	xcb_query_tree_reply_t             *qtr;
-	xcb_get_window_attributes_cookie_t  gac;
-	xcb_get_window_attributes_reply_t  *gar;
-	xcb_window_t *children;
-
+	xcb_window_t sup;
 	if (!ewmh_get_supporting_wm_check(&sup))
 		warn("ewmh_get_supporting_wm_check fail\n");
 
-	qtc = xcb_query_tree(conn, screen->root);
-	if ((qtr = xcb_query_tree_reply(conn, qtc, NULL)) == NULL)
+	xcb_query_tree_reply_t *qtr;
+	if ((qtr = xcb_query_tree_reply(conn, xcb_query_tree(conn, screen->root), NULL)) == NULL)
 		return;
 
-	children = xcb_query_tree_children(qtr);
+	xcb_window_t *children = xcb_query_tree_children(qtr);
 
 	for (int i = 0; i < xcb_query_tree_children_length(qtr); i++) {
 		if (children[i] == sup)
@@ -145,8 +142,7 @@ remanage_windows(void) {
 		PRINTF("remanage_windows: %#x\n", children[i]);
 		manage(children[i]);
 
-		gac = xcb_get_window_attributes(conn, children[i]);
-		gar = xcb_get_window_attributes_reply(conn, gac, NULL);
+		xcb_get_window_attributes_reply_t *gar = xcb_get_window_attributes_reply(conn, xcb_get_window_attributes(conn, children[i]), NULL);
 		if (!gar)
 			continue;
 		if (gar->override_redirect) {
@@ -161,19 +157,18 @@ remanage_windows(void) {
 
 void
 setup(void) {
-	xcb_generic_error_t *e;
-	xcb_void_cookie_t    wac;
-	uint32_t             vals[1];
+	/* TAILQ_INIT(sel); */
+	/* TAILQ_INIT(clients); */
+	/* TAILQ_INIT(stack); */
 
 	screen = xcb_setup_roots_iterator(xcb_get_setup(conn)).data;
 	if (!screen)
 		err("can't find screen.");
 
 	/* subscribe to handler */
-	vals[0] = ROOT_EVENT_MASK;
-	wac = xcb_change_window_attributes_checked(conn, screen->root,
-						   XCB_CW_EVENT_MASK, vals);
-	e = xcb_request_check(conn, wac);
+	uint32_t val[1];
+	val[0] = ROOT_EVENT_MASK;
+	xcb_generic_error_t *e = xcb_request_check(conn, xcb_change_window_attributes_checked(conn, screen->root, XCB_CW_EVENT_MASK, val));
 	if (e) {
 		xcb_disconnect(conn);
 		err("another window manager is running.");
@@ -207,7 +202,6 @@ setup(void) {
 int
 main(int argc, char **argv) {
 	(void)argc;
-
 	warn("welcome to tfwm %s\n", VERSION);
 
 	conn = xcb_connect(NULL, &scrno);

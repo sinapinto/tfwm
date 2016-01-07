@@ -147,9 +147,7 @@ is_regular_file(char *path) {
 
 char *
 find_config(const char *file) {
-	char *path;
-
-	path = (char *)malloc(PATH_MAX);
+	char *path = (char *)malloc(PATH_MAX);
 
 	if (getenv("HOME")) {
 		snprintf(path, PATH_MAX, "%s/.%s", getenv("HOME"), file);
@@ -166,14 +164,13 @@ find_config(const char *file) {
 }
 
 void set_key(const char *key, char *val) {
-	char     *token;
-	uint16_t  mod = 0;
-	uint16_t  keysym = 0;
+	uint16_t mod = 0;
+	uint16_t keysym = 0;
 
 	/* PRINTF("set_key: %s: %s\n", key, val); */
 
 	/* parse modifier */
-	token = strtok(val, "+");
+	char *token = strtok(val, "+");
 	do {
 		if (strlen(token) == 4 &&
 		    strncasecmp("mod", token, 3) == 0) {
@@ -338,16 +335,14 @@ void setopt(const char *key, char *val) {
  * return 0 otherwise.  */
 int
 parse_config(const char *fname) {
-	FILE             *file = NULL;
-	int               err = 0;
-	char              line[LINE_MAX];
-	char              *p = NULL;
-	size_t            toklen = 0;
-	int               cfg_idx = -1;
-	char             *val = NULL;
-	unsigned int      i;
-	int               line_num = 0;
-	enum cfg_section  section = OPTION;
+	FILE *file = NULL;
+	int err = 0;
+	char line[LINE_MAX];
+	char *p = NULL;
+	size_t toklen = 0;
+	int cfg_idx = -1;
+	int line_num = 0;
+	enum cfg_section section = OPTION;
 
 	if (!(file = fopen(fname, "r")))
 		return -1;
@@ -379,7 +374,7 @@ parse_config(const char *fname) {
 		if (toklen == 0)
 			continue;
 
-		for (i = 0; i < LENGTH(config); ++i) {
+		for (int i = 0; i < LENGTH(config); ++i) {
 			if (strncasecmp(p, config[i].key, toklen) == 0 &&
 			    strlen(config[i].key) == toklen)
 				cfg_idx = i;
@@ -396,7 +391,7 @@ parse_config(const char *fname) {
 		p += toklen;
 		p += strspn(p, "= \t\n");
 
-		val = p;
+		char *val = p;
 		if (strlen(val) == 0) {
 			warn("%s: missing value for %s on line %d\n",
 			     fname, config[cfg_idx].key, line_num);

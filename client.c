@@ -13,22 +13,16 @@
 
 void
 applyrules(Client *c) {
-	unsigned int                    i;
-	const Rule                     *rule;
-	xcb_get_property_cookie_t       cookie;
-	xcb_icccm_get_wm_class_reply_t  reply;
-
 	ewmh_get_wm_window_type(c);
 	ewmh_get_wm_state(c);
 
 	/* custom rules */
-	cookie = xcb_icccm_get_wm_class(conn, c->win);
-
-	if (!xcb_icccm_get_wm_class_reply(conn, cookie, &reply, NULL))
+	xcb_icccm_get_wm_class_reply_t reply;
+	if (!xcb_icccm_get_wm_class_reply(conn, xcb_icccm_get_wm_class(conn, c->win), &reply, NULL))
 		return;
 
-	for (i = 0; i < LENGTH(rules); i++) {
-		rule = &rules[i];
+	for (int i = 0; i < LENGTH(rules); i++) {
+		const Rule *rule = &rules[i];
 		if ((rule->class && strstr(reply.class_name, rule->class))) {
 			if (!rule->border)
 				c->noborder = true;
@@ -87,25 +81,15 @@ killselected(const Arg *arg) {
 
 void
 manage(xcb_window_t w) {
-	Client                             *c;
-	xcb_get_geometry_reply_t           *gr;
-	xcb_get_property_cookie_t           nhc;
-	xcb_get_property_cookie_t           hc;
-	xcb_get_property_cookie_t           pc;
-	xcb_icccm_wm_hints_t                wmh;
-	xcb_icccm_get_wm_protocols_reply_t  pr;
-	unsigned int                        i;
-	uint32_t                            val[1];
-
 	PRINTF("manage: manage window %#x\n", w);
 
+	Client *c;
 	if (!(c = malloc(sizeof(Client))))
 		err("can't allocate memory.");
-
 	c->win = w;
 
 	/* get geometry */
-	gr = xcb_get_geometry_reply(conn, xcb_get_geometry(conn, w), NULL);
+	xcb_get_geometry_reply_t *gr = xcb_get_geometry_reply(conn, xcb_get_geometry(conn, w), NULL);
 
 	if (gr) {
 		c->geom.x = c->old_geom.x = gr->x;
@@ -143,8 +127,7 @@ manage(xcb_window_t w) {
 	c->ws = selws;
 
 	/* get size hints */
-	nhc = xcb_icccm_get_wm_normal_hints(conn, c->win);
-	xcb_icccm_get_wm_normal_hints_reply(conn, nhc, &c->size_hints, NULL);
+	xcb_icccm_get_wm_normal_hints_reply(conn, xcb_icccm_get_wm_normal_hints(conn, c->win), &c->size_hints, NULL);
 #if DEBUG
 	if (c->size_hints.x)
 		PRINTF("x: %d\n", c->size_hints.x);
@@ -169,8 +152,8 @@ manage(xcb_window_t w) {
 #endif
 
 	/* get wm hints */
-	hc = xcb_icccm_get_wm_hints(conn, c->win);
-	xcb_icccm_get_wm_hints_reply(conn, hc, &wmh, NULL);
+	xcb_icccm_wm_hints_t wmh;
+	xcb_icccm_get_wm_hints_reply(conn, xcb_icccm_get_wm_hints(conn, c->win), &wmh, NULL);
 	c->wm_hints = wmh.flags;
 
 	if (c->wm_hints & XCB_ICCCM_WM_HINT_X_URGENCY) {
@@ -178,9 +161,9 @@ manage(xcb_window_t w) {
 	}
 
 	/* get protocols */
-	pc = xcb_icccm_get_wm_protocols(conn, c->win, WM_PROTOCOLS);
-	if (xcb_icccm_get_wm_protocols_reply(conn, pc, &pr, NULL) == 1) {
-		for (i = 0; i < pr.atoms_len; ++i) {
+	xcb_icccm_get_wm_protocols_reply_t pr;
+	if (xcb_icccm_get_wm_protocols_reply(conn, xcb_icccm_get_wm_protocols(conn, c->win, WM_PROTOCOLS), &pr, NULL) == 1) {
+		for (unsigned int i = 0; i < pr.atoms_len; ++i) {
 			if (pr.atoms[i] == WM_DELETE_WINDOW)
 				c->can_delete = true;
 			if (pr.atoms[i] == WM_TAKE_FOCUS)
@@ -206,7 +189,7 @@ manage(xcb_window_t w) {
 	fit_in_screen(c);
 
 	if (sloppy_focus) {
-		val[0] = CLIENT_EVENT_MASK;
+		const uint32_t val[] = { CLIENT_EVENT_MASK };
 		xcb_change_window_attributes(conn, w, XCB_CW_EVENT_MASK, val);
 	}
 
@@ -220,15 +203,10 @@ manage(xcb_window_t w) {
 
 void
 reparent(Client *c) {
-	int16_t  x, y;
-	uint16_t width, height;
-	uint32_t vals[3];
-	uint32_t mask;
-
-	x = c->geom.x;
-	y = c->geom.y;
-	width = c->geom.width;
-	height = c->geom.height;
+	int16_t x = c->geom.x;
+	int16_t y = c->geom.y;
+	uint16_t width = c->geom.width;
+	uint16_t height = c->geom.height;
 #if DEBUG
 	if (c->size_hints.flags & XCB_ICCCM_SIZE_HINT_P_WIN_GRAVITY &&
 	    c->size_hints.win_gravity > 1)
@@ -275,9 +253,10 @@ reparent(Client *c) {
 
 	c->frame = xcb_generate_id(conn);
 
-	mask = XCB_CW_BORDER_PIXEL
+	uint32_t mask = XCB_CW_BORDER_PIXEL
 		| XCB_CW_OVERRIDE_REDIRECT
 		| XCB_CW_EVENT_MASK;
+	uint32_t vals[3];
 	vals[0] = focuscol;
 	vals[1] = true;
 	vals[2] = FRAME_EVENT_MASK;
@@ -453,13 +432,11 @@ raisewindow(xcb_drawable_t win) {
 
 void
 resize(const Arg *arg) {
-	int32_t iw, ih;
-
 	if (!sel)
 		return;
 
-	iw = resize_step;
-	ih = resize_step;
+	int32_t iw = resize_step;
+	int32_t ih = resize_step;
 
 	if (sel->size_hints.width_inc > 0)
 		iw = sel->size_hints.width_inc;
@@ -554,11 +531,11 @@ send_client_message(Client *c, xcb_atom_t proto) {
 
 void
 setborder(Client *c, bool focus) {
-	uint32_t       val[1];
 
 	if (ISFULLSCREEN(c) || c->noborder)
 		return;
 
+	uint32_t val[1];
 	val[0] = focus ? focuscol : unfocuscol;
 	xcb_change_window_attributes(conn, c->frame,
 				     XCB_CW_BORDER_PIXEL, val);

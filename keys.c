@@ -125,10 +125,7 @@ getkeysym(xcb_keycode_t keycode) {
 
 void
 grabkeys(void) {
-	unsigned int   i, j, k;
-	xcb_keycode_t *keycode;
-	uint16_t       modifiers[4];
-
+	uint16_t modifiers[4];
 	modifiers[0] = 0;
 	modifiers[1] = XCB_MOD_MASK_LOCK;
 	modifiers[2] = numlockmask;
@@ -136,49 +133,41 @@ grabkeys(void) {
 
 	xcb_ungrab_key(conn, XCB_GRAB_ANY, screen->root, XCB_MOD_MASK_ANY);
 
-	for (i = 0; i < LENGTH(keys); ++i) {
-		keycode = getkeycodes(keys[i].keysym);
+	for (int i = 0; i < LENGTH(keys); ++i) {
+		xcb_keycode_t *keycode = getkeycodes(keys[i].keysym);
 
-		for (j = 0; keycode[j] != XCB_NO_SYMBOL; j++) {
-			for (k = 0; k < LENGTH(modifiers); k++) {
+		for (int j = 0; keycode[j] != XCB_NO_SYMBOL; j++) {
+			for (int k = 0; k < LENGTH(modifiers); k++) {
 				xcb_grab_key(conn, 1, screen->root,
 					     keys[i].mod | modifiers[k],
 					     keycode[j], XCB_GRAB_MODE_ASYNC,
 					     XCB_GRAB_MODE_ASYNC);
 			}
 		}
-
 		FREE(keycode);
 	}
 }
 
 void
 updatenumlockmask(void) {
-	unsigned int                       i, j, n;
-	xcb_keycode_t                     *modmap;
-	xcb_get_modifier_mapping_reply_t  *mmr;
-	xcb_get_modifier_mapping_cookie_t  mmc;
-	xcb_keycode_t                      keycode;
-
 	numlockmask = 0;
 
-	mmc = xcb_get_modifier_mapping(conn);
-	mmr = xcb_get_modifier_mapping_reply(conn, mmc, NULL);
+	xcb_get_modifier_mapping_reply_t *mmr = xcb_get_modifier_mapping_reply(conn, xcb_get_modifier_mapping(conn), NULL);
 	if (!mmr)
 		err("mod map mmr");
 
-	modmap = xcb_get_modifier_mapping_keycodes(mmr);
+	xcb_keycode_t *modmap = xcb_get_modifier_mapping_keycodes(mmr);
 	if (!modmap)
 		err("mod map keycodes");
 
 	xcb_keycode_t *numlock = getkeycodes(XK_Num_Lock);
-	for (i = 0; i < 8; i++) {
-		for (j = 0; j < mmr->keycodes_per_modifier; j++) {
-			keycode = modmap[i * mmr->keycodes_per_modifier + j];
+	for (int i = 0; i < 8; i++) {
+		for (int j = 0; j < mmr->keycodes_per_modifier; j++) {
+			xcb_keycode_t keycode = modmap[i * mmr->keycodes_per_modifier + j];
 			if (keycode == XCB_NO_SYMBOL)
 				continue;
 			if (numlock)
-				for (n = 0; numlock[n] != XCB_NO_SYMBOL; n++)
+				for (int n = 0; numlock[n] != XCB_NO_SYMBOL; n++)
 					if (numlock[n] == keycode) {
 						numlockmask = 1 << i;
 						break;
