@@ -666,6 +666,7 @@ void maximize_half_client(Client *c, uint16_t location) {
     PRINTF("maximize_half win %#x to (%d,%d) %dx%d\n", c->frame, c->geom.x,
            c->geom.y, c->geom.width, c->geom.height);
 
+    setborderwidth(c->frame, border_width);
     setborder(c, true);
     warp_pointer(c);
 }
