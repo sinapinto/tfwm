@@ -2,7 +2,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#define DEFAULT_FOCUS_COLOR   "sky blue"
+#define DEFAULT_FOCUS_COLOR "sky blue"
 #define DEFAULT_UNFOCUS_COLOR "rebecca purple"
 
 char *find_config(const char *);
@@ -21,4 +21,3 @@ extern uint32_t focuscol;
 extern uint32_t unfocuscol;
 
 #endif
-

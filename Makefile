@@ -1,6 +1,6 @@
 VERSION = $(shell git describe --tags 2>/dev/null)
 ifeq ($(VERSION),)
-  VERSION = 0.1.0
+  VERSION = 0.1
 endif
 
 PREFIX   ?= /usr/local

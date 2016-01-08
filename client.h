@@ -16,7 +16,8 @@ void maximizeaxis_client(Client *c, uint16_t direction);
 void maximizeclient(Client *c, bool doit);
 void move(const Arg *arg);
 void movewin(xcb_window_t win, int16_t x, int16_t y);
-void moveresize_win(xcb_window_t win, int16_t x, int16_t y, uint16_t w, uint16_t h);
+void moveresize_win(xcb_window_t win, int16_t x, int16_t y, uint16_t w,
+                    uint16_t h);
 void raisewindow(xcb_drawable_t win);
 void reparent(Client *c);
 void resize(const Arg *arg);
@@ -35,4 +36,3 @@ void unmanage(Client *c);
 Client *wintoclient(xcb_window_t w);
 
 #endif
-

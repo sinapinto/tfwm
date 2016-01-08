@@ -3,7 +3,7 @@
 #define XCB_H
 
 #ifdef DEBUG
-char * get_atom_name(xcb_atom_t atom);
+char *get_atom_name(xcb_atom_t atom);
 #endif
 bool connection_has_error(void);
 void getatom(xcb_atom_t *atom, const char *name);
@@ -12,4 +12,3 @@ void grabbuttons(Client *c);
 void warp_pointer(Client *c);
 
 #endif
-

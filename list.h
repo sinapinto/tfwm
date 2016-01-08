@@ -9,4 +9,3 @@ void detachstack(Client *c);
 void focusstack(bool next);
 
 #endif
-
