@@ -35,13 +35,13 @@ void cursor_load_cursors(void) {
     }
 }
 
-xcb_cursor_t cursor_get_id(enum a_cursor_t c) {
+xcb_cursor_t cursor_get_id(enum cursor_t c) {
     if (c >= XC_MAX)
         return XCB_NONE;
     return cursors[c];
 }
 
-void cursor_set_window_cursor(xcb_window_t win, enum a_cursor_t c) {
+void cursor_set_window_cursor(xcb_window_t win, enum cursor_t c) {
     if (c < XC_MAX)
         xcb_change_window_attributes(conn, win, XCB_CW_CURSOR,
                                      (uint32_t[]){cursors[c]});

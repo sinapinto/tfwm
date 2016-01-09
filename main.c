@@ -121,34 +121,34 @@ void remanage_windows(void) {
     if (!ewmh_get_supporting_wm_check(&sup))
         warn("ewmh_get_supporting_wm_check fail\n");
 
-    xcb_query_tree_reply_t *qtr;
-    if ((qtr = xcb_query_tree_reply(conn, xcb_query_tree(conn, screen->root),
-                                    NULL)) == NULL)
+    xcb_query_tree_cookie_t cookie = xcb_query_tree(conn, screen->root);
+    xcb_query_tree_reply_t *reply;
+    if ((reply = xcb_query_tree_reply(conn, cookie, NULL)) == NULL)
         return;
 
-    xcb_window_t *children = xcb_query_tree_children(qtr);
+    xcb_window_t *children = xcb_query_tree_children(reply);
 
-    for (int i = 0; i < xcb_query_tree_children_length(qtr); i++) {
+    for (int i = 0; i < xcb_query_tree_children_length(reply); i++) {
         if (children[i] == sup)
             continue;
 
         PRINTF("remanage_windows: %#x\n", children[i]);
         manage(children[i]);
 
-        xcb_get_window_attributes_reply_t *gar =
-            xcb_get_window_attributes_reply(
-                conn, xcb_get_window_attributes(conn, children[i]), NULL);
-        if (!gar)
+        xcb_get_window_attributes_cookie_t wac =
+            xcb_get_window_attributes(conn, children[i]);
+        xcb_get_window_attributes_reply_t *war =
+            xcb_get_window_attributes_reply(conn, wac, NULL);
+        if (!war)
             continue;
-        if (gar->override_redirect) {
-            PRINTF("remanage_windows: skip %#x: "
-                   "override_redirect set\n",
+        if (war->override_redirect) {
+            PRINTF("remanage_windows: skip %#x: override_redirect set\n",
                    children[i]);
-            FREE(gar);
+            FREE(war);
             continue;
         }
     }
-    FREE(qtr);
+    FREE(reply);
 }
 
 void setup(void) {
@@ -198,7 +198,7 @@ void setup(void) {
 
 int main(int argc, char **argv) {
     (void)argc;
-    warn("welcome to tfwm %s\n", VERSION);
+    warn("welcome to " __WM_NAME__ " %s\n", __WM_VERSION__);
 
     conn = xcb_connect(NULL, &scrno);
     if (connection_has_error())

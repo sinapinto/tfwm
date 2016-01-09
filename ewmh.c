@@ -16,27 +16,45 @@ void ewmh_setup() {
         err("can't initialize ewmh.");
 
     xcb_atom_t net_atoms[] = {
-        ewmh->_NET_WM_NAME, ewmh->_NET_WM_PID, ewmh->_NET_SUPPORTED,
-        ewmh->_NET_SUPPORTING_WM_CHECK, ewmh->_NET_NUMBER_OF_DESKTOPS,
-        ewmh->_NET_CURRENT_DESKTOP, ewmh->_NET_WM_DESKTOP,
-        ewmh->_NET_ACTIVE_WINDOW, ewmh->_NET_CLOSE_WINDOW,
-        ewmh->_NET_CLIENT_LIST, ewmh->_NET_CLIENT_LIST_STACKING,
-        ewmh->_NET_MOVERESIZE_WINDOW, ewmh->_NET_REQUEST_FRAME_EXTENTS,
-        ewmh->_NET_FRAME_EXTENTS, ewmh->_NET_WM_STATE,
-        ewmh->_NET_WM_STATE_MODAL, ewmh->_NET_WM_STATE_STICKY,
-        ewmh->_NET_WM_STATE_MAXIMIZED_VERT, ewmh->_NET_WM_STATE_MAXIMIZED_HORZ,
+        ewmh->_NET_WM_NAME,
+        ewmh->_NET_WM_PID,
+        ewmh->_NET_SUPPORTED,
+        ewmh->_NET_SUPPORTING_WM_CHECK,
+        ewmh->_NET_NUMBER_OF_DESKTOPS,
+        ewmh->_NET_CURRENT_DESKTOP,
+        ewmh->_NET_WM_DESKTOP,
+        ewmh->_NET_ACTIVE_WINDOW,
+        ewmh->_NET_CLOSE_WINDOW,
+        ewmh->_NET_CLIENT_LIST,
+        ewmh->_NET_CLIENT_LIST_STACKING,
+        ewmh->_NET_MOVERESIZE_WINDOW,
+        ewmh->_NET_REQUEST_FRAME_EXTENTS,
+        ewmh->_NET_FRAME_EXTENTS,
+        ewmh->_NET_WM_STATE,
+        ewmh->_NET_WM_STATE_MODAL,
+        ewmh->_NET_WM_STATE_STICKY,
+        ewmh->_NET_WM_STATE_MAXIMIZED_VERT,
+        ewmh->_NET_WM_STATE_MAXIMIZED_HORZ,
         /* ewmh->_NET_WM_STATE_HIDDEN, */
-        ewmh->_NET_WM_STATE_FULLSCREEN, ewmh->_NET_WM_STATE_ABOVE,
+        ewmh->_NET_WM_STATE_FULLSCREEN,
+        ewmh->_NET_WM_STATE_ABOVE,
         /* ewmh->_NET_WM_STATE_BELOW, */
-        ewmh->_NET_WM_STATE_DEMANDS_ATTENTION, ewmh->_NET_WM_WINDOW_TYPE,
-        ewmh->_NET_WM_WINDOW_TYPE_DESKTOP, ewmh->_NET_WM_WINDOW_TYPE_DOCK,
-        ewmh->_NET_WM_WINDOW_TYPE_TOOLBAR, ewmh->_NET_WM_WINDOW_TYPE_MENU,
-        ewmh->_NET_WM_WINDOW_TYPE_UTILITY, ewmh->_NET_WM_WINDOW_TYPE_SPLASH,
+        ewmh->_NET_WM_STATE_DEMANDS_ATTENTION,
+        ewmh->_NET_WM_WINDOW_TYPE,
+        ewmh->_NET_WM_WINDOW_TYPE_DESKTOP,
+        ewmh->_NET_WM_WINDOW_TYPE_DOCK,
+        ewmh->_NET_WM_WINDOW_TYPE_TOOLBAR,
+        ewmh->_NET_WM_WINDOW_TYPE_MENU,
+        ewmh->_NET_WM_WINDOW_TYPE_UTILITY,
+        ewmh->_NET_WM_WINDOW_TYPE_SPLASH,
         ewmh->_NET_WM_WINDOW_TYPE_DIALOG,
         ewmh->_NET_WM_WINDOW_TYPE_DROPDOWN_MENU,
-        ewmh->_NET_WM_WINDOW_TYPE_POPUP_MENU, ewmh->_NET_WM_WINDOW_TYPE_TOOLTIP,
-        ewmh->_NET_WM_WINDOW_TYPE_NOTIFICATION, ewmh->_NET_WM_WINDOW_TYPE_COMBO,
-        ewmh->_NET_WM_WINDOW_TYPE_DND, ewmh->_NET_WM_WINDOW_TYPE_NORMAL,
+        ewmh->_NET_WM_WINDOW_TYPE_POPUP_MENU,
+        ewmh->_NET_WM_WINDOW_TYPE_TOOLTIP,
+        ewmh->_NET_WM_WINDOW_TYPE_NOTIFICATION,
+        ewmh->_NET_WM_WINDOW_TYPE_COMBO,
+        ewmh->_NET_WM_WINDOW_TYPE_DND,
+        ewmh->_NET_WM_WINDOW_TYPE_NORMAL,
     };
     xcb_ewmh_set_supported(ewmh, scrno, LENGTH(net_atoms), net_atoms);
 
@@ -53,7 +71,8 @@ void ewmh_setup() {
     if (java_workaround)
         xcb_ewmh_set_wm_name(ewmh, screen->root, strlen("LG3D"), "LG3D");
     else
-        xcb_ewmh_set_wm_name(ewmh, screen->root, strlen("tfwm"), "tfwm");
+        xcb_ewmh_set_wm_name(ewmh, screen->root, strlen(__WM_NAME__),
+                             __WM_NAME__);
 
     /* _NET_NUMBER_ODESKTOPS */
     xcb_ewmh_set_number_of_desktops(ewmh, scrno, 10);

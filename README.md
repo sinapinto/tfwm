@@ -24,10 +24,11 @@ a list of supported properties, see `doc/Compliance`.
 
 ## Todo
 * Remanage windows after restart.
+* Support for various EWMH atoms.
+* Maybe a statusbar
+* Explore optional pixmap borders and shaped windows.
 * Improve support for window class based rules.
 * Add the ability to define exec keybinds in the config.
-* Support for various EWMH atoms.
-* Explore optional pixmap borders and shaped windows.
 * Improve config file parsing:
     * Spaces in keybind values
     * Inline comments?
