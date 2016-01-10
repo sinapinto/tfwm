@@ -49,12 +49,6 @@ unfocus_color:
 The border color of an unfocused window. This can be either an unquoted
 hexadecimal code (e.g. #ff00AA) or an unquoted X11 color name (e.g. sky blue).
 
-sloppy_focus:
-Window focus should follow the mouse pointer.
-Possible values: (default 0)
-0:  Off
-1:  On
-
 cursor_position:
 The location of the mouse pointer on the active window when moving, resizing,
 or focusing it.

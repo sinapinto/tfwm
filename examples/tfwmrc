@@ -8,7 +8,6 @@ resize_step           = 30
 border_width          = 4
 focus_color           = #87CEEB
 unfocus_color         = slate gray
-sloppy_focus          = 0
 cursor_position       = 0
 center_new_windows    = 1
 

@@ -189,10 +189,8 @@ void manage(xcb_window_t w) {
     sel = c;
     fit_in_screen(c);
 
-    if (sloppy_focus) {
-        const uint32_t val[] = {CLIENT_EVENT_MASK};
-        xcb_change_window_attributes(conn, w, XCB_CW_EVENT_MASK, val);
-    }
+    /* const uint32_t val[] = {CLIENT_EVENT_MASK}; */
+    /* xcb_change_window_attributes(conn, w, XCB_CW_EVENT_MASK, val); */
 
     if (c->ws == selws)
         xcb_map_window(conn, w);

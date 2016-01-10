@@ -4,6 +4,7 @@
 #include "main.h"
 #include "xcb.h"
 #include "config.h"
+#include "keys.h"
 #include "util.h"
 
 #ifdef DEBUG
@@ -75,7 +76,6 @@ void getatom(xcb_atom_t *atom, const char *name) {
 
 uint32_t getcolor(const char *color) {
     uint32_t pixel;
-
     xcb_colormap_t map = screen->default_colormap;
 
     if (color[0] == '#') {
@@ -111,12 +111,10 @@ void grabbuttons(Client *c) {
     modifiers[3] = numlockmask | XCB_MOD_MASK_LOCK;
 
     for (int i = 0; i < LENGTH(buttons); i++) {
-        for (int j = 0; j < LENGTH(modifiers); j++) {
-            xcb_grab_button(conn, 1, c->win, XCB_EVENT_MASK_BUTTON_PRESS,
-                            XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC,
-                            screen->root, XCB_NONE, buttons[i].button,
-                            buttons[i].mask | modifiers[j]);
-        }
+        xcb_grab_button(conn, 1, c->win, XCB_EVENT_MASK_BUTTON_PRESS,
+                        XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC,
+                        screen->root, XCB_NONE, buttons[i].button,
+                        XCB_BUTTON_MASK_ANY );
     }
 }
 

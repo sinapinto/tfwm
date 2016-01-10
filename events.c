@@ -19,8 +19,12 @@ static void buttonpress(xcb_generic_event_t *ev) {
 
     PRINTF("Event: button press: %#x\n", e->event);
 
+    PRINTF("Event: button press: %#x\n", e->event);
+    Client *c;
     if ((c = wintoclient(e->event))) {
         if (c->win != sel->win) {
+            raisewindow(c->frame);
+            raisewindow(c->win);
             focus(c);
         }
     }

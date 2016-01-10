@@ -31,7 +31,6 @@ static const struct {
     {OPTION, "border_width", setopt},
     {OPTION, "move_step", setopt},
     {OPTION, "resize_step", setopt},
-    {OPTION, "sloppy_focus", setopt},
     {OPTION, "java_workaround", setopt},
     {OPTION, "cursor_position", setopt},
     {OPTION, "focus_color", setopt},
@@ -126,7 +125,6 @@ int border_width = 2;
 int move_step = 30;
 int resize_step = 30;
 int cursor_position = 0;
-bool sloppy_focus = false;
 bool java_workaround = false;
 bool center_new_windows = false;
 char *focus_color;
@@ -308,8 +306,6 @@ void setopt(const char *key, char *val) {
         resize_step = atoi(val);
         if (resize_step < 0)
             resize_step = 0;
-    } else if (OPT("sloppy_focus")) {
-        sloppy_focus = (atoi(val) != 0);
     } else if (OPT("java_workaround")) {
         java_workaround = (atoi(val) != 0);
     } else if (OPT("cursor_position")) {
