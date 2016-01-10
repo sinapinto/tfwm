@@ -13,60 +13,7 @@
 #include "cursor.h"
 #include "util.h"
 
-static void buttonpress(xcb_generic_event_t *ev);
-static void clientmessage(xcb_generic_event_t *ev);
-static void configurerequest(xcb_generic_event_t *ev);
-static void destroynotify(xcb_generic_event_t *ev);
-static void enternotify(xcb_generic_event_t *ev);
-static void gravitynotify(xcb_generic_event_t *ev);
-static void keypress(xcb_generic_event_t *ev);
-static void mappingnotify(xcb_generic_event_t *ev);
-static void propertynotify(xcb_generic_event_t *ev);
-static void requesterror(xcb_generic_event_t *ev);
-static void unmapnotify(xcb_generic_event_t *ev);
-
-void handleevent(xcb_generic_event_t *ev) {
-    switch (ev->response_type & ~0x80) {
-    case XCB_BUTTON_PRESS:
-        buttonpress(ev);
-        break;
-    case XCB_CLIENT_MESSAGE:
-        clientmessage(ev);
-        break;
-    case XCB_CONFIGURE_REQUEST:
-        configurerequest(ev);
-        break;
-    case XCB_DESTROY_NOTIFY:
-        destroynotify(ev);
-        break;
-    case XCB_ENTER_NOTIFY:
-        enternotify(ev);
-        break;
-    case XCB_GRAVITY_NOTIFY:
-        gravitynotify(ev);
-        break;
-    case XCB_KEY_PRESS:
-        keypress(ev);
-        break;
-    case XCB_MAPPING_NOTIFY:
-        mappingnotify(ev);
-        break;
-    case XCB_MAP_REQUEST:
-        maprequest(ev);
-        break;
-    case XCB_PROPERTY_NOTIFY:
-        propertynotify(ev);
-        break;
-    case XCB_UNMAP_NOTIFY:
-        unmapnotify(ev);
-        break;
-    case 0:
-        requesterror(ev);
-        break;
-    }
-}
-
-void buttonpress(xcb_generic_event_t *ev) {
+static void buttonpress(xcb_generic_event_t *ev) {
     xcb_button_press_event_t *e = (xcb_button_press_event_t *)ev;
     Client *c;
 
@@ -85,7 +32,7 @@ void buttonpress(xcb_generic_event_t *ev) {
                 buttons[i].func(&buttons[i].arg);
 }
 
-void clientmessage(xcb_generic_event_t *ev) {
+static void clientmessage(xcb_generic_event_t *ev) {
     xcb_client_message_event_t *e = (xcb_client_message_event_t *)ev;
     Client *c;
 
@@ -114,7 +61,7 @@ void clientmessage(xcb_generic_event_t *ev) {
     }
 }
 
-void configurerequest(xcb_generic_event_t *ev) {
+static void configurerequest(xcb_generic_event_t *ev) {
     xcb_configure_request_event_t *e = (xcb_configure_request_event_t *)ev;
     Client *c;
     uint32_t v[7];
@@ -230,7 +177,7 @@ void configurerequest(xcb_generic_event_t *ev) {
     }
 }
 
-void enternotify(xcb_generic_event_t *ev) {
+static void enternotify(xcb_generic_event_t *ev) {
     xcb_enter_notify_event_t *e = (xcb_enter_notify_event_t *)ev;
     Client *c;
 
@@ -248,14 +195,14 @@ void enternotify(xcb_generic_event_t *ev) {
     }
 }
 
-void gravitynotify(xcb_generic_event_t *ev) {
+static void gravitynotify(xcb_generic_event_t *ev) {
     xcb_gravity_notify_event_t *e = (xcb_gravity_notify_event_t *)ev;
 
     PRINTF("Event: gravity notify: win %#x\n", e->event);
     (void)e;
 }
 
-void keypress(xcb_generic_event_t *ev) {
+static void keypress(xcb_generic_event_t *ev) {
     xcb_key_press_event_t *e = (xcb_key_press_event_t *)ev;
 
     xcb_keysym_t keysym = getkeysym(e->detail);
@@ -269,7 +216,7 @@ void keypress(xcb_generic_event_t *ev) {
     }
 }
 
-void mappingnotify(xcb_generic_event_t *ev) {
+static void mappingnotify(xcb_generic_event_t *ev) {
     xcb_mapping_notify_event_t *e = (xcb_mapping_notify_event_t *)ev;
 
     PRINTF("Event: mapping notify\n");
@@ -281,7 +228,7 @@ void mappingnotify(xcb_generic_event_t *ev) {
     grabkeys();
 }
 
-void maprequest(xcb_generic_event_t *ev) {
+static void maprequest(xcb_generic_event_t *ev) {
     xcb_map_request_event_t *e = (xcb_map_request_event_t *)ev;
 
     PRINTF("Event: map request win %#x\n", e->window);
@@ -290,7 +237,7 @@ void maprequest(xcb_generic_event_t *ev) {
         manage(e->window);
 }
 
-void propertynotify(xcb_generic_event_t *ev) {
+static void propertynotify(xcb_generic_event_t *ev) {
     xcb_property_notify_event_t *e = (xcb_property_notify_event_t *)ev;
     Client *c;
 
@@ -317,14 +264,14 @@ void propertynotify(xcb_generic_event_t *ev) {
     }
 }
 
-void requesterror(xcb_generic_event_t *ev) {
+static void requesterror(xcb_generic_event_t *ev) {
     xcb_request_error_t *e = (xcb_request_error_t *)ev;
     warn("Event: FAILED REQUEST: %s, %s: %d\n",
          xcb_event_get_request_label(e->major_opcode),
          xcb_event_get_error_label(e->error_code), e->bad_value);
 }
 
-void unmapnotify(xcb_generic_event_t *ev) {
+static void unmapnotify(xcb_generic_event_t *ev) {
     xcb_unmap_notify_event_t *e = (xcb_unmap_notify_event_t *)ev;
     Client *c;
 
@@ -338,7 +285,7 @@ void unmapnotify(xcb_generic_event_t *ev) {
     }
 }
 
-void destroynotify(xcb_generic_event_t *ev) {
+static void destroynotify(xcb_generic_event_t *ev) {
     xcb_destroy_notify_event_t *e = (xcb_destroy_notify_event_t *)ev;
     Client *c;
 
@@ -433,3 +380,45 @@ void mousemotion(const Arg *arg) {
     FREE(qpr);
     xcb_ungrab_pointer(conn, XCB_CURRENT_TIME);
 }
+
+void handleevent(xcb_generic_event_t *ev) {
+    switch (ev->response_type & ~0x80) {
+    case XCB_BUTTON_PRESS:
+        buttonpress(ev);
+        break;
+    case XCB_CLIENT_MESSAGE:
+        clientmessage(ev);
+        break;
+    case XCB_CONFIGURE_REQUEST:
+        configurerequest(ev);
+        break;
+    case XCB_DESTROY_NOTIFY:
+        destroynotify(ev);
+        break;
+    case XCB_ENTER_NOTIFY:
+        enternotify(ev);
+        break;
+    case XCB_GRAVITY_NOTIFY:
+        gravitynotify(ev);
+        break;
+    case XCB_KEY_PRESS:
+        keypress(ev);
+        break;
+    case XCB_MAPPING_NOTIFY:
+        mappingnotify(ev);
+        break;
+    case XCB_MAP_REQUEST:
+        maprequest(ev);
+        break;
+    case XCB_PROPERTY_NOTIFY:
+        propertynotify(ev);
+        break;
+    case XCB_UNMAP_NOTIFY:
+        unmapnotify(ev);
+        break;
+    case 0:
+        requesterror(ev);
+        break;
+    }
+}
+

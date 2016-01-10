@@ -4,6 +4,5 @@
 
 void handleevent(xcb_generic_event_t *ev);
 void mousemotion(const Arg *arg);
-void maprequest(xcb_generic_event_t *ev);
 
 #endif

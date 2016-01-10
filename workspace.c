@@ -7,7 +7,15 @@
 
 static unsigned int prevws = 0;
 
-static void gotows(unsigned int i);
+static void gotows(unsigned int i) {
+    if (selws == i)
+        return;
+    xcb_ewmh_set_current_desktop(ewmh, scrno, i);
+    prevws = selws;
+    selws = i;
+    focus(NULL);
+    showhide(stack);
+}
 
 void selectrws(const Arg *arg) {
     unsigned int i;
@@ -24,16 +32,6 @@ void selectrws(const Arg *arg) {
 
 void selectws(const Arg *arg) {
     gotows(arg->i);
-}
-
-void gotows(unsigned int i) {
-    if (selws == i)
-        return;
-    xcb_ewmh_set_current_desktop(ewmh, scrno, i);
-    prevws = selws;
-    selws = i;
-    focus(NULL);
-    showhide(stack);
 }
 
 void sendtows(const Arg *arg) {

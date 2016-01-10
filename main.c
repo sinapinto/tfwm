@@ -20,12 +20,6 @@
 #include "config.h"
 #include "xcb.h"
 
-static void cleanup(void);
-static void remanage_windows(void);
-static void run(void);
-static void setup(void);
-static void sigcatch(int sig);
-
 xcb_connection_t *conn;
 xcb_screen_t *screen;
 unsigned int numlockmask;
@@ -33,8 +27,6 @@ int scrno;
 xcb_ewmh_connection_t *ewmh;
 uint32_t focuscol;
 uint32_t unfocuscol;
-static volatile sig_atomic_t sigcode;
-static volatile bool restart_wm;
 xcb_atom_t WM_DELETE_WINDOW;
 xcb_atom_t WM_TAKE_FOCUS;
 xcb_atom_t WM_PROTOCOLS;
@@ -42,53 +34,13 @@ unsigned int selws = 0;
 Client *sel;
 Client *clients;
 Client *stack;
-/* TAILQ_HEAD(sel, Client); */
 /* TAILQ_HEAD(clients, Client); */
 /* TAILQ_HEAD(stack, Client); */
 
-void quit(const Arg *arg) {
-    (void)arg;
-    cleanup();
-    exit(sigcode);
-}
+static volatile sig_atomic_t sigcode;
+static volatile bool restart_wm;
 
-void restart(const Arg *arg) {
-    (void)arg;
-    restart_wm = true;
-    sigcode = 1;
-}
-
-void sigcatch(int sig) {
-    PRINTF("caught signal %d\n", sig);
-    switch (sig) {
-    case SIGINT:
-    case SIGTERM:
-        sigcode = sig;
-        break;
-    case SIGHUP:
-        restart_wm = true;
-        sigcode = sig;
-        break;
-    }
-}
-
-void run(void) {
-    xcb_generic_event_t *ev;
-
-    while (sigcode == 0) {
-        xcb_flush(conn);
-        if ((ev = xcb_wait_for_event(conn)) != NULL) {
-            handleevent(ev);
-            FREE(ev);
-        }
-        if (connection_has_error()) {
-            cleanup();
-            exit(1);
-        }
-    }
-}
-
-void cleanup(void) {
+static void cleanup(void) {
     Client *c;
     for (c = clients; c; c = c->next) {
         xcb_reparent_window(conn, c->win, screen->root, c->geom.x, c->geom.y);
@@ -116,7 +68,7 @@ void cleanup(void) {
     PRINTF("bye\n");
 }
 
-void remanage_windows(void) {
+static void remanage_windows(void) {
     xcb_window_t sup;
     if (!ewmh_get_supporting_wm_check(&sup))
         warn("ewmh_get_supporting_wm_check fail\n");
@@ -151,7 +103,23 @@ void remanage_windows(void) {
     FREE(reply);
 }
 
-void setup(void) {
+static void run(void) {
+    xcb_generic_event_t *ev;
+
+    while (sigcode == 0) {
+        xcb_flush(conn);
+        if ((ev = xcb_wait_for_event(conn)) != NULL) {
+            handleevent(ev);
+            FREE(ev);
+        }
+        if (connection_has_error()) {
+            cleanup();
+            exit(1);
+        }
+    }
+}
+
+static void setup(void) {
     /* TAILQ_INIT(sel); */
     /* TAILQ_INIT(clients); */
     /* TAILQ_INIT(stack); */
@@ -196,9 +164,35 @@ void setup(void) {
     focus(NULL);
 }
 
+static void sigcatch(int sig) {
+    PRINTF("caught signal %d\n", sig);
+    switch (sig) {
+    case SIGINT:
+    case SIGTERM:
+        sigcode = sig;
+        break;
+    case SIGHUP:
+        restart_wm = true;
+        sigcode = sig;
+        break;
+    }
+}
+
+void quit(const Arg *arg) {
+    (void)arg;
+    cleanup();
+    exit(sigcode);
+}
+
+void restart(const Arg *arg) {
+    (void)arg;
+    restart_wm = true;
+    sigcode = 1;
+}
+
 int main(int argc, char **argv) {
     (void)argc;
-    warn("welcome to " __WM_NAME__ " %s\n", __WM_VERSION__);
+    warn("welcome to %s %s\n", __WM_NAME__, __WM_VERSION__);
 
     conn = xcb_connect(NULL, &scrno);
     if (connection_has_error())
