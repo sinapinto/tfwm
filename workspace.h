@@ -6,4 +6,6 @@ void selectrws(const Arg *arg);
 void selectws(const Arg *arg);
 void sendtows(const Arg *arg);
 
+extern unsigned int selws;
+
 #endif

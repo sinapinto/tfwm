@@ -14,10 +14,9 @@ extern char *focus_color;
 extern char *unfocus_color;
 extern int move_step;
 extern int resize_step;
-extern bool sloppy_focus;
 extern bool java_workaround;
 extern int cursor_position;
-extern uint32_t focuscol;
-extern uint32_t unfocuscol;
+extern uint32_t focus_pixel;
+extern uint32_t unfocus_pixel;
 
 #endif

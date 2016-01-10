@@ -15,6 +15,9 @@ CFLAGS  = -std=c99 -Wall -Wextra -Wshadow -Wno-uninitialized -pedantic -I$(PREFI
 	  -D__WM_NAME__=\"$(__WM_NAME__)\"
 LIBS    = -lxcb -lxcb-keysyms -lxcb-icccm -lxcb-ewmh -lxcb-util -lxcb-cursor
 
+CFLAGS += -I/usr/include/startup-notification-1.0 -DSN_API_NOT_YET_FROZEN=1
+LIBS += -lstartup-notification-1
+
 ifeq ($(UNAME),Linux)
 CFLAGS += -D_GNU_SOURCE
 endif

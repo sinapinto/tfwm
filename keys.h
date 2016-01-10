@@ -7,4 +7,9 @@ xcb_keysym_t getkeysym(xcb_keycode_t keycode);
 void grabkeys(void);
 void updatenumlockmask(void);
 
+extern unsigned int numlockmask;
+extern const Rule rules[RULE_MAX];
+extern Key keys[KEY_MAX];
+extern Button buttons[BUTTON_MAX];
+
 #endif

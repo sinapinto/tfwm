@@ -15,9 +15,8 @@
 
 static void buttonpress(xcb_generic_event_t *ev) {
     xcb_button_press_event_t *e = (xcb_button_press_event_t *)ev;
-    Client *c;
 
-    PRINTF("Event: button press: %#x\n", e->event);
+    last_timestamp = e->time;
 
     PRINTF("Event: button press: %#x\n", e->event);
     Client *c;
@@ -38,13 +37,18 @@ static void buttonpress(xcb_generic_event_t *ev) {
 
 static void clientmessage(xcb_generic_event_t *ev) {
     xcb_client_message_event_t *e = (xcb_client_message_event_t *)ev;
-    Client *c;
 
 #ifdef DEBUG
     char *name = get_atom_name(e->type);
     PRINTF("Event: client message: %s win %#x\n", name, e->window);
     FREE(name);
 #endif
+    /* delegate startup-notification client messages to the lib.
+     * will use startup_event_cb() as the callback. */
+    if (sn_xcb_display_process_event(sndisplay, (xcb_generic_event_t *)e))
+        return;
+
+    Client *c;
     if (!(c = wintoclient(e->window)))
         return;
 
@@ -209,6 +213,8 @@ static void gravitynotify(xcb_generic_event_t *ev) {
 static void keypress(xcb_generic_event_t *ev) {
     xcb_key_press_event_t *e = (xcb_key_press_event_t *)ev;
 
+    last_timestamp = e->time;
+
     xcb_keysym_t keysym = getkeysym(e->detail);
 
     for (int i = 0; i < LENGTH(keys); i++) {
@@ -243,14 +249,16 @@ static void maprequest(xcb_generic_event_t *ev) {
 
 static void propertynotify(xcb_generic_event_t *ev) {
     xcb_property_notify_event_t *e = (xcb_property_notify_event_t *)ev;
-    Client *c;
+
+    last_timestamp = e->time;
 
 #ifdef DEBUG
     char *name = get_atom_name(e->atom);
-    PRINTF("Event: property notify: win %#x atom %s", e->window, name);
+    PRINTF("Event: property notify: win %#x atom %s\n", e->window, name);
     FREE(name);
 #endif
 
+    Client *c;
     if (!(c = wintoclient(e->window)))
         return;
 

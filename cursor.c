@@ -24,6 +24,7 @@ void cursor_load_cursors(void) {
         LOAD_CURSORFONT(XC_POINTER, 68);
         LOAD_CURSORFONT(XC_BOTTOM_RIGHT, 14);
         LOAD_CURSORFONT(XC_MOVE, 52);
+        LOAD_CURSORFONT(XC_WATCH, 150);
 #undef LOAD_CURSOR
         if (font != XCB_NONE)
             xcb_close_font(conn, font);
@@ -32,6 +33,7 @@ void cursor_load_cursors(void) {
         cursors[XC_BOTTOM_RIGHT] =
             xcb_cursor_load_cursor(ctx, "bottom_right_corner");
         cursors[XC_MOVE] = xcb_cursor_load_cursor(ctx, "fleur");
+        cursors[XC_WATCH] = xcb_cursor_load_cursor(ctx, "watch");
     }
 }
 

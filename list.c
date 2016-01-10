@@ -3,6 +3,7 @@
 #include "list.h"
 #include "client.h"
 #include "xcb.h"
+#include "workspace.h"
 #include "util.h"
 
 void attach(Client *c) {

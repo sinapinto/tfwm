@@ -5,14 +5,13 @@
 #include <xcb/xcb_ewmh.h>
 #include <xcb/xcb_icccm.h>
 #include <xcb/xcb_keysyms.h>
-#include <X11/Xlib-xcb.h>
+#include <libsn/sn-launcher.h>
 #include <stdbool.h>
 
 #define KEY_MAX 65
 #define RULE_MAX 2
 #define BUTTON_MAX 2
 
-/* types */
 enum action {
     MoveDown,
     MoveRight,
@@ -99,25 +98,20 @@ struct Client {
     unsigned int ws;
 };
 
-/* functions */
 void quit(const Arg *arg);
 void restart(const Arg *arg);
 
-/* globals */
-extern const Rule rules[RULE_MAX];
-extern Key keys[KEY_MAX];
-extern Button buttons[BUTTON_MAX];
 extern xcb_connection_t *conn;
 extern xcb_screen_t *screen;
-extern unsigned int numlockmask;
+extern SnDisplay *sndisplay;
 extern int scrno;
-extern Client *stack;
 extern xcb_ewmh_connection_t *ewmh;
 extern xcb_atom_t WM_DELETE_WINDOW;
 extern xcb_atom_t WM_TAKE_FOCUS;
 extern xcb_atom_t WM_PROTOCOLS;
-extern unsigned int selws;
+extern xcb_timestamp_t last_timestamp;
 extern Client *clients;
 extern Client *sel;
+extern Client *stack;
 
 #endif /* MAIN_H */

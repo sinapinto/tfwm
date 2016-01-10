@@ -9,6 +9,8 @@
 #include "workspace.h"
 #include "util.h"
 
+unsigned int numlockmask;
+
 const Rule rules[RULE_MAX] = {
     /* class           workspace       fullscreen       border */
     {"chromium", 1, false, false},

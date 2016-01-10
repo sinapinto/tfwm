@@ -9,6 +9,8 @@
 #include "xcb.h"
 #include "config.h"
 #include "cursor.h"
+#include "workspace.h"
+#include "launch.h"
 #include "util.h"
 
 void applyrules(Client *c) {
@@ -94,13 +96,13 @@ void manage(xcb_window_t w) {
         c->geom.height = c->old_geom.height = gr->height;
 #if DEBUG
         if (c->geom.x)
-            PRINTF("x: %d\n", c->geom.x);
+            PRINTF(" x: %d\n", c->geom.x);
         if (c->geom.y)
-            PRINTF("y: %d\n", c->geom.y);
+            PRINTF(" y: %d\n", c->geom.y);
         if (c->geom.width)
-            PRINTF("width: %d\n", c->geom.width);
+            PRINTF(" width: %d\n", c->geom.width);
         if (c->geom.height)
-            PRINTF("height: %d\n", c->geom.height);
+            PRINTF(" height: %d\n", c->geom.height);
 #endif
         FREE(gr);
     } else {
@@ -128,25 +130,25 @@ void manage(xcb_window_t w) {
         NULL);
 #if DEBUG
     if (c->size_hints.x)
-        PRINTF("x: %d\n", c->size_hints.x);
+        PRINTF(" x: %d\n", c->size_hints.x);
     if (c->size_hints.y)
-        PRINTF("y: %d\n", c->size_hints.y);
+        PRINTF(" y: %d\n", c->size_hints.y);
     if (c->size_hints.width)
-        PRINTF("width: %d\n", c->size_hints.width);
+        PRINTF(" width: %d\n", c->size_hints.width);
     if (c->size_hints.height)
-        PRINTF("height: %d\n", c->size_hints.height);
+        PRINTF(" height: %d\n", c->size_hints.height);
     if (c->size_hints.min_height)
-        PRINTF("min height: %d\n", c->size_hints.min_height);
+        PRINTF(" min height: %d\n", c->size_hints.min_height);
     if (c->size_hints.min_width)
-        PRINTF("min width: %d\n", c->size_hints.min_width);
+        PRINTF(" min width: %d\n", c->size_hints.min_width);
     if (c->size_hints.max_height)
-        PRINTF("max height: %d\n", c->size_hints.max_height);
+        PRINTF(" max height: %d\n", c->size_hints.max_height);
     if (c->size_hints.max_width)
-        PRINTF("max width: %d\n", c->size_hints.max_width);
+        PRINTF(" max width: %d\n", c->size_hints.max_width);
     if (c->size_hints.base_height)
-        PRINTF("base height: %d\n", c->size_hints.base_height);
+        PRINTF(" base height: %d\n", c->size_hints.base_height);
     if (c->size_hints.base_width)
-        PRINTF("base width: %d\n", c->size_hints.base_width);
+        PRINTF(" base width: %d\n", c->size_hints.base_width);
 #endif
 
     /* get wm hints */
@@ -254,7 +256,7 @@ void reparent(Client *c) {
     uint32_t mask =
         XCB_CW_BORDER_PIXEL | XCB_CW_OVERRIDE_REDIRECT | XCB_CW_EVENT_MASK;
     uint32_t vals[3];
-    vals[0] = focuscol;
+    vals[0] = focus_pixel;
     vals[1] = true;
     vals[2] = FRAME_EVENT_MASK;
 
@@ -526,7 +528,7 @@ void setborder(Client *c, bool focus) {
         return;
 
     uint32_t val[1];
-    val[0] = focus ? focuscol : unfocuscol;
+    val[0] = focus ? focus_pixel : unfocus_pixel;
     xcb_change_window_attributes(conn, c->frame, XCB_CW_BORDER_PIXEL, val);
     return;
 }
@@ -550,7 +552,7 @@ void showhide(Client *c) {
 }
 
 void spawn(const Arg *arg) {
-    run_program(arg->com);
+    launch_application(arg->com);
 }
 
 void teleport(const Arg *arg) {

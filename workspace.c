@@ -6,6 +6,7 @@
 #include "util.h"
 
 static unsigned int prevws = 0;
+unsigned int selws = 0;
 
 static void gotows(unsigned int i) {
     if (selws == i)

@@ -7,17 +7,17 @@
 #include <stdbool.h>
 #include <X11/keysym.h>
 #include "main.h"
-#include "config.h"
+#include "keys.h"
 #include "workspace.h"
 #include "client.h"
 #include "list.h"
 #include "util.h"
+#include "config.h"
 
 #define OPT(_opt) (strcmp(_opt, key) == 0)
 #define PATH_MAX 256
 #define LINE_MAX 256
 
-static bool is_regular_file(char *path);
 static void setopt(const char *key, char *val);
 static void set_key(const char *key, char *val);
 
@@ -130,7 +130,7 @@ bool center_new_windows = false;
 char *focus_color;
 char *unfocus_color;
 
-bool is_regular_file(char *path) {
+static bool is_regular_file(char *path) {
     struct stat statbuf;
 
     if (stat(path, &statbuf) == 0)
@@ -139,24 +139,13 @@ bool is_regular_file(char *path) {
     return false;
 }
 
-char *find_config(const char *file) {
-    char *path = (char *)malloc(PATH_MAX);
-
-    if (getenv("HOME")) {
-        snprintf(path, PATH_MAX, "%s/.%s", getenv("HOME"), file);
-        if (is_regular_file(path))
-            return path;
-    }
-
-    if (getenv("XDG_CONFIG_HOME")) {
-        snprintf(path, PATH_MAX, "%s/.%s", getenv("XDG_CONFIG_HOME"), file);
-        if (is_regular_file(path))
-            return path;
-    }
-    return NULL;
+static char *skip_leading_space(char *s) {
+    while (*s && isspace(*s))
+        s++;
+    return s;
 }
 
-void set_key(const char *key, char *val) {
+static void set_key(const char *key, char *val) {
     uint16_t mod = 0;
     uint16_t keysym = 0;
 
@@ -285,7 +274,7 @@ void set_key(const char *key, char *val) {
     }
 }
 
-void setopt(const char *key, char *val) {
+static void setopt(const char *key, char *val) {
     /* PRINTF("setopt: %s: %s\n", key, val); */
 
     if (OPT("border_width")) {
@@ -317,6 +306,23 @@ void setopt(const char *key, char *val) {
     } else {
         warn("setopt: no handler for %s\n", key);
     }
+}
+
+char *find_config(const char *file) {
+    char *path = (char *)malloc(PATH_MAX);
+
+    if (getenv("HOME")) {
+        snprintf(path, PATH_MAX, "%s/.%s", getenv("HOME"), file);
+        if (is_regular_file(path))
+            return path;
+    }
+
+    if (getenv("XDG_CONFIG_HOME")) {
+        snprintf(path, PATH_MAX, "%s/.%s", getenv("XDG_CONFIG_HOME"), file);
+        if (is_regular_file(path))
+            return path;
+    }
+    return NULL;
 }
 
 /* return the line number of the first parsing error.

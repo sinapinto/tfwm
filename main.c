@@ -8,6 +8,7 @@
 #include <xcb/xcb.h>
 #include <xcb/xcb_aux.h>
 #include <xcb/xcb_ewmh.h>
+#include <libsn/sn-monitor.h>
 #include "main.h"
 #include "util.h"
 #include "list.h"
@@ -19,18 +20,19 @@
 #include "ewmh.h"
 #include "config.h"
 #include "xcb.h"
+#include "launch.h"
 
 xcb_connection_t *conn;
 xcb_screen_t *screen;
-unsigned int numlockmask;
+SnDisplay *sndisplay;
 int scrno;
 xcb_ewmh_connection_t *ewmh;
-uint32_t focuscol;
-uint32_t unfocuscol;
+uint32_t focus_pixel;
+uint32_t unfocus_pixel;
 xcb_atom_t WM_DELETE_WINDOW;
 xcb_atom_t WM_TAKE_FOCUS;
 xcb_atom_t WM_PROTOCOLS;
-unsigned int selws = 0;
+xcb_timestamp_t last_timestamp;
 Client *sel;
 Client *clients;
 Client *stack;
@@ -147,20 +149,24 @@ static void setup(void) {
     grabkeys();
 
     if (focus_color)
-        focuscol = getcolor(focus_color);
+        focus_pixel = getcolor(focus_color);
     else
-        focuscol = getcolor(DEFAULT_FOCUS_COLOR);
+        focus_pixel = getcolor(DEFAULT_FOCUS_COLOR);
 
     if (unfocus_color)
-        unfocuscol = getcolor(unfocus_color);
+        unfocus_pixel = getcolor(unfocus_color);
     else
-        unfocuscol = getcolor(DEFAULT_UNFOCUS_COLOR);
+        unfocus_pixel = getcolor(DEFAULT_UNFOCUS_COLOR);
 
     cursor_load_cursors();
     cursor_set_window_cursor(screen->root, XC_POINTER);
 
     ewmh_setup();
     remanage_windows();
+
+    sndisplay = sn_xcb_display_new(conn, NULL, NULL);
+    sn_monitor_context_new(sndisplay, scrno, startup_event_cb, NULL, NULL);
+
     focus(NULL);
 }
 
@@ -192,7 +198,7 @@ void restart(const Arg *arg) {
 
 int main(int argc, char **argv) {
     (void)argc;
-    warn("welcome to %s %s\n", __WM_NAME__, __WM_VERSION__);
+    warn("welcome to " __WM_NAME__ __WM_VERSION__ "\n");
 
     conn = xcb_connect(NULL, &scrno);
     if (connection_has_error())
