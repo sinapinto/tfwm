@@ -395,7 +395,8 @@ void mousemotion(const Arg *arg) {
             break;
         case XCB_MOTION_NOTIFY:
             e = (xcb_motion_notify_event_t *)ev;
-            if ((e->time - lasttime) <= (1000 / 60))
+            /* don't update more than 120 times/sec */
+            if ((e->time - lasttime) <= (1000 / 120))
                 continue;
             lasttime = e->time;
 
