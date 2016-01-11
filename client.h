@@ -4,6 +4,21 @@
 
 #include <xcb/xcb.h>
 
+/* buonding width/height */
+#define BWIDTH(C)                                                              \
+    ((!ISFULLSCREEN(C) && !(C)->noborder) ? (C)->geom.width + border_width * 2 \
+                                          : (C)->geom.width)
+
+#define BHEIGHT(C)                                                             \
+    ((!ISFULLSCREEN(C) && !(C)->noborder)                                      \
+         ? (C)->geom.height + border_width * 2                                 \
+         : (C)->geom.height)
+
+#define ISFULLSCREEN(C) ((C)->ewmh_flags & EWMH_FULLSCREEN)
+#define ISMAXVERT(C)    ((C)->ewmh_flags & EWMH_MAXIMIZED_VERT)
+#define ISMAXHORZ(C)    ((C)->ewmh_flags & EWMH_MAXIMIZED_HORZ)
+#define MIN(X, Y)       ((X) < (Y) ? (X) : (Y))
+
 void applyrules(Client *c);
 void cycleclients(const Arg *arg);
 void fitclient(Client *c);

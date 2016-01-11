@@ -38,8 +38,6 @@ void startup_event_cb(SnMonitorEvent *event, void *user_data) {
     switch (sn_monitor_event_get_type(event)) {
     case SN_MONITOR_EVENT_INITIATED:
     case SN_MONITOR_EVENT_CHANGED: {
-        const char *s;
-
         if (sn_monitor_event_get_type(event) == SN_MONITOR_EVENT_INITIATED) {
             PRINTF("Initiated sequence %s\n",
                    sn_startup_sequence_get_id(sequence));
@@ -47,7 +45,7 @@ void startup_event_cb(SnMonitorEvent *event, void *user_data) {
             PRINTF("Changed sequence %s\n",
                    sn_startup_sequence_get_id(sequence));
         }
-        s = sn_startup_sequence_get_id(sequence);
+        const char *s = sn_startup_sequence_get_id(sequence);
         PRINTF(" id %s\n", s ? s : "(unset)");
         PRINTF(" workspace %d\n", sn_startup_sequence_get_workspace(sequence));
         break;

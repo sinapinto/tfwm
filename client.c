@@ -214,13 +214,13 @@ void reparent(Client *c) {
                c->size_hints.win_gravity);
 #endif
     c->frame = xcb_generate_id(conn);
-
     uint32_t mask =
         XCB_CW_BORDER_PIXEL | XCB_CW_OVERRIDE_REDIRECT | XCB_CW_EVENT_MASK;
     uint32_t vals[3];
     vals[0] = focus_pixel;
     vals[1] = true;
-    vals[2] = FRAME_EVENT_MASK;
+    vals[2] = XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY |
+              XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT;
 
     PRINTF("reparent: creating frame (%d,%d) %dx%d\n", x, y, width, height);
     xcb_create_window(conn, XCB_COPY_FROM_PARENT, c->frame, screen->root, x, y,
@@ -509,7 +509,7 @@ void showhide(Client *c) {
         showhide(c->snext);
     } else {
         showhide(c->snext);
-        movewin(c->frame, WIDTH(c) * -2, c->geom.y);
+        movewin(c->frame, (c->geom.width + 2 * border_width) * -2, c->geom.y);
     }
 }
 

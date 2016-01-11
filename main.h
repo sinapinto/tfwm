@@ -8,6 +8,18 @@
 #include <libsn/sn-launcher.h>
 #include <stdbool.h>
 
+#define FREE(X)                                                                \
+    do {                                                                       \
+        if (X) {                                                               \
+            free(X);                                                           \
+            X = NULL;                                                          \
+        }                                                                      \
+    } while (0)
+
+#define CLEANMASK(mask) (mask & ~(numlockmask | XCB_MOD_MASK_LOCK))
+#define LENGTH(X)       (int)(sizeof(X) / sizeof(X)[0])
+#define ISVISIBLE(C)    ((C)->ws == selws)
+
 #define KEY_MAX 65
 #define RULE_MAX 2
 #define BUTTON_MAX 2

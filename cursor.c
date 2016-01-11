@@ -32,10 +32,8 @@ void cursor_load_cursors(void) {
             xcb_close_font(conn, font);
     } else {
         cursors[XC_POINTER] = xcb_cursor_load_cursor(ctx, "left_ptr");
-        cursors[XC_TOP_LEFT] =
-            xcb_cursor_load_cursor(ctx, "top_left_corner");
-        cursors[XC_TOP_RIGHT] =
-            xcb_cursor_load_cursor(ctx, "top_right_corner");
+        cursors[XC_TOP_LEFT] = xcb_cursor_load_cursor(ctx, "top_left_corner");
+        cursors[XC_TOP_RIGHT] = xcb_cursor_load_cursor(ctx, "top_right_corner");
         cursors[XC_BOTTOM_LEFT] =
             xcb_cursor_load_cursor(ctx, "bottom_left_corner");
         cursors[XC_BOTTOM_RIGHT] =

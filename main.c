@@ -131,11 +131,14 @@ static void setup(void) {
         err("can't find screen.");
 
     /* subscribe to handler */
-    uint32_t val[1];
-    val[0] = ROOT_EVENT_MASK;
+    const uint32_t vals[] = {XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY |
+                             XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT |
+                             XCB_EVENT_MASK_BUTTON_PRESS |
+                             XCB_EVENT_MASK_PROPERTY_CHANGE};
+
     xcb_generic_error_t *e = xcb_request_check(
         conn, xcb_change_window_attributes_checked(conn, screen->root,
-                                                   XCB_CW_EVENT_MASK, val));
+                                                   XCB_CW_EVENT_MASK, vals));
     if (e) {
         xcb_disconnect(conn);
         err("another window manager is running.");

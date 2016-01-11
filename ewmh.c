@@ -185,17 +185,17 @@ void ewmh_update_wm_state(Client *c) {
     xcb_atom_t v[MAX_STATE];
     int i = 0;
 
-    if (ISMAXVERT(c))
+    if (c->ewmh_flags & EWMH_MAXIMIZED_VERT)
         v[i++] = ewmh->_NET_WM_STATE_MAXIMIZED_VERT;
-    if (ISMAXHORZ(c))
+    if (c->ewmh_flags & EWMH_MAXIMIZED_HORZ)
         v[i++] = ewmh->_NET_WM_STATE_MAXIMIZED_HORZ;
-    if (ISFULLSCREEN(c))
+    if (c->ewmh_flags & EWMH_FULLSCREEN)
         v[i++] = ewmh->_NET_WM_STATE_FULLSCREEN;
     if (c->ewmh_flags & EWMH_STICKY)
         v[i++] = ewmh->_NET_WM_STATE_STICKY;
     if (c->ewmh_flags & EWMH_DEMANDS_ATTENTION)
         v[i++] = ewmh->_NET_WM_STATE_DEMANDS_ATTENTION;
-    if (ISABOVE(c))
+    if (c->ewmh_flags & EWMH_ABOVE)
         v[i++] = ewmh->_NET_WM_STATE_ABOVE;
 
     if (i > 0)

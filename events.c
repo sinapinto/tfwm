@@ -319,8 +319,12 @@ static void mousemotion(const xcb_button_index_t button) {
     }
 
     /* grab pointer */
+    const uint16_t pointer_mask =
+        XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE |
+        XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_POINTER_MOTION;
+
     xcb_grab_pointer_cookie_t gpc = xcb_grab_pointer(
-        conn, 0, screen->root, POINTER_EVENT_MASK, XCB_GRAB_MODE_ASYNC,
+        conn, 0, screen->root, pointer_mask, XCB_GRAB_MODE_ASYNC,
         XCB_GRAB_MODE_ASYNC, XCB_NONE, cursor, XCB_CURRENT_TIME);
 
     xcb_grab_pointer_reply_t *gpr = xcb_grab_pointer_reply(conn, gpc, NULL);
