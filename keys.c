@@ -94,10 +94,6 @@ Key keys[KEY_MAX] = {
     {MOD | SHIFT, XK_n, maximize_half, {.i = Top}},
 };
 
-Button buttons[BUTTON_MAX] = {
-    {MOD, XCB_BUTTON_INDEX_1, mousemotion, {.i = MouseMove}},
-    {MOD, XCB_BUTTON_INDEX_3, mousemotion, {.i = MouseResize}}};
-
 xcb_keycode_t *getkeycodes(xcb_keysym_t keysym) {
     xcb_key_symbols_t *keysyms;
     if (!(keysyms = xcb_key_symbols_alloc(conn)))

@@ -13,28 +13,6 @@
 #include "cursor.h"
 #include "util.h"
 
-static void buttonpress(xcb_generic_event_t *ev) {
-    xcb_button_press_event_t *e = (xcb_button_press_event_t *)ev;
-
-    last_timestamp = e->time;
-
-    PRINTF("Event: button press: %#x\n", e->event);
-    Client *c;
-    if ((c = wintoclient(e->event))) {
-        if (c->win != sel->win) {
-            raisewindow(c->frame);
-            raisewindow(c->win);
-            focus(c);
-        }
-    }
-    for (unsigned int i = 0; i < LENGTH(buttons); i++)
-        if (buttons[i].button == e->detail &&
-            CLEANMASK(buttons[i].mask) == CLEANMASK(e->state) &&
-            buttons[i].func)
-            if (sel != NULL && e->event != screen->root)
-                buttons[i].func(&buttons[i].arg);
-}
-
 static void clientmessage(xcb_generic_event_t *ev) {
     xcb_client_message_event_t *e = (xcb_client_message_event_t *)ev;
 
@@ -311,22 +289,10 @@ static void destroynotify(xcb_generic_event_t *ev) {
     }
 }
 
-void mousemotion(const Arg *arg) {
-    if (!sel || sel->win == screen->root)
-        return;
-
-    raisewindow(sel->frame);
-    raisewindow(sel->win);
-    xcb_query_pointer_reply_t *qpr =
-        xcb_query_pointer_reply(conn, xcb_query_pointer(conn, screen->root), 0);
-
-    xcb_cursor_t cursor = XCB_NONE;
-    if (arg->i == MouseMove) {
-        cursor = cursor_get_id(XC_MOVE);
-    } else {
-        cursor = cursor_get_id(XC_BOTTOM_RIGHT);
-    }
-
+static void mousemotion(const xcb_button_index_t button) {
+    xcb_cursor_t cursor = (button == XCB_BUTTON_INDEX_1)
+                              ? cursor_get_id(XC_MOVE)
+                              : cursor_get_id(XC_BOTTOM_RIGHT);
     /* grab pointer */
     xcb_grab_pointer_cookie_t gpc = xcb_grab_pointer(
         conn, 0, screen->root, POINTER_EVENT_MASK, XCB_GRAB_MODE_ASYNC,
@@ -338,14 +304,18 @@ void mousemotion(const Arg *arg) {
     }
     FREE(gpr);
 
+    xcb_query_pointer_cookie_t qpc = xcb_query_pointer(conn, screen->root);
+    xcb_query_pointer_reply_t *qpr = xcb_query_pointer_reply(conn, qpc, 0);
+
     int nx = sel->geom.x;
     int ny = sel->geom.y;
     int nw = sel->geom.width;
     int nh = sel->geom.height;
-    xcb_time_t lasttime = 0;
+    xcb_time_t last_motion_time = 0;
     xcb_generic_event_t *ev;
     xcb_motion_notify_event_t *e;
     bool ungrab = false;
+
     while ((ev = xcb_wait_for_event(conn)) && !ungrab) {
         switch (ev->response_type & ~0x80) {
         case XCB_CONFIGURE_REQUEST:
@@ -355,15 +325,17 @@ void mousemotion(const Arg *arg) {
         case XCB_MOTION_NOTIFY:
             e = (xcb_motion_notify_event_t *)ev;
             /* don't update more than 120 times/sec */
-            if ((e->time - lasttime) <= (1000 / 120))
+            if ((e->time - last_motion_time) <= (1000 / 120))
                 continue;
-            lasttime = e->time;
+            last_motion_time = e->time;
 
-            if (arg->i == MouseMove) {
+            if (button == XCB_BUTTON_INDEX_1) {
+                /* move */
                 nx = sel->geom.x + e->root_x - qpr->root_x;
                 ny = sel->geom.y + e->root_y - qpr->root_y;
                 movewin(sel->frame, nx, ny);
             } else {
+                /* resize */
                 nw = MAX(sel->geom.width + e->root_x - qpr->root_x,
                          sel->size_hints.min_width + 40);
                 nh = MAX(sel->geom.height + e->root_y - qpr->root_y,
@@ -373,7 +345,7 @@ void mousemotion(const Arg *arg) {
             }
             break;
         case XCB_BUTTON_RELEASE:
-            if (arg->i == MouseMove) {
+            if (button == XCB_BUTTON_INDEX_1) {
                 sel->geom.x = nx;
                 sel->geom.y = ny;
             } else {
@@ -391,6 +363,50 @@ void mousemotion(const Arg *arg) {
     FREE(ev);
     FREE(qpr);
     xcb_ungrab_pointer(conn, XCB_CURRENT_TIME);
+}
+
+static void buttonpress(xcb_generic_event_t *ev) {
+    xcb_button_press_event_t *e = (xcb_button_press_event_t *)ev;
+    last_timestamp = e->time;
+
+    PRINTF("Event: button press: win %#x (%d,%d), root: %#x (%d,%d), child: "
+           "%#x, detail: %u, state: %u\n",
+           e->event, e->event_x, e->event_y, e->root, e->root_x, e->root_y,
+           e->child, e->detail, e->state);
+
+    Client *c;
+
+    if (e->event == e->root) {
+        if (e->child) {
+            c = wintoclient(e->child);
+            if (!c) {
+                return;
+            }
+        } else {
+            xcb_allow_events(conn, XCB_ALLOW_SYNC_POINTER, e->time);
+            return;
+        }
+    } else {
+        c = wintoclient(e->event);
+    }
+
+    if (c && c->win != sel->win) {
+        PRINTF("buttonpress: raising win\n");
+        raisewindow(c->frame);
+        raisewindow(c->win);
+        focus(c);
+    }
+
+    /* handle any binding */
+    if ((e->detail == XCB_BUTTON_INDEX_1 || e->detail == XCB_BUTTON_INDEX_3) &&
+        CLEANMASK(XCB_MOD_MASK_1) == CLEANMASK(e->state)) {
+        PRINTF("buttonpress: binding\n");
+        if (sel != NULL)
+            mousemotion(e->detail);
+    }
+
+    PRINTF("buttonpress: replay pointer\n");
+    xcb_allow_events(conn, XCB_ALLOW_REPLAY_POINTER, e->time);
 }
 
 void handleevent(xcb_generic_event_t *ev) {
@@ -433,4 +449,3 @@ void handleevent(xcb_generic_event_t *ev) {
         break;
     }
 }
-

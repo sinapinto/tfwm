@@ -191,8 +191,8 @@ void manage(xcb_window_t w) {
     sel = c;
     fit_in_screen(c);
 
-    /* const uint32_t val[] = {CLIENT_EVENT_MASK}; */
-    /* xcb_change_window_attributes(conn, w, XCB_CW_EVENT_MASK, val); */
+    const uint32_t val[] = {XCB_EVENT_MASK_BUTTON_PRESS};
+    xcb_change_window_attributes(conn, w, XCB_CW_EVENT_MASK, val);
 
     if (c->ws == selws)
         xcb_map_window(conn, w);
@@ -685,7 +685,7 @@ void unmanage(Client *c) {
 Client *wintoclient(xcb_window_t w) {
     Client *c;
     for (c = clients; c; c = c->next)
-        if (w == c->win)
+        if (w == c->win || w == c->frame)
             return c;
     return NULL;
 }
@@ -698,7 +698,7 @@ void focus(Client *c) {
     if (c) {
         detachstack(c);
         attachstack(c);
-        grabbuttons(c);
+        grabbuttons();
         if (sel && sel != c)
             setborder(sel, false);
         setborder(c, true);

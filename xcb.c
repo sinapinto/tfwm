@@ -103,18 +103,23 @@ uint32_t getcolor(const char *color) {
     return pixel;
 }
 
-void grabbuttons(Client *c) {
-    uint16_t modifiers[4];
-    modifiers[0] = 0;
-    modifiers[1] = XCB_MOD_MASK_LOCK;
-    modifiers[2] = numlockmask;
-    modifiers[3] = numlockmask | XCB_MOD_MASK_LOCK;
+void grabbuttons(void) {
+    const uint16_t modifiers[] = {0, XCB_MOD_MASK_LOCK, numlockmask,
+                                   numlockmask | XCB_MOD_MASK_LOCK};
+
+    const uint8_t buttons[] = {XCB_BUTTON_INDEX_1, XCB_BUTTON_INDEX_3};
+
+    xcb_ungrab_button(conn, XCB_BUTTON_INDEX_ANY, screen->root,
+                      XCB_MOD_MASK_ANY);
 
     for (int i = 0; i < LENGTH(buttons); i++) {
-        xcb_grab_button(conn, 1, c->win, XCB_EVENT_MASK_BUTTON_PRESS,
-                        XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC,
-                        screen->root, XCB_NONE, buttons[i].button,
-                        XCB_BUTTON_MASK_ANY );
+        for (int j = 0; j < LENGTH(modifiers); j++) {
+            xcb_grab_button(conn, 0, screen->root, XCB_EVENT_MASK_BUTTON_PRESS,
+                            XCB_GRAB_MODE_SYNC, XCB_GRAB_MODE_ASYNC,
+                            XCB_WINDOW_NONE, XCB_CURSOR_NONE, buttons[i],
+                            XCB_MOD_MASK_ANY);
+                            /* XCB_MOD_MASK_1 | modifiers[j]); */
+        }
     }
 }
 

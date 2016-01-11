@@ -62,13 +62,6 @@ typedef struct Key {
     Arg arg;
 } Key;
 
-typedef struct {
-    unsigned int mask;
-    unsigned int button;
-    void (*func)(const Arg *);
-    const Arg arg;
-} Button;
-
 #define MAX_STATE 6
 enum {
     EWMH_MAXIMIZED_VERT = (1 << 0),

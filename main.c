@@ -198,7 +198,7 @@ void restart(const Arg *arg) {
 
 int main(int argc, char **argv) {
     (void)argc;
-    warn("welcome to " __WM_NAME__ __WM_VERSION__ "\n");
+    warn("welcome to " __WM_NAME__ " " __WM_VERSION__ "\n");
 
     conn = xcb_connect(NULL, &scrno);
     if (connection_has_error())
