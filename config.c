@@ -11,7 +11,7 @@
 #include "workspace.h"
 #include "client.h"
 #include "list.h"
-#include "util.h"
+#include "log.h"
 #include "config.h"
 
 #define OPT(_opt) (strcmp(_opt, key) == 0)

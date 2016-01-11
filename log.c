@@ -2,7 +2,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include "main.h"
-#include "util.h"
+#include "log.h"
 
 void warn(const char *fmt, ...) {
     va_list ap;

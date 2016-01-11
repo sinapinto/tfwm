@@ -3,7 +3,7 @@
 #include "list.h"
 #include "client.h"
 #include "workspace.h"
-#include "util.h"
+#include "log.h"
 
 static unsigned int prevws = 0;
 unsigned int selws = 0;

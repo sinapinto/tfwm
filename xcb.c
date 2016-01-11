@@ -5,7 +5,7 @@
 #include "xcb.h"
 #include "config.h"
 #include "keys.h"
-#include "util.h"
+#include "log.h"
 
 #ifdef DEBUG
 char *get_atom_name(xcb_atom_t atom) {

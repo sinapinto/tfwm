@@ -7,7 +7,7 @@
 #include "config.h"
 #include "client.h"
 #include "xcb.h"
-#include "util.h"
+#include "log.h"
 
 void ewmh_setup() {
     ewmh = malloc(sizeof(xcb_ewmh_connection_t));

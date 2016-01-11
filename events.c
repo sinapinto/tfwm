@@ -11,7 +11,7 @@
 #include "config.h"
 #include "client.h"
 #include "cursor.h"
-#include "util.h"
+#include "log.h"
 
 static void clientmessage(xcb_generic_event_t *ev) {
     xcb_client_message_event_t *e = (xcb_client_message_event_t *)ev;

@@ -7,7 +7,7 @@
 #include "keys.h"
 #include "client.h"
 #include "workspace.h"
-#include "util.h"
+#include "log.h"
 
 unsigned int numlockmask;
 

@@ -4,7 +4,7 @@
 #include "client.h"
 #include "xcb.h"
 #include "workspace.h"
-#include "util.h"
+#include "log.h"
 
 void attach(Client *c) {
     c->next = clients;

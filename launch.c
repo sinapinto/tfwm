@@ -3,7 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include "main.h"
-#include "util.h"
+#include "log.h"
 #include "cursor.h"
 #include "launch.h"
 

@@ -1,6 +1,6 @@
 /* See LICENSE file for copyright and license details. */
-#ifndef UTIL_H
-#define UTIL_H
+#ifndef LOG_H
+#define LOG_H
 
 #ifdef DEBUG
 #include <stdio.h>

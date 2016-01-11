@@ -10,7 +10,7 @@
 #include <xcb/xcb_ewmh.h>
 #include <libsn/sn-monitor.h>
 #include "main.h"
-#include "util.h"
+#include "log.h"
 #include "list.h"
 #include "client.h"
 #include "workspace.h"

@@ -11,7 +11,7 @@
 #include "cursor.h"
 #include "workspace.h"
 #include "launch.h"
-#include "util.h"
+#include "log.h"
 
 void applyrules(Client *c) {
     ewmh_get_wm_window_type(c);

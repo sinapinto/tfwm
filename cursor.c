@@ -2,7 +2,7 @@
 #include <xcb/xcb_cursor.h>
 #include <string.h>
 #include "main.h"
-#include "util.h"
+#include "log.h"
 #include "cursor.h"
 
 static xcb_cursor_context_t *ctx;
