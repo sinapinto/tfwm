@@ -13,7 +13,6 @@ void cursor_load_cursors(void) {
         warn("xcursor support unavailable\n");
         xcb_font_t font = xcb_generate_id(conn);
         xcb_open_font(conn, font, strlen("cursor"), "cursor");
-
 #define LOAD_CURSORFONT(_c, _char)                                             \
     do {                                                                       \
         cursors[_c] = xcb_generate_id(conn);                                   \
@@ -22,6 +21,9 @@ void cursor_load_cursors(void) {
     } while (0)
         /* cursorfont defs: /usr/include/X11/cursorfont.h */
         LOAD_CURSORFONT(XC_POINTER, 68);
+        LOAD_CURSORFONT(XC_TOP_LEFT, 134);
+        LOAD_CURSORFONT(XC_TOP_RIGHT, 136);
+        LOAD_CURSORFONT(XC_BOTTOM_LEFT, 12);
         LOAD_CURSORFONT(XC_BOTTOM_RIGHT, 14);
         LOAD_CURSORFONT(XC_MOVE, 52);
         LOAD_CURSORFONT(XC_WATCH, 150);
@@ -30,6 +32,12 @@ void cursor_load_cursors(void) {
             xcb_close_font(conn, font);
     } else {
         cursors[XC_POINTER] = xcb_cursor_load_cursor(ctx, "left_ptr");
+        cursors[XC_TOP_LEFT] =
+            xcb_cursor_load_cursor(ctx, "top_left_corner");
+        cursors[XC_TOP_RIGHT] =
+            xcb_cursor_load_cursor(ctx, "top_right_corner");
+        cursors[XC_BOTTOM_LEFT] =
+            xcb_cursor_load_cursor(ctx, "bottom_left_corner");
         cursors[XC_BOTTOM_RIGHT] =
             xcb_cursor_load_cursor(ctx, "bottom_right_corner");
         cursors[XC_MOVE] = xcb_cursor_load_cursor(ctx, "fleur");

@@ -290,13 +290,39 @@ static void destroynotify(xcb_generic_event_t *ev) {
 }
 
 static void mousemotion(const xcb_button_index_t button) {
-    xcb_cursor_t cursor = (button == XCB_BUTTON_INDEX_1)
-                              ? cursor_get_id(XC_MOVE)
-                              : cursor_get_id(XC_BOTTOM_RIGHT);
+    xcb_query_pointer_cookie_t qpc = xcb_query_pointer(conn, screen->root);
+    xcb_query_pointer_reply_t *qpr = xcb_query_pointer_reply(conn, qpc, 0);
+
+    xcb_cursor_t cursor;
+    enum corner_t { TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT } corner;
+
+    if (button == XCB_BUTTON_INDEX_3) {
+        if (qpr->root_x < sel->geom.x + (sel->geom.width / 2)) {
+            if (qpr->root_y < sel->geom.y + (sel->geom.height / 2)) {
+                corner = TOP_LEFT;
+                cursor = cursor_get_id(XC_TOP_LEFT);
+            } else {
+                corner = BOTTOM_LEFT;
+                cursor = cursor_get_id(XC_BOTTOM_LEFT);
+            }
+        } else {
+            if (qpr->root_y < sel->geom.y + (sel->geom.height / 2)) {
+                corner = TOP_RIGHT;
+                cursor = cursor_get_id(XC_TOP_RIGHT);
+            } else {
+                corner = BOTTOM_RIGHT;
+                cursor = cursor_get_id(XC_BOTTOM_RIGHT);
+            }
+        }
+    } else {
+        cursor = cursor_get_id(XC_MOVE);
+    }
+
     /* grab pointer */
     xcb_grab_pointer_cookie_t gpc = xcb_grab_pointer(
         conn, 0, screen->root, POINTER_EVENT_MASK, XCB_GRAB_MODE_ASYNC,
         XCB_GRAB_MODE_ASYNC, XCB_NONE, cursor, XCB_CURRENT_TIME);
+
     xcb_grab_pointer_reply_t *gpr = xcb_grab_pointer_reply(conn, gpc, NULL);
     if (gpr->status != XCB_GRAB_STATUS_SUCCESS) {
         FREE(gpr);
@@ -304,13 +330,12 @@ static void mousemotion(const xcb_button_index_t button) {
     }
     FREE(gpr);
 
-    xcb_query_pointer_cookie_t qpc = xcb_query_pointer(conn, screen->root);
-    xcb_query_pointer_reply_t *qpr = xcb_query_pointer_reply(conn, qpc, 0);
-
-    int nx = sel->geom.x;
-    int ny = sel->geom.y;
-    int nw = sel->geom.width;
-    int nh = sel->geom.height;
+    int x = sel->geom.x;
+    int y = sel->geom.y;
+    int w = sel->geom.width;
+    int h = sel->geom.height;
+    int dx = 0;
+    int dy = 0;
     xcb_time_t last_motion_time = 0;
     xcb_generic_event_t *ev;
     xcb_motion_notify_event_t *e;
@@ -331,26 +356,50 @@ static void mousemotion(const xcb_button_index_t button) {
 
             if (button == XCB_BUTTON_INDEX_1) {
                 /* move */
-                nx = sel->geom.x + e->root_x - qpr->root_x;
-                ny = sel->geom.y + e->root_y - qpr->root_y;
-                movewin(sel->frame, nx, ny);
+                x = sel->geom.x + e->root_x - qpr->root_x;
+                y = sel->geom.y + e->root_y - qpr->root_y;
+                movewin(sel->frame, x, y);
             } else {
                 /* resize */
-                nw = MAX(sel->geom.width + e->root_x - qpr->root_x,
-                         sel->size_hints.min_width + 40);
-                nh = MAX(sel->geom.height + e->root_y - qpr->root_y,
-                         sel->size_hints.min_height + 40);
-                resizewin(sel->win, nw, nh);
-                resizewin(sel->frame, nw, nh);
+                dx = e->root_x - qpr->root_x;
+                dy = e->root_y - qpr->root_y;
+                switch (corner) {
+                case TOP_LEFT:
+                    x = sel->geom.x + dx;
+                    y = sel->geom.y + dy;
+                    w = sel->geom.width - dx;
+                    h = sel->geom.height - dy;
+                    break;
+                case TOP_RIGHT:
+                    x = sel->geom.x;
+                    y = sel->geom.y + dy;
+                    w = sel->geom.width + dx;
+                    h = sel->geom.height - dy;
+                    break;
+                case BOTTOM_LEFT:
+                    x = sel->geom.x + dx;
+                    y = sel->geom.y;
+                    w = sel->geom.width - dx;
+                    h = sel->geom.height + dy;
+                    break;
+                case BOTTOM_RIGHT:
+                    w = sel->geom.width + dx;
+                    h = sel->geom.height + dy;
+                    break;
+                }
+                moveresize_win(sel->frame, x, y, w, h);
+                moveresize_win(sel->win, 0, 0, w, h);
             }
             break;
         case XCB_BUTTON_RELEASE:
-            if (button == XCB_BUTTON_INDEX_1) {
-                sel->geom.x = nx;
-                sel->geom.y = ny;
-            } else {
-                sel->geom.width = nw;
-                sel->geom.height = nh;
+            if (button == XCB_BUTTON_INDEX_1) { /* move */
+                sel->geom.x = x;
+                sel->geom.y = y;
+            } else { /* resize */
+                sel->geom.x = x;
+                sel->geom.y = y;
+                sel->geom.width = w;
+                sel->geom.height = h;
             }
             ungrab = true;
             setborder(sel, true);

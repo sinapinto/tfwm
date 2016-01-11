@@ -2,7 +2,16 @@
 #ifndef CURSOR_H
 #define CURSOR_H
 
-enum cursor_t { XC_POINTER, XC_BOTTOM_RIGHT, XC_MOVE, XC_WATCH, XC_MAX };
+enum cursor_t {
+    XC_POINTER,
+    XC_TOP_LEFT,
+    XC_TOP_RIGHT,
+    XC_BOTTOM_LEFT,
+    XC_BOTTOM_RIGHT,
+    XC_MOVE,
+    XC_WATCH,
+    XC_MAX
+};
 
 void cursor_load_cursors(void);
 xcb_cursor_t cursor_get_id(enum cursor_t c);
