@@ -191,8 +191,8 @@ void manage(xcb_window_t w) {
     sel = c;
     fit_in_screen(c);
 
-    const uint32_t val[] = {XCB_EVENT_MASK_BUTTON_PRESS};
-    xcb_change_window_attributes(conn, w, XCB_CW_EVENT_MASK, val);
+    xcb_change_window_attributes(conn, w, XCB_CW_EVENT_MASK,
+                                 (uint32_t[]){XCB_EVENT_MASK_BUTTON_PRESS});
 
     if (c->ws == selws)
         xcb_map_window(conn, w);
@@ -488,11 +488,9 @@ void send_client_message(Client *c, xcb_atom_t proto) {
 void setborder(Client *c, bool focus) {
     if (ISFULLSCREEN(c) || c->noborder)
         return;
-
     uint32_t val[1];
     val[0] = focus ? focus_pixel : unfocus_pixel;
     xcb_change_window_attributes(conn, c->frame, XCB_CW_BORDER_PIXEL, val);
-    return;
 }
 
 void setborderwidth(xcb_window_t win, uint16_t bw) {
@@ -514,7 +512,7 @@ void showhide(Client *c) {
 }
 
 void spawn(const Arg *arg) {
-    launch_application(arg->com);
+    launch_application(arg->com, false);
 }
 
 void teleport(const Arg *arg) {
