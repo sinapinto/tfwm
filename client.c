@@ -349,15 +349,23 @@ void move(const Arg *arg) {
     switch (arg->i) {
     case MoveDown:
         sel->geom.y += move_step;
+        if (ISMAXHORZ(sel))
+            sel->old_geom.y = sel->geom.y;
         break;
     case MoveRight:
         sel->geom.x += move_step;
+        if (ISMAXVERT(sel))
+            sel->old_geom.x = sel->geom.x;
         break;
     case MoveUp:
         sel->geom.y -= move_step;
+        if (ISMAXHORZ(sel))
+            sel->old_geom.y = sel->geom.y;
         break;
     case MoveLeft:
         sel->geom.x -= move_step;
+        if (ISMAXVERT(sel))
+            sel->old_geom.x = sel->geom.x;
         break;
     default:
         warn("move: bad arg %d\n", arg->i);
