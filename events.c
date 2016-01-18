@@ -269,7 +269,12 @@ static void unmapnotify(xcb_generic_event_t *ev) {
 
     if ((c = wintoclient(e->window))) {
         PRINTF("\n");
-        unmanage(c);
+        if (c->ignore_unmap > 0) {
+            c->ignore_unmap--;
+            PRINTF(" ignore unmap\n");
+        } else {
+            unmanage(c);
+        }
     } else {
         PRINTF("(not found)\n");
     }
@@ -431,7 +436,7 @@ static void buttonpress(xcb_generic_event_t *ev) {
 
     if (e->event == e->root) {
         if (e->child) {
-            c = wintoclient(e->child);
+            c = frame_to_client(e->child);
             if (!c) {
                 return;
             }
@@ -440,7 +445,7 @@ static void buttonpress(xcb_generic_event_t *ev) {
             return;
         }
     } else {
-        c = wintoclient(e->event);
+        c = frame_to_client(e->event);
     }
 
     if (c && c->win != sel->win) {

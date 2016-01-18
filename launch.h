@@ -4,7 +4,7 @@
 
 #include <libsn/sn-monitor.h>
 
-void launch_application(const char *cmd, const bool notification);
+void launch_application(const char *cmd, const bool notify);
 void startup_event_cb(SnMonitorEvent *event, void *user_data);
 
 #endif

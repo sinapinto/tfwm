@@ -123,6 +123,7 @@ void manage(xcb_window_t w) {
     c->frame = XCB_NONE;
     c->ewmh_flags = 0;
     c->ws = selws;
+    c->ignore_unmap = 0;
 
     /* get size hints */
     xcb_icccm_get_wm_normal_hints_reply(
@@ -228,7 +229,7 @@ void reparent(Client *c) {
     xcb_configure_window(conn, c->frame,
                          XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT,
                          (uint32_t[]){c->geom.width, c->geom.height});
-
+    c->ignore_unmap++;
     xcb_map_window(conn, c->frame);
 
     PRINTF("reparent: reparenting win %#x to %#x\n", c->win, c->frame);
@@ -650,7 +651,15 @@ void unmanage(Client *c) {
 Client *wintoclient(xcb_window_t w) {
     Client *c;
     for (c = clients; c; c = c->next)
-        if (w == c->win || w == c->frame)
+        if (w == c->win)
+            return c;
+    return NULL;
+}
+
+Client *frame_to_client(xcb_window_t f) {
+    Client *c;
+    for (c = clients; c; c = c->next)
+        if (f == c->frame)
             return c;
     return NULL;
 }

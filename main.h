@@ -101,6 +101,7 @@ struct Client {
     /* TAILQ_ENTRY(stack) snext; */
     xcb_window_t win;
     unsigned int ws;
+    uint8_t ignore_unmap;
 };
 
 void quit(const Arg *arg);

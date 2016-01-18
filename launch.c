@@ -7,10 +7,10 @@
 #include "cursor.h"
 #include "launch.h"
 
-void launch_application(const char *cmd, const bool notification) {
+void launch_application(const char *cmd, const bool notify) {
     SnLauncherContext *context;
 
-    if (notification) {
+    if (notify) {
         context = sn_launcher_context_new(sndisplay, scrno);
         sn_launcher_context_set_name(context, __WM_NAME__);
         sn_launcher_context_set_description(context, "launch application");
@@ -23,7 +23,7 @@ void launch_application(const char *cmd, const bool notification) {
     if (fork() == 0) {
         setsid();
         if (fork() == 0) {
-            if (notification)
+            if (notify)
                 sn_launcher_context_setup_child_process(context);
             execl("/bin/sh", "/bin/sh", "-c", cmd, (void *)NULL);
             err("execl failed: %s\n", cmd);
@@ -32,7 +32,7 @@ void launch_application(const char *cmd, const bool notification) {
     }
 
     wait(0);
-    if (notification)
+    if (notify)
         cursor_set_window_cursor(screen->root, XC_WATCH);
 }
 

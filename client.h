@@ -4,7 +4,7 @@
 
 #include <xcb/xcb.h>
 
-/* buonding width/height */
+/* bounding width/height */
 #define BWIDTH(C)                                                              \
     ((!ISFULLSCREEN(C) && !(C)->noborder) ? (C)->geom.width + border_width * 2 \
                                           : (C)->geom.width)
@@ -23,6 +23,7 @@ void applyrules(Client *c);
 void cycleclients(const Arg *arg);
 void fitclient(Client *c);
 void focus(Client *c);
+Client *frame_to_client(xcb_window_t f);
 void killselected(const Arg *arg);
 void manage(xcb_window_t w);
 void maximize(const Arg *arg);

@@ -7,6 +7,7 @@ tfwm is a small, floating window manager for X.
 * startup-notification
 
 ## Todo
+* Bugfixes
 * Configuration
 * Hot restart
 * window titles?
