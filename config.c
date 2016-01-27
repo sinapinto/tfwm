@@ -126,7 +126,7 @@ int move_step = 30;
 int resize_step = 30;
 int cursor_position = 0;
 bool java_workaround = false;
-bool center_new_windows = false;
+bool center_new_windows = true;
 char *focus_color;
 char *unfocus_color;
 

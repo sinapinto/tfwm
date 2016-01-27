@@ -3,7 +3,7 @@
 #define CONFIG_H
 
 #define DEFAULT_FOCUS_COLOR "sky blue"
-#define DEFAULT_UNFOCUS_COLOR "rebecca purple"
+#define DEFAULT_UNFOCUS_COLOR "slate gray"
 
 char *find_config(const char *);
 int parse_config(const char *);
