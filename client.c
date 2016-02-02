@@ -518,7 +518,10 @@ void showhide(Client *c) {
 }
 
 void spawn(const Arg *arg) {
-    launch_application(arg->com, false);
+    if (strncmp(arg->com, "urxvt", 5) == 0)
+        launch_application(arg->com, true);
+    else
+        launch_application(arg->com, false);
 }
 
 void teleport(const Arg *arg) {

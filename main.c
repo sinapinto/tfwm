@@ -36,8 +36,6 @@ xcb_timestamp_t last_timestamp;
 Client *sel;
 Client *clients;
 Client *stack;
-/* TAILQ_HEAD(clients, Client); */
-/* TAILQ_HEAD(stack, Client); */
 
 static volatile sig_atomic_t sigcode;
 static volatile bool restart_wm;
@@ -122,10 +120,6 @@ static void run(void) {
 }
 
 static void setup(void) {
-    /* TAILQ_INIT(sel); */
-    /* TAILQ_INIT(clients); */
-    /* TAILQ_INIT(stack); */
-
     screen = xcb_setup_roots_iterator(xcb_get_setup(conn)).data;
     if (!screen)
         err("can't find screen.");

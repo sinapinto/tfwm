@@ -265,7 +265,7 @@ static void unmapnotify(xcb_generic_event_t *ev) {
     xcb_unmap_notify_event_t *e = (xcb_unmap_notify_event_t *)ev;
     Client *c;
 
-    PRINTF("Event: unmap notify: %#x ", e->window);
+    PRINTF("\nEvent: unmap notify: %#x ", e->window);
 
     if ((c = wintoclient(e->window))) {
         PRINTF("\n");
@@ -273,7 +273,7 @@ static void unmapnotify(xcb_generic_event_t *ev) {
             c->ignore_unmap--;
             PRINTF(" ignore unmap\n");
         } else {
-            unmanage(c);
+            /* unmanage(c); */
         }
     } else {
         PRINTF("(not found)\n");

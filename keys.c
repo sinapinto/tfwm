@@ -31,7 +31,7 @@ static char volup[] = "amixer -q set Master 3%+ unmute";
 static char voldown[] = "amixer -q set Master 3%- unmute";
 static char voltoggle[] = "amixer -q set Master toggle";
 
-#define MOD XCB_MOD_MASK_1
+#define MOD XCB_MOD_MASK_4
 #define SHIFT XCB_MOD_MASK_SHIFT
 #define CTRL XCB_MOD_MASK_CONTROL
 Key keys[KEY_MAX] = {
@@ -64,7 +64,7 @@ Key keys[KEY_MAX] = {
     {MOD, XK_u, teleport, {.i = TopRight}},
     {MOD, XK_b, teleport, {.i = BottomLeft}},
     {MOD, XK_n, teleport, {.i = BottomRight}},
-    {MOD, XK_x, maximize, {.i = 0}},
+    {MOD, XK_a, maximize, {.i = 0}},
     {MOD, XK_m, maximizeaxis, {.i = MaxVertical}},
     {MOD | SHIFT, XK_m, maximizeaxis, {.i = MaxHorizontal}},
     {MOD, XK_q, killselected, {.i = 0}},
